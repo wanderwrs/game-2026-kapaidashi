@@ -20,3 +20,5 @@ node_modules/
 # 构建产物(预留,若未来接入打包工具)
 /dist/
 /build/
+.uploads/
+.trae-html-share-packages/
