@@ -35,7 +35,7 @@ const nodes = [
     choices: [
       { text: '"大祭司,受死!"(直取大祭司)',         next: 'n03_battle', effects: { stats: { courage: 3, wild: 2 }, flags: ['killed_grandpriest'] } },
       { text: '"我念圣典残页,揭穿伪神!"(揭穿伪神)',   next: 'n03_expose', effects: { stats: { reason: 3, courage: 1 }, flags: ['exposed_church', 'killed_grandpriest'] } },
-      { text: '"弟弟,你走。我用'化龙',替你承受。"(化龙护弟)', next: 'n03_transform', effects: { stats: { mercy: 3, courage: 3 }, flags: ['sacrificed_self', 'brother_returned'] } },
+      { text: `"弟弟,你走。我用'化龙',替你承受。"(化龙护弟)`, next: 'n03_transform', effects: { stats: { mercy: 3, courage: 3 }, flags: ['sacrificed_self', 'brother_returned'] } },
     ],
   },
   {
