@@ -1,6 +1,6 @@
 /**
  * Game — 顶层游戏状态机与运行控制器。
- * 负责视图切换、运行生命周期、跨模块协调。
+ * 流程:菜单 → 职业选择 → 剧情(文字抉择+战斗) → 结局。
  */
 
 import { RNG, seedFromString } from './rng.js';
@@ -8,12 +8,16 @@ import { EventBus } from './eventbus.js';
 import { Player } from '../combat/entity.js';
 import { Deck } from '../card/deck.js';
 import { Battle } from '../combat/battle.js';
-import { generateMap } from '../map/map.js';
-import { CARDS, STARTER_DECK, ENEMIES } from '../data/data.js';
+import { CARDS } from '../data/data.js';
+import { CAREER_MAP } from '../narrative/careers.js';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js';
+import { CHAPTERS } from '../narrative/chapters/index.js';
 import { UI } from '../ui/ui.js';
 
 export const GameState = Object.freeze({
   MENU: 'menu',
+  CAREER: 'career',
+  NARRATIVE: 'narrative',
   MAP: 'map',
   BATTLE: 'battle',
   REWARD: 'reward',
@@ -29,74 +33,55 @@ export class Game {
     this.rng = null;
     this.player = null;
     this.deck = null;
-    this.map = null;
-    this.currentNode = null;
+    this.career = null;
+    this.engine = null;
     this.currentBattle = null;
-    this.floor = 0;
-    this.maxFloor = 0;
-
     this._bindUI();
     this.transition(GameState.MENU);
   }
 
-  /** 开始新一局,可选指定种子 */
+  /** 开始新一局:生成种子 → 显示职业选择 */
   startNewRun(seedInput) {
     const seed = seedInput
       ? (typeof seedInput === 'number' ? seedInput >>> 0 : seedFromString(String(seedInput)))
       : (Date.now() & 0xffffffff) >>> 0;
 
     this.rng = new RNG(seed);
-    this.floor = 0;
-    this.maxFloor = 8; // 框架默认 8 层,可扩展
     this.player = new Player({ maxHp: 70 });
-    this.deck = new Deck(STARTER_DECK.map((id) => CARDS[id]).filter(Boolean), this.rng);
-    this.map = generateMap(this.rng, this.maxFloor);
-    this.currentNode = null;
-
+    this.deck = null;
+    this.career = null;
+    this.engine = new NarrativeEngine({ rng: this.rng, bus: this.bus, chapters: CHAPTERS });
+    this.engine.player = this.player;
+    this.ui.bindEngine(this.engine);
     this.ui.updateSeed(this.rng.seed);
-    this.transition(GameState.MAP);
+    this.ui.renderCareers();
+    this.transition(GameState.CAREER);
   }
 
-  /** 状态切换 */
+  /** 选定职业:套用职业卡组 + HP + 进入第一章剧情 */
+  chooseCareer(careerId) {
+    const c = CAREER_MAP[careerId];
+    if (!c) return;
+    this.career = c;
+    this.player.maxHp = c.maxHp;
+    this.player.hp = c.maxHp;
+    this.player.energyMax = c.energyMax;
+    // 构建起始牌组:从 ID 解析为 Card 实例
+    this.deck = new Deck(c.starterDeck.map((id) => CARDS[id]).filter(Boolean), this.rng);
+    this.engine.career = c;
+    // 进入第一章
+    this.engine.enterChapter('ch01');
+    this.transition(GameState.NARRATIVE);
+  }
+
   transition(next) {
     this.state = next;
     this.ui.showView(next);
     this.bus.emit('state:change', next);
   }
 
-  /** 从地图选择一个节点进入 */
-  enterNode(nodeId) {
-    const node = this.map.nodes.find((n) => n.id === nodeId);
-    if (!node || node.visited) return;
-    if (this.currentNode && !this._isReachable(node)) return;
-
-    this.currentNode = node;
-    node.visited = true;
-    this.floor = node.floor;
-
-    if (node.type === 'battle' || node.type === 'elite' || node.type === 'boss') {
-      this._startBattle(node);
-    } else {
-      // 非战斗节点:框架占位,直接回到地图
-      this.ui.updateFloor(this.floor);
-      if (node.floor >= this.maxFloor) {
-        this.transition(GameState.VICTORY);
-      } else {
-        this.transition(GameState.MAP);
-        this.ui.renderMap(this.map, this.currentNode);
-      }
-    }
-  }
-
-  /** 判断节点是否从当前节点可达(同层或下一层相邻) */
-  _isReachable(node) {
-    return node.floor === this.currentNode.floor + 1;
-  }
-
-  /** 启动一场战斗 */
-  _startBattle(node) {
-    const pool = node.type === 'boss' ? ENEMIES.boss : node.type === 'elite' ? ENEMIES.elite : ENEMIES.normal;
-    const enemyDef = this.rng.pick(pool);
+  /** 剧情节点要求开战 */
+  _startNarrativeBattle(enemyDef) {
     this.currentBattle = new Battle({
       player: this.player,
       deck: this.deck,
@@ -105,22 +90,17 @@ export class Game {
       bus: this.bus,
     });
     this.ui.bindBattle(this.currentBattle);
-    this.ui.updateFloor(this.floor);
     this.transition(GameState.BATTLE);
     this.currentBattle.start();
   }
 
-  /** 战斗结束回调 */
   onBattleEnd(result) {
-    if (result === 'victory') {
-      if (this.floor >= this.maxFloor) {
-        this.transition(GameState.VICTORY);
-      } else {
-        this.transition(GameState.MAP);
-        this.ui.renderMap(this.map, this.currentNode);
-      }
+    // 战斗结束,回到剧情引擎
+    if (this.engine) {
+      this.engine.onBattleResult(result);
+      this.transition(GameState.NARRATIVE);
     } else {
-      this.transition(GameState.DEFEAT);
+      this.transition(result === 'victory' ? GameState.VICTORY : GameState.DEFEAT);
     }
   }
 
@@ -130,11 +110,23 @@ export class Game {
       const input = window.prompt('输入种子(数字或字符串):', '');
       if (input !== null) this.startNewRun(input);
     });
-    this.bus.on('ui:select-node', (id) => this.enterNode(id));
-    this.bus.on('ui:end-turn', () => this.currentBattle?.endPlayerTurn());
-    this.bus.on('ui:restart', () => {
-      this.startNewRun();
+    this.bus.on('ui:choose-career', (id) => this.chooseCareer(id));
+    this.bus.on('ui:narrative-choose', (i) => this.engine?.choose(i));
+    this.bus.on('ui:narrative-next', () => {
+      if (this.engine?.currentNode?.next) this.engine.goto(this.engine.currentNode.next);
     });
+    this.bus.on('ui:end-turn', () => this.currentBattle?.endPlayerTurn());
+    this.bus.on('ui:restart', () => this.startNewRun());
     this.bus.on('battle:end', (result) => this.onBattleEnd(result));
+    this.bus.on('narrative:battle', ({ enemyDef }) => this._startNarrativeBattle(enemyDef));
+    this.bus.on('narrative:refresh', (snap) => {
+      // 若节点是 ending,直接转 VICTORY 触发结局展示
+      if (snap.node?.kind === 'ending') {
+        this.transition(GameState.VICTORY);
+      }
+    });
   }
 }
+
+// ENDINGS 通过 engine 暴露给 UI;此处保留引用以便 main.js 调试
+export { ENDINGS };

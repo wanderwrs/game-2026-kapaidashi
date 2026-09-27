@@ -14,14 +14,21 @@ export const CARDS = {
   flex:       { id: 'flex',       name: '蓄势',     cost: 0, type: 'skill',  description: '获得 1 力量。',                 effects: [{ kind: 'status_self', name: 'strength', stacks: 1 }],                            rarity: 'common' },
   insight:    { id: 'insight',    name: '洞察',     cost: 0, type: 'skill',  description: '抽 1 张牌。',                  effects: [{ kind: 'draw',   amount: 1 }],                                            rarity: 'common' },
   recover:    { id: 'recover',    name: '调息',     cost: 1, type: 'skill',  description: '恢复 5 HP。',                  effects: [{ kind: 'heal',   amount: 5 }],                                            rarity: 'common' },
-};
 
-// 起始牌组(10 张,以 id 引用 CARDS)
-export const STARTER_DECK = [
-  'strike', 'strike', 'strike', 'strike', 'strike',
-  'defend', 'defend', 'defend', 'defend',
-  'cleave',
-];
+  // ===== 职业特色卡(由 careers.js 引用) =====
+  riposte:     { id: 'riposte',     name: '反击',     cost: 1, type: 'skill',  description: '获得 6 护甲,下回合首张攻击+3。', effects: [{ kind: 'block', amount: 6 }],                                                                       rarity: 'uncommon', career: 'swordsman' },
+  iron_will:   { id: 'iron_will',   name: '钢铁意志', cost: 1, type: 'power',  description: '每回合开始获得 2 护甲。',       effects: [],                                                                                          rarity: 'rare',     career: 'swordsman' },
+  arcane_bolt: { id: 'arcane_bolt', name: '奥术箭',   cost: 1, type: 'attack', description: '造成 7 伤害,抽 1 张牌。',       effects: [{ kind: 'damage', amount: 7 }, { kind: 'draw', amount: 1 }],                          rarity: 'common',   career: 'mage' },
+  starfall:    { id: 'starfall',    name: '星陨',     cost: 2, type: 'attack', description: '造成 12 伤害,1 易伤。',         effects: [{ kind: 'damage', amount: 12 }, { kind: 'status_enemy', name: 'vulnerable', stacks: 1 }], rarity: 'rare',     career: 'mage' },
+  charge:      { id: 'charge',      name: '冲锋',     cost: 1, type: 'attack', description: '造成 8 伤害,本回合弃 1 牌。',   effects: [{ kind: 'damage', amount: 8 }],                                                                       rarity: 'common',   career: 'cavalier' },
+  trample:     { id: 'trample',     name: '践踏',     cost: 2, type: 'attack', description: '造成 14 伤害,2 虚弱。',         effects: [{ kind: 'damage', amount: 14 }, { kind: 'status_enemy', name: 'weak', stacks: 2 }],       rarity: 'rare',     career: 'cavalier' },
+  dive:        { id: 'dive',        name: '俯冲',     cost: 1, type: 'attack', description: '造成 5 伤害,获得 3 护甲。',    effects: [{ kind: 'damage', amount: 5 }, { kind: 'block', amount: 3 }],                            rarity: 'common',   career: 'aviator' },
+  gust:        { id: 'gust',        name: '疾风',     cost: 0, type: 'skill',  description: '获得 4 护甲,抽 1 牌。',         effects: [{ kind: 'block', amount: 4 }, { kind: 'draw', amount: 1 }],                            rarity: 'common',   career: 'aviator' },
+  tide:        { id: 'tide',        name: '潮汐',     cost: 1, type: 'attack', description: '造成 6 伤害,恢复 2 HP。',      effects: [{ kind: 'damage', amount: 6 }, { kind: 'heal', amount: 2 }],                            rarity: 'common',   career: 'mariner' },
+  tsunami:     { id: 'tsunami',     name: '海啸',     cost: 2, type: 'attack', description: '造成 13 伤害,1 虚弱。',        effects: [{ kind: 'damage', amount: 13 }, { kind: 'status_enemy', name: 'weak', stacks: 1 }],       rarity: 'rare',     career: 'mariner' },
+  bless:       { id: 'bless',      name: '祈福',     cost: 1, type: 'skill',  description: '恢复 4 HP,获得 3 护甲。',      effects: [{ kind: 'heal', amount: 4 }, { kind: 'block', amount: 3 }],                              rarity: 'common',   career: 'theologian' },
+  judgement:   { id: 'judgement',   name: '审判',     cost: 2, type: 'attack', description: '造成 10 伤害,2 易伤。',         effects: [{ kind: 'damage', amount: 10 }, { kind: 'status_enemy', name: 'vulnerable', stacks: 2 }], rarity: 'rare',     career: 'theologian' },
+};
 
 // ===== 敌人定义 =====
 // actions: 意图池,每回合随机抽一个
@@ -36,6 +43,14 @@ export const ENEMIES = {
   ],
   boss: [
     { name: '堕落领主', hp: 80, actions: [{ kind: 'attack', value: 14 }, { kind: 'attack', value: 14 }, { kind: 'buff', name: 'strength', stacks: 2 }] },
+  ],
+  // ===== 剧情专用敌人池(由 narrative 节点 enemyPool 引用) =====
+  ch01: [
+    { name: '龙脊教徒', hp: 28, actions: [{ kind: 'attack', value: 7 }, { kind: 'attack', value: 5 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+    { name: '焚村黑龙(幼)', hp: 45, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 6 }, { kind: 'block', value: 5 }] },
+  ],
+  ch02: [
+    { name: '边境盗匪', hp: 32, actions: [{ kind: 'attack', value: 8 }, { kind: 'attack', value: 11 }] },
   ],
 };
 

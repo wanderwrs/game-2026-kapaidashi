@@ -74,6 +74,96 @@ body {
 
 /* ===== 主菜单 ===== */
 .view-menu { align-items: center; justify-content: center; }
+.menu-card .menu-title { font-size: 24px; }
+
+/* ===== 职业选择 ===== */
+.view-career { gap: var(--spacer-16); overflow-y: auto; }
+.view-sub { color: var(--text-muted); font-size: var(--text-caption); margin-bottom: var(--spacer-8); }
+.career-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacer-16);
+}
+.career-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--spacer-16);
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.08s;
+}
+.career-card:hover { border-color: var(--brand); transform: translateY(-2px); }
+.career-icon-row { display: flex; align-items: center; gap: var(--spacer-12); margin-bottom: var(--spacer-12); }
+.career-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-full);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: #fff;
+}
+.career-title { font-weight: 600; font-size: var(--text-title); }
+.career-class { color: var(--text-muted); font-size: var(--text-caption); }
+.career-story {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  line-height: 1.55;
+  margin-bottom: var(--spacer-12);
+  max-height: 120px;
+  overflow-y: auto;
+}
+.career-meta { display: flex; gap: var(--spacer-12); font-size: var(--text-caption); color: var(--text-muted); }
+.career-meta code { font-family: var(--font-mono); color: var(--text); }
+
+/* ===== 剧情视图 ===== */
+.view-narrative { align-items: center; justify-content: center; }
+.narrative-box {
+  width: 100%;
+  max-width: 720px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--spacer-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacer-16);
+  max-height: 90vh;
+}
+.narrative-stats {
+  display: flex;
+  gap: var(--spacer-12);
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.narrative-stats .stat-chip {
+  background: var(--surface-muted);
+  padding: 2px var(--spacer-8);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+}
+.narrative-text {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 200px;
+}
+.narrative-choices { display: flex; flex-direction: column; gap: var(--spacer-8); }
+.narrative-choice-btn {
+  text-align: left;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--spacer-12) var(--spacer-16);
+  color: var(--text);
+  font: 400 var(--text-body) var(--font-sans);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.narrative-choice-btn:hover { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-text); }
+.narrative-continue { text-align: center; color: var(--text-muted); font-size: var(--text-caption); cursor: pointer; }
+.narrative-continue:hover { color: var(--brand-text); }
 .menu-card {
   text-align: center;
   background: var(--surface);

@@ -26,13 +26,29 @@
     <!-- 主菜单视图 -->
     <section id="view-menu" class="view view-menu is-active">
       <div class="menu-card">
-        <h1 class="menu-title">Roguelike Deckbuilder</h1>
-        <p class="menu-sub">卡牌构筑框架 · 可玩骨架 Demo</p>
+        <h1 class="menu-title">龙脊少年 · 龙脊教团</h1>
+        <p class="menu-sub">中世纪 · 宗教 · 龙族 · 飞行与远洋冒险</p>
         <div class="menu-actions">
-          <button id="btn-new-run" class="btn btn-primary">开始新局</button>
+          <button id="btn-new-run" class="btn btn-primary">开始剧情</button>
           <button id="btn-seed-run" class="btn btn-ghost">指定种子</button>
         </div>
-        <p class="menu-hint">提示:框架已实现状态机、牌堆、战斗回合、地图节点生成。</p>
+        <p class="menu-hint">提示:文字冒险剧情 + 卡牌对战 · 第一章可玩 · 共 15 章 / 4 结局规划</p>
+      </div>
+    </section>
+
+    <!-- 职业选择视图 -->
+    <section id="view-career" class="view view-career">
+      <h2 class="view-title">选择你的少年</h2>
+      <p class="view-sub">六位少年,六种命运。选择将决定你的卡组与成长。</p>
+      <div id="career-grid" class="career-grid"></div>
+    </section>
+
+    <!-- 剧情视图 -->
+    <section id="view-narrative" class="view view-narrative">
+      <div class="narrative-box">
+        <div id="narrative-stats" class="narrative-stats"></div>
+        <div id="narrative-text" class="narrative-text"></div>
+        <div id="narrative-choices" class="narrative-choices"></div>
       </div>
     </section>
 
