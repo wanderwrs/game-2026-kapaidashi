@@ -6,7 +6,7 @@
 
 import { GameState } from '../core/game.js';
 import { NodeLabel } from '../map/map.js';
-import { CAREERS } from '../narrative/careers.js';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js';
 import { ENDINGS } from '../narrative/engine.js';
 
 const STATUS_LABELS = {
@@ -76,6 +76,32 @@ export class UI {
     this.bus.on('battle:refresh', (snap) => this._renderBattle(snap));
     this.bus.on('narrative:refresh', (snap) => this._renderNarrative(snap));
     this.bus.on('battle:log', (msg) => console.log('[battle]', msg));
+    // 职业解锁提示(顶部 toast)
+    this.bus.on('narrative:career-unlocked', (ids) => this._showCareerUnlockToast(ids));
+    // 职业切换/初始分配后刷新剧情视图(确保 chip 更新)
+    this.bus.on('narrative:career-chosen', () => {
+      if (this.engine) this._renderNarrative(this.engine.snapshot());
+    });
+  }
+
+  /** 职业解锁提示 toast(自动消失) */
+  _showCareerUnlockToast(ids) {
+    const list = Array.isArray(ids) ? ids : [ids];
+    const names = list
+      .map((id) => CAREER_MAP[id]?.name || id)
+      .join('、');
+    if (!names) return;
+    const toast = document.createElement('div');
+    toast.className = 'career-toast';
+    toast.textContent = `✦ 已解锁职业:${names}(可在休息节点切换)`;
+    this.root.appendChild(toast);
+    // 入场
+    requestAnimationFrame(() => toast.classList.add('is-visible'));
+    // 自动消失
+    setTimeout(() => {
+      toast.classList.remove('is-visible');
+      setTimeout(() => toast.remove(), 300);
+    }, 3200);
   }
 
   showView(state) {
@@ -185,6 +211,9 @@ export class UI {
         card.addEventListener('click', () => this.bus.emit('ui:choose-career', c.id));
         this.el.narrativeChoices.appendChild(card);
       }
+    } else if (node.kind === 'switch_career') {
+      // 职业切换节点:渲染已解锁职业 + "保持当前职业"按钮
+      this._renderCareerSwitch(node);
     } else if (node.kind === 'choice' && node.choices) {
       node.choices.forEach((choice, i) => {
         const btn = document.createElement('button');
@@ -213,6 +242,65 @@ export class UI {
       btn.addEventListener('click', () => this.bus.emit('ui:restart'));
       this.el.narrativeChoices.appendChild(btn);
     }
+  }
+
+  /** 职业切换节点渲染:列出已解锁职业,玩家可选择切换或保持当前职业继续 */
+  _renderCareerSwitch(node) {
+    const currentCareer = this.engine?.career;
+    const unlocked = [...(this.engine?.unlockedCareers || [])];
+
+    // 提示栏
+    const hint = document.createElement('div');
+    hint.className = 'switch-hint';
+    hint.textContent = currentCareer
+      ? `当前职业:${currentCareer.icon} ${currentCareer.name}`
+      : '尚未选择职业';
+    this.el.narrativeChoices.appendChild(hint);
+
+    // 已解锁职业列表(可切换的)
+    const switchable = unlocked
+      .map((id) => CAREER_MAP[id])
+      .filter((c) => c && (!currentCareer || c.id !== currentCareer.id));
+
+    if (switchable.length === 0) {
+      const noOpt = document.createElement('p');
+      noOpt.className = 'switch-none';
+      noOpt.textContent = '(暂无可切换的其他已解锁职业)';
+      this.el.narrativeChoices.appendChild(noOpt);
+    } else {
+      const grid = document.createElement('div');
+      grid.className = 'career-grid career-grid-compact';
+      for (const c of switchable) {
+        const card = document.createElement('div');
+        card.className = 'career-card';
+        card.innerHTML = `
+          <div class="career-icon-row">
+            <div class="career-icon" style="background:${c.color}">${c.icon}</div>
+            <div>
+              <div class="career-title">${c.name}</div>
+              <div class="career-class">${c.title}</div>
+            </div>
+          </div>
+          <div class="career-meta">
+            <span>HP <code>${c.maxHp}</code></span>
+            <span>能量 <code>${c.energyMax}</code></span>
+            <span>特色卡 <code>${c.signatureCards.length}</code></span>
+          </div>
+        `;
+        card.addEventListener('click', () => this.bus.emit('ui:switch-career', c.id));
+        grid.appendChild(card);
+      }
+      this.el.narrativeChoices.appendChild(grid);
+    }
+
+    // 保持当前职业继续剧情
+    const keepBtn = document.createElement('button');
+    keepBtn.className = 'btn btn-ghost switch-keep-btn';
+    keepBtn.textContent = currentCareer
+      ? `保持 ${currentCareer.name} 继续旅程`
+      : '继续旅程';
+    keepBtn.addEventListener('click', () => this.bus.emit('ui:narrative-next'));
+    this.el.narrativeChoices.appendChild(keepBtn);
   }
 
   bindEngine(engine) {

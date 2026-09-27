@@ -29,7 +29,8 @@ export class NarrativeEngine {
     this.flags = new Set();          // 关键抉择标记,持久
     this.stats = { courage: 0, mercy: 0, reason: 0, wild: 0 }; // 临时,微调结局
     this.player = null;              // 由 Game 注入
-    this.career = null;
+    this.career = null;              // 当前职业
+    this.unlockedCareers = new Set(); // 已解锁可切换的职业
     this._pendingBattle = null;     // 战斗结束后回到的节点
   }
 
@@ -75,28 +76,37 @@ export class NarrativeEngine {
     }
   }
 
-  /** 选择职业(在 career 节点触发) */
+  /** 选择职业(在 career 节点触发;旧路径,初始职业已改由 assign_career 自动分配) */
   chooseCareer(careerId) {
-    this.career = CAREER_MAP[careerId];
-    if (this.career && this.player) {
-      this.player.maxHp = this.career.maxHp;
-      this.player.hp = this.career.maxHp;
-      this.player.energyMax = this.career.energyMax;
+    const c = CAREER_MAP[careerId];
+    if (!c) return;
+    this.career = c;
+    this.unlockedCareers.add(careerId);
+    if (this.player) {
+      this.player.maxHp = c.maxHp;
+      this.player.hp = c.maxHp;
+      this.player.energyMax = c.energyMax;
     }
-    // 选完职业自动跳到下一节点(由 UI 决定)
-    this.bus.emit('narrative:career-chosen', this.career);
+    this.bus.emit('narrative:career-chosen', { career: c, isSwitch: false });
   }
 
   _handleNode() {
     const node = this.currentNode;
-    // 修复:narrative/choice/battle 节点本身的 effects 也要应用
-    // (此前仅 choice 的 choices[i].effects 在 choose() 中应用,
-    //  导致 narrative 节点上的 effects 如 began_quest / found_brother 等关键 flag 丢失)
+    // career_branch:根据当前职业自动路由到不同 next(专属剧情)
+    if (node.career_branch && this.career) {
+      const target = node.career_branch[this.career.id] || node.career_branch.default;
+      if (target) {
+        this.goto(target);
+        return;
+      }
+    }
+    // 应用节点 effects(含 assign_career / unlock_career / flags / stats)
     if (node.effects) this._applyEffects(node.effects);
     switch (node.kind) {
       case 'narrative':
       case 'choice':
       case 'career':
+      case 'switch_career':
       case 'ending':
         this._refresh();
         break;
@@ -121,6 +131,51 @@ export class NarrativeEngine {
         this.stats[k] = (this.stats[k] || 0) + v;
       }
     }
+    // 初始锁定职业(剧情推进中自动 assign,不经玩家选择)
+    if (effects.assign_career && !this.career) {
+      this.assignCareer(effects.assign_career);
+    }
+    // 解锁可切换职业(后续可在解锁点选择是否切换)
+    if (effects.unlock_career) {
+      const list = Array.isArray(effects.unlock_career) ? effects.unlock_career : [effects.unlock_career];
+      const newly = [];
+      for (const id of list) {
+        if (!this.unlockedCareers.has(id)) {
+          this.unlockedCareers.add(id);
+          newly.push(id);
+        }
+      }
+      if (newly.length) this.bus.emit('narrative:career-unlocked', newly);
+    }
+  }
+
+  /** 初始锁定职业(剧情自动 assign,不经玩家选择) */
+  assignCareer(careerId) {
+    const c = CAREER_MAP[careerId];
+    if (!c) return;
+    this.career = c;
+    this.unlockedCareers.add(careerId);
+    if (this.player) {
+      this.player.maxHp = c.maxHp;
+      this.player.hp = c.maxHp;
+      this.player.energyMax = c.energyMax;
+    }
+    this.bus.emit('narrative:career-chosen', { career: c, isSwitch: false });
+  }
+
+  /** 切换职业(需先解锁)。返回 true 表示切换成功 */
+  switchCareer(careerId) {
+    if (!this.unlockedCareers.has(careerId)) return false;
+    const c = CAREER_MAP[careerId];
+    if (!c || c.id === this.career?.id) return false;
+    this.career = c;
+    if (this.player) {
+      this.player.maxHp = c.maxHp;
+      this.player.hp = c.maxHp;
+      this.player.energyMax = c.energyMax;
+    }
+    this.bus.emit('narrative:career-chosen', { career: c, isSwitch: true });
+    return true;
   }
 
   _refresh() {
@@ -151,6 +206,7 @@ export class NarrativeEngine {
       stats: { ...this.stats },
       flags: [...this.flags],
       career: this.career,
+      unlockedCareers: [...this.unlockedCareers],
     };
   }
 }

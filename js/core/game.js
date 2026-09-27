@@ -40,7 +40,7 @@ export class Game {
     this.transition(GameState.MENU);
   }
 
-  /** 开始新一局:生成种子 → 直接进入第一章剧情(职业在 n06 选) */
+  /** 开始新一局:生成种子 → 直接进入第一章剧情(初始职业剑术在 n06 自动 assign) */
   startNewRun(seedInput) {
     const seed = seedInput
       ? (typeof seedInput === 'number' ? seedInput >>> 0 : seedFromString(String(seedInput)))
@@ -54,27 +54,17 @@ export class Game {
     this.engine.player = this.player;
     this.ui.bindEngine(this.engine);
     this.ui.updateSeed(this.rng.seed);
-    // 直接进入第一章;职业在剧情推进到 n06(赫尔墨引路)时由玩家选定
+    // 直接进入第一章;初始职业(剑术)在剧情推进到 n06(赫尔墨引路)时由 effects.assign_career 自动锁定
     this.engine.enterChapter('ch01');
     this.transition(GameState.NARRATIVE);
   }
 
-  /** 选定职业:套用职业卡组 + HP + 跳出 career 节点继续剧情 */
+  /**
+   * 选择/切换职业(由 ui:choose-career 触发,旧 career 节点路径)。
+   * 实际切换逻辑在 engine.switchCareer + narrative:career-chosen 监听器中统一处理。
+   */
   chooseCareer(careerId) {
-    const c = CAREER_MAP[careerId];
-    if (!c) return;
-    this.career = c;
-    this.player.maxHp = c.maxHp;
-    this.player.hp = c.maxHp;
-    this.player.energyMax = c.energyMax;
-    // 构建起始牌组:从 ID 解析为 Card 实例
-    this.deck = new Deck(c.starterDeck.map((id) => CARDS[id]).filter(Boolean), this.rng);
-    this.engine.career = c;
-    this.bus.emit('narrative:career-chosen', c);
-    // 选完职业,自动跳到 career 节点声明的 next,继续剧情
-    if (this.engine.currentNode && this.engine.currentNode.next) {
-      this.engine.goto(this.engine.currentNode.next);
-    }
+    this._switchCareer(careerId);
   }
 
   transition(next) {
@@ -114,6 +104,8 @@ export class Game {
       if (input !== null) this.startNewRun(input);
     });
     this.bus.on('ui:choose-career', (id) => this.chooseCareer(id));
+    // 职业切换(仅在已解锁的 switch_career 节点使用)
+    this.bus.on('ui:switch-career', (id) => this._switchCareer(id));
     this.bus.on('ui:narrative-choose', (i) => this.engine?.choose(i));
     this.bus.on('ui:narrative-next', () => {
       if (this.engine?.currentNode?.next) this.engine.goto(this.engine.currentNode.next);
@@ -128,6 +120,32 @@ export class Game {
         this.transition(GameState.VICTORY);
       }
     });
+    // 职业初始分配/切换后:重建牌组(初始局 game.deck 仍为 null,会在首次战斗前由 battle 构造兜底)
+    this.bus.on('narrative:career-chosen', ({ isSwitch }) => {
+      const c = this.engine?.career;
+      if (!c) return;
+      this.career = c;
+      if (this.player) {
+        this.player.maxHp = c.maxHp;
+        this.player.hp = c.maxHp;
+        this.player.energyMax = c.energyMax;
+      }
+      // 切换或首次分配后,重建牌组(从 ID 解析为 Card 实例)
+      this.deck = new Deck(c.starterDeck.map((id) => CARDS[id]).filter(Boolean), this.rng);
+      // 仅切换时打印日志(初始分配由剧情自然推进)
+      if (isSwitch) {
+        // 切换后停留在 switch_career 节点,等待玩家点"继续"
+      }
+    });
+  }
+
+  /** switch_career 节点:玩家选择切换到某个已解锁职业 */
+  _switchCareer(careerId) {
+    if (!this.engine) return;
+    const ok = this.engine.switchCareer(careerId);
+    if (!ok) return;
+    // narrative:career-chosen 监听器会重建牌组并刷新 UI
+    // 切换后保持在当前 switch_career 节点,玩家可继续点击"保持 X 继续旅程"
   }
 }
 

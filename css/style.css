@@ -310,3 +310,60 @@ body {
 }
 .result-title { font-size: 20px; font-weight: 600; margin-bottom: var(--spacer-8); }
 .result-desc { color: var(--text-muted); font-size: var(--text-caption); margin-bottom: var(--spacer-20); }
+
+/* ===== 职业解锁 toast 提示 ===== */
+.career-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-30px);
+  background: var(--surface);
+  border: 1px solid var(--brand);
+  color: var(--brand-text);
+  padding: var(--spacer-12) var(--spacer-20);
+  border-radius: var(--radius-full);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.career-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===== 职业切换节点 ===== */
+.switch-hint {
+  text-align: center;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+  padding: var(--spacer-8);
+  background: var(--surface-muted);
+  border-radius: var(--radius);
+  margin-bottom: var(--spacer-8);
+}
+.switch-none {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  padding: var(--spacer-12);
+}
+.career-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacer-8);
+  margin-bottom: var(--spacer-8);
+}
+.career-grid-compact .career-card {
+  padding: var(--spacer-12);
+}
+.career-grid-compact .career-story { display: none; }
+.switch-keep-btn {
+  margin-top: var(--spacer-8);
+  width: 100%;
+}
+

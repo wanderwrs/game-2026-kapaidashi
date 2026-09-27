@@ -6,6 +6,41 @@
  */
 
 const nodes = [
+  // ===== n00 路由节点:根据当前职业自动分支 =====
+  // 飞行学徒(aviator)走 n01_aviator 专属简化路径(云雀认出同门,直接借风翼,跳过海盗战)
+  // 其他职业走 n01 普通路径(需打海盗换风翼)
+  {
+    id: 'n00',
+    kind: 'narrative',
+    chapter: 9,
+    text: `你带弟弟向云端浮岛进发。
+
+浮岛悬在最高的云层之上。你抬头望去,云海翻涌,银白的浮岛在云顶若隐若现。`,
+    next: 'n01',
+    career_branch: {
+      aviator: 'n01_aviator',
+      default: 'n01',
+    },
+  },
+  // ===== n01_aviator:飞行学徒专属路径(简化)=====
+  {
+    id: 'n01_aviator',
+    kind: 'narrative',
+    chapter: 9,
+    text: `你展开自己的风翼,带着弟弟直飞云顶。风鸥绕着你鸣叫,像是认出同族。
+
+浮岛上的少女远远就看见了你——她披着蓝白羽袍,驾驭一对银白风翼,迎面飞来。
+
+"风翼一族?"她靠近,看清你肩上的羽纹,"你是学院的人!"
+
+"我叫云雀。"她按住你的肩,"你来得正好。教团雇佣的风翼海盗三月前抓走了我妹妹,说是'备火种'。我独力难支,你愿意帮我打下来吗?"
+
+你点头。同门之谊,不必多言。云雀当即取出一对备用风翼递给你弟弟——"这孩子也能飞了。"
+
+(飞行学徒专属:云雀认出同门,直接同盟,无需交涉。风翼已备,弟弟可同行。)`,
+    next: 'n03_battle',
+    effects: { flags: ['aviator_ally', 'got_wings'], stats: { mercy: 1, courage: 1 } },
+  },
   {
     id: 'n01',
     kind: 'narrative',
@@ -81,14 +116,32 @@ const nodes = [
 "……谢谢你。"她擦干眼泪,"这风翼,送你。它能载你直飞圣心坛。"
 
 "还有……"她抬头,"我和学院的姐妹,愿意跟你走一程。教团欠我们的,我们一起讨回来。"`,
+    next: 'n04_switch',
+    effects: { flags: ['aviator_ally', 'got_wings'], unlock_career: 'aviator' },
+  },
+  // ===== 休息节点:可选择是否切换到新解锁的飞行学徒职业 =====
+  {
+    id: 'n04_switch',
+    kind: 'switch_career',
+    chapter: 9,
+    text: `云雀临别时把一本飞行心法塞给你:"你是同门(或非同门),但这一程我看清了你。这心法,你若愿意学,飞行学院的门永远为你开。"
+
+——你已解锁『飞行学徒』职业。
+
+她教了你驾驭风翼的基础心法。你想了想:剑与风翼,是两条路,但都通往圣心坛。
+
+(此处可选择切换到『飞行学徒』职业。飞行学徒在后续云端/浮岛剧情中将有专属简化路径与同盟加成,或保持当前职业继续。)`,
     next: 'n05',
-    effects: { flags: ['aviator_ally', 'got_wings'] },
   },
   {
     id: 'n05',
     kind: 'choice',
     chapter: 9,
     text: `你借到了风翼(或没有)。弟弟在你身边,呼吸稳了。
+
+云雀临别时,把一本飞行心法塞给你:"你是同门(或非同门),但这一程我看清了你。这心法,你若愿意学,飞行学院的门永远为你开。"
+
+——你已解锁『飞行学徒』职业。可在后续任意休息节点切换。
 
 圣心坛在北方云层之上。你想起了林——那个和你同行的少年,他大概已经先到了。
 
@@ -99,12 +152,13 @@ const nodes = [
       { text: '"先去神学学院揭穿伪神。"(神学学院)',   next: 'ch11:n01', effects: { stats: { reason: 2, courage: 1 }, flags: ['expose_first'] } },
       { text: '"先救被掳的乡民。"(拯救村庄)',      next: 'ch13:n01', effects: { stats: { mercy: 3, courage: 1 }, flags: ['saved_village'] } },
     ],
+    effects: { unlock_career: 'aviator' },
   },
 ];
 
 export const CHAPTER_09 = {
   id: 'ch09',
   title: '第九章 · 飞行学院',
-  start: 'n01',
+  start: 'n00',
   nodes: new Map(nodes.map((n) => [n.id, n])),
 };
