@@ -28,6 +28,33 @@ export const CARDS = {
   tsunami:     { id: 'tsunami',     name: '海啸',     cost: 2, type: 'attack', description: '造成 13 伤害,1 虚弱。',        effects: [{ kind: 'damage', amount: 13 }, { kind: 'status_enemy', name: 'weak', stacks: 1 }],       rarity: 'rare',     career: 'mariner' },
   bless:       { id: 'bless',      name: '祈福',     cost: 1, type: 'skill',  description: '恢复 4 HP,获得 3 护甲。',      effects: [{ kind: 'heal', amount: 4 }, { kind: 'block', amount: 3 }],                              rarity: 'common',   career: 'theologian' },
   judgement:   { id: 'judgement',   name: '审判',     cost: 2, type: 'attack', description: '造成 10 伤害,2 易伤。',         effects: [{ kind: 'damage', amount: 10 }, { kind: 'status_enemy', name: 'vulnerable', stacks: 2 }], rarity: 'rare',     career: 'theologian' },
+
+  // ===== 中立通用卡(任何职业可用) =====
+  heavy_strike:{ id: 'heavy_strike',name: '重劈',     cost: 2, type: 'attack', description: '造成 14 伤害。',               effects: [{ kind: 'damage', amount: 14 }],                                           rarity: 'common' },
+  iron_skin:   { id: 'iron_skin',   name: '铁皮',     cost: 1, type: 'skill',  description: '获得 8 护甲。',               effects: [{ kind: 'block', amount: 8 }],                                            rarity: 'common' },
+  meditate:    { id: 'meditate',    name: '冥想',     cost: 0, type: 'skill',  description: '抽 2 张牌。',                  effects: [{ kind: 'draw', amount: 2 }],                                            rarity: 'uncommon' },
+  fortify:     { id: 'fortify',     name: '加固',     cost: 1, type: 'power',  description: '本局每回合开始获得 2 护甲。',  effects: [],                                                                                          rarity: 'rare' },
+  execute:     { id: 'execute',     name: '处决',     cost: 2, type: 'attack', description: '造成 9 伤害,目标 HP<30 时双倍。', effects: [{ kind: 'damage', amount: 9 }],                                                            rarity: 'uncommon' },
+  crippling:   { id: 'crippling',   name: '致残',     cost: 1, type: 'attack', description: '造成 5 伤害,2 虚弱。',         effects: [{ kind: 'damage', amount: 5 }, { kind: 'status_enemy', name: 'weak', stacks: 2 }],       rarity: 'common' },
+  second_wind: { id: 'second_wind', name: '重整',     cost: 1, type: 'skill',  description: '恢复 8 HP。',                 effects: [{ kind: 'heal', amount: 8 }],                                            rarity: 'uncommon' },
+  twin_strike: { id: 'twin_strike', name: '双击',     cost: 1, type: 'attack', description: '造成 4 伤害两次。',           effects: [{ kind: 'damage', amount: 4 }, { kind: 'damage', amount: 4 }],                          rarity: 'common' },
+  battle_cry:  { id: 'battle_cry',  name: '战吼',     cost: 0, type: 'skill',  description: '获得 1 力量,抽 1 牌。',         effects: [{ kind: 'status_self', name: 'strength', stacks: 1 }, { kind: 'draw', amount: 1 }],  rarity: 'uncommon' },
+  perfect_def: { id: 'perfect_def', name: '完美格挡', cost: 2, type: 'skill',  description: '获得 12 护甲。',               effects: [{ kind: 'block', amount: 12 }],                                           rarity: 'rare' },
+
+  // ===== 职业稀有特色卡(每职业 +1) =====
+  blade_storm: { id: 'blade_storm', name: '剑刃风暴', cost: 3, type: 'attack', description: '造成 18 伤害。',              effects: [{ kind: 'damage', amount: 18 }],                                            rarity: 'rare', career: 'swordsman' },
+  meteor:      { id: 'meteor',      name: '陨星',     cost: 3, type: 'attack', description: '造成 16 伤害,2 易伤。',        effects: [{ kind: 'damage', amount: 16 }, { kind: 'status_enemy', name: 'vulnerable', stacks: 2 }], rarity: 'rare', career: 'mage' },
+  lance_thrust:{ id: 'lance_thrust',name: '骑枪冲锋', cost: 2, type: 'attack', description: '造成 12 伤害,本回合获得 4 护甲。', effects: [{ kind: 'damage', amount: 12 }, { kind: 'block', amount: 4 }],                          rarity: 'rare', career: 'cavalier' },
+  sky_dance:   { id: 'sky_dance',   name: '云舞',     cost: 2, type: 'attack', description: '造成 10 伤害,抽 2 张牌。',     effects: [{ kind: 'damage', amount: 10 }, { kind: 'draw', amount: 2 }],                          rarity: 'rare', career: 'aviator' },
+  maelstrom:   { id: 'maelstrom',   name: '涡旋',     cost: 3, type: 'attack', description: '造成 17 伤害,1 虚弱。',        effects: [{ kind: 'damage', amount: 17 }, { kind: 'status_enemy', name: 'weak', stacks: 1 }],       rarity: 'rare', career: 'mariner' },
+  holy_fire:   { id: 'holy_fire',   name: '圣火',     cost: 3, type: 'attack', description: '造成 15 伤害,恢复 5 HP。',     effects: [{ kind: 'damage', amount: 15 }, { kind: 'heal', amount: 5 }],                            rarity: 'rare', career: 'theologian' },
+
+  // ===== 剧情奖励卡(战斗胜利后可选) =====
+  dragon_slash: { id: 'dragon_slash', name: '屠龙斩',  cost: 2, type: 'attack', description: '造成 13 伤害。屠龙者印记。',    effects: [{ kind: 'damage', amount: 13 }],                                            rarity: 'rare' },
+  faith_shield: { id: 'faith_shield', name: '信仰之盾', cost: 1, type: 'skill',  description: '获得 6 护甲,恢复 3 HP。',     effects: [{ kind: 'block', amount: 6 }, { kind: 'heal', amount: 3 }],                            rarity: 'uncommon' },
+  brother_bond:{ id: 'brother_bond', name: '手足之情', cost: 0, type: 'skill',  description: '抽 1 张牌,获得 4 护甲。',     effects: [{ kind: 'draw', amount: 1 }, { kind: 'block', amount: 4 }],                            rarity: 'uncommon' },
+  oath_keeper: { id: 'oath_keeper',  name: '守约者',   cost: 2, type: 'power',  description: '获得 1 力量,1 护甲。',         effects: [{ kind: 'status_self', name: 'strength', stacks: 1 }, { kind: 'block', amount: 1 }],  rarity: 'rare' },
+  storm_call:  { id: 'storm_call',   name: '唤雷',     cost: 1, type: 'attack', description: '造成 6 伤害,抽 1 张牌。',       effects: [{ kind: 'damage', amount: 6 }, { kind: 'draw', amount: 1 }],                            rarity: 'uncommon' },
 };
 
 // ===== 敌人定义 =====
@@ -51,6 +78,49 @@ export const ENEMIES = {
   ],
   ch02: [
     { name: '边境盗匪', hp: 32, actions: [{ kind: 'attack', value: 8 }, { kind: 'attack', value: 11 }] },
+    { name: '教团斥候', hp: 28, actions: [{ kind: 'attack', value: 7 }, { kind: 'block', value: 5 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+  ],
+  ch03: [
+    { name: '王城刺客', hp: 40, actions: [{ kind: 'attack', value: 10 }, { kind: 'attack', value: 6 }, { kind: 'attack', value: 12 }] },
+  ],
+  ch04: [
+    { name: '码头恶棍', hp: 36, actions: [{ kind: 'attack', value: 9 }, { kind: 'block', value: 6 }] },
+    { name: '继父爪牙', hp: 30, actions: [{ kind: 'attack', value: 8 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+  ],
+  ch05: [
+    { name: '幼年黑龙', hp: 55, actions: [{ kind: 'attack', value: 11 }, { kind: 'attack', value: 8 }, { kind: 'block', value: 6 }] },
+  ],
+  ch06: [
+    { name: '野林狼', hp: 22, actions: [{ kind: 'attack', value: 5 }, { kind: 'attack', value: 5 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+  ],
+  ch07: [
+    { name: '迷林妖精', hp: 26, actions: [{ kind: 'attack', value: 6 }, { kind: 'attack', value: 4 }, { kind: 'block', value: 4 }] },
+    { name: '林中熊', hp: 42, actions: [{ kind: 'attack', value: 10 }, { kind: 'attack', value: 7 }] },
+  ],
+  ch08: [
+    { name: '剑塔叛徒', hp: 38, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 9 }, { kind: 'block', value: 5 }] },
+  ],
+  ch09: [
+    { name: '风翼海盗', hp: 34, actions: [{ kind: 'attack', value: 8 }, { kind: 'attack', value: 6 }, { kind: 'block', value: 4 }] },
+  ],
+  ch10: [
+    { name: '深海鱼人', hp: 36, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 7 }] },
+  ],
+  ch11: [
+    { name: '异端审问官', hp: 44, actions: [{ kind: 'attack', value: 11 }, { kind: 'buff', name: 'strength', stacks: 1 }, { kind: 'block', value: 6 }] },
+  ],
+  ch12: [
+    { name: '教团守卫', hp: 40, actions: [{ kind: 'attack', value: 10 }, { kind: 'block', value: 7 }] },
+  ],
+  ch13: [
+    { name: '教团长老', hp: 48, actions: [{ kind: 'attack', value: 12 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+  ],
+  ch14: [
+    { name: '大祭司', hp: 90, actions: [{ kind: 'attack', value: 15 }, { kind: 'attack', value: 12 }, { kind: 'buff', name: 'strength', stacks: 2 }, { kind: 'block', value: 8 }] },
+    { name: '圣坛傀儡', hp: 60, actions: [{ kind: 'attack', value: 10 }, { kind: 'block', value: 8 }] },
+  ],
+  ch15: [
+    { name: '残党余孽', hp: 35, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 6 }] },
   ],
 };
 
