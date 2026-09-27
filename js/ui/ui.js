@@ -152,8 +152,11 @@ export class UI {
       : '';
     this.el.narrativeStats.innerHTML = careerChip + stats;
 
-    // 文本
-    this.el.narrativeText.textContent = node.text || '';
+    // 文本 + 插图(若有)
+    const imgHtml = snap.image
+      ? `<img class="narrative-image" src="${snap.image}" alt="剧情插图" loading="lazy" />`
+      : '';
+    this.el.narrativeText.innerHTML = imgHtml + `<div class="narrative-text-body">${this._escapeHtml(node.text || '')}</div>`;
 
     // 选项
     this.el.narrativeChoices.innerHTML = '';
@@ -214,6 +217,13 @@ export class UI {
 
   bindEngine(engine) {
     this.engine = engine;
+  }
+
+  _escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   // ===== 地图视图 =====

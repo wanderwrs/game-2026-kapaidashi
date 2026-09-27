@@ -17,6 +17,7 @@
 
 import { ENEMIES } from '../data/data.js';
 import { CAREER_MAP } from './careers.js';
+import { CHAPTER_IMAGES } from './images.js';
 
 export class NarrativeEngine {
   constructor({ rng, bus, chapters }) {
@@ -88,6 +89,10 @@ export class NarrativeEngine {
 
   _handleNode() {
     const node = this.currentNode;
+    // 修复:narrative/choice/battle 节点本身的 effects 也要应用
+    // (此前仅 choice 的 choices[i].effects 在 choose() 中应用,
+    //  导致 narrative 节点上的 effects 如 began_quest / found_brother 等关键 flag 丢失)
+    if (node.effects) this._applyEffects(node.effects);
     switch (node.kind) {
       case 'narrative':
       case 'choice':
@@ -136,9 +141,13 @@ export class NarrativeEngine {
   }
 
   snapshot() {
+    const key = this.currentChapterId && this.currentNode
+      ? `${this.currentChapterId}:${this.currentNode.id}`
+      : null;
     return {
       chapter: this.currentChapterId,
       node: this.currentNode,
+      image: key ? CHAPTER_IMAGES[key] : null,
       stats: { ...this.stats },
       flags: [...this.flags],
       career: this.career,

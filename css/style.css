@@ -144,10 +144,22 @@ body {
   font-size: 15px;
   line-height: 1.75;
   color: var(--text);
-  white-space: pre-wrap;
   overflow-y: auto;
   flex: 1;
   min-height: 200px;
+}
+.narrative-image {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: var(--spacer-12);
+  border: 1px solid var(--border);
+  display: block;
+  background: var(--surface-muted);
+}
+.narrative-text-body {
+  white-space: pre-wrap;
 }
 .narrative-choices { display: flex; flex-direction: column; gap: var(--spacer-8); }
 .narrative-choice-btn {
