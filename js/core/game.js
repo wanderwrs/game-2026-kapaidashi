@@ -40,7 +40,7 @@ export class Game {
     this.transition(GameState.MENU);
   }
 
-  /** 开始新一局:生成种子 → 显示职业选择 */
+  /** 开始新一局:生成种子 → 直接进入第一章剧情(职业在 n06 选) */
   startNewRun(seedInput) {
     const seed = seedInput
       ? (typeof seedInput === 'number' ? seedInput >>> 0 : seedFromString(String(seedInput)))
@@ -54,11 +54,12 @@ export class Game {
     this.engine.player = this.player;
     this.ui.bindEngine(this.engine);
     this.ui.updateSeed(this.rng.seed);
-    this.ui.renderCareers();
-    this.transition(GameState.CAREER);
+    // 直接进入第一章;职业在剧情推进到 n06(赫尔墨引路)时由玩家选定
+    this.engine.enterChapter('ch01');
+    this.transition(GameState.NARRATIVE);
   }
 
-  /** 选定职业:套用职业卡组 + HP + 进入第一章剧情 */
+  /** 选定职业:套用职业卡组 + HP + 跳出 career 节点继续剧情 */
   chooseCareer(careerId) {
     const c = CAREER_MAP[careerId];
     if (!c) return;
@@ -69,9 +70,11 @@ export class Game {
     // 构建起始牌组:从 ID 解析为 Card 实例
     this.deck = new Deck(c.starterDeck.map((id) => CARDS[id]).filter(Boolean), this.rng);
     this.engine.career = c;
-    // 进入第一章
-    this.engine.enterChapter('ch01');
-    this.transition(GameState.NARRATIVE);
+    this.bus.emit('narrative:career-chosen', c);
+    // 选完职业,自动跳到 career 节点声明的 next,继续剧情
+    if (this.engine.currentNode && this.engine.currentNode.next) {
+      this.engine.goto(this.engine.currentNode.next);
+    }
   }
 
   transition(next) {

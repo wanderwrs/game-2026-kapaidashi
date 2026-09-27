@@ -157,7 +157,32 @@ export class UI {
 
     // 选项
     this.el.narrativeChoices.innerHTML = '';
-    if (node.kind === 'choice' && node.choices) {
+    this.el.narrativeChoices.classList.remove('career-grid');
+    if (node.kind === 'career') {
+      // 职业选择:在剧情节点内渲染 6 张职业卡
+      this.el.narrativeChoices.classList.add('career-grid');
+      for (const c of CAREERS) {
+        const card = document.createElement('div');
+        card.className = 'career-card';
+        card.innerHTML = `
+          <div class="career-icon-row">
+            <div class="career-icon" style="background:${c.color}">${c.icon}</div>
+            <div>
+              <div class="career-title">${c.name}</div>
+              <div class="career-class">${c.title}</div>
+            </div>
+          </div>
+          <div class="career-story">${c.backstory}</div>
+          <div class="career-meta">
+            <span>HP <code>${c.maxHp}</code></span>
+            <span>能量 <code>${c.energyMax}</code></span>
+            <span>特色卡 <code>${c.signatureCards.length}</code></span>
+          </div>
+        `;
+        card.addEventListener('click', () => this.bus.emit('ui:choose-career', c.id));
+        this.el.narrativeChoices.appendChild(card);
+      }
+    } else if (node.kind === 'choice' && node.choices) {
       node.choices.forEach((choice, i) => {
         const btn = document.createElement('button');
         btn.className = 'narrative-choice-btn';
