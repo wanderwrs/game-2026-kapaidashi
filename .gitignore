@@ -1,0 +1,22 @@
+# 操作系统 / 编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 依赖(本框架无构建步骤,预留)
+node_modules/
+
+# 本地临时与日志
+*.log
+.env
+.env.local
+
+# 资源占位(后续真实美术资源另放)
+/assets/placeholder/
+
+# 构建产物(预留,若未来接入打包工具)
+/dist/
+/build/

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Roguelike 卡牌构筑游戏框架 · GitHub Pages Demo" />
+  <title>Roguelike Deckbuilder · 框架 Demo</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <!-- 顶部状态栏 -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="seed-label">种子</span>
+        <code id="seed-display" class="seed-value">—</code>
+      </div>
+      <div class="topbar-right">
+        <span class="meta-label">回合</span>
+        <code id="turn-display" class="meta-value">0</code>
+        <span class="meta-label">层数</span>
+        <code id="floor-display" class="meta-value">0</code>
+      </div>
+    </header>
+
+    <!-- 主菜单视图 -->
+    <section id="view-menu" class="view view-menu is-active">
+      <div class="menu-card">
+        <h1 class="menu-title">Roguelike Deckbuilder</h1>
+        <p class="menu-sub">卡牌构筑框架 · 可玩骨架 Demo</p>
+        <div class="menu-actions">
+          <button id="btn-new-run" class="btn btn-primary">开始新局</button>
+          <button id="btn-seed-run" class="btn btn-ghost">指定种子</button>
+        </div>
+        <p class="menu-hint">提示:框架已实现状态机、牌堆、战斗回合、地图节点生成。</p>
+      </div>
+    </section>
+
+    <!-- 地图视图 -->
+    <section id="view-map" class="view view-map">
+      <h2 class="view-title">选择路径</h2>
+      <div id="map-nodes" class="map-nodes"></div>
+    </section>
+
+    <!-- 战斗视图 -->
+    <section id="view-battle" class="view view-battle">
+      <div class="battle-field">
+        <div id="enemy-zone" class="enemy-zone"></div>
+        <div id="player-zone" class="player-zone"></div>
+      </div>
+      <div class="battle-deck-info">
+        <span>抽牌堆 <code id="draw-count">0</code></span>
+        <span>弃牌堆 <code id="discard-count">0</code></span>
+        <span>能量 <code id="energy-display">0/0</code></span>
+      </div>
+      <div id="hand" class="hand"></div>
+      <div class="battle-actions">
+        <button id="btn-end-turn" class="btn btn-primary">结束回合</button>
+      </div>
+    </section>
+
+    <!-- 结算视图 -->
+    <section id="view-result" class="view view-result">
+      <div class="result-card">
+        <h2 id="result-title" class="result-title">—</h2>
+        <p id="result-desc" class="result-desc"></p>
+        <button id="btn-restart" class="btn btn-primary">再来一局</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
