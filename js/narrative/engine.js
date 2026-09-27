@@ -212,8 +212,20 @@ export class NarrativeEngine {
 }
 
 export const ENDINGS = {
-  hero: { id: 'hero', title: '英雄回归', color: '#f1c40f' },
-  tragic: { id: 'tragic', title: '悲剧献身', color: '#c0392b' },
-  recluse: { id: 'recluse', title: '隐世退避', color: '#7f8c8d' },
-  odyssey: { id: 'odyssey', title: '未尽征程', color: '#3498db' },
+  hero: {
+    id: 'hero', title: '英雄回归', color: '#e8cd6e',
+    desc: '你守住了弟弟,也守住了父亲守了一辈子的约。王城的钟声为你而鸣,龙脊山脉在你身后沉入云雾。',
+  },
+  tragic: {
+    id: 'tragic', title: '悲剧献身', color: '#e0553f',
+    desc: '你替弟弟承受了龙化,血脉再也回不去了。但你守住了他——用你自己,换他做一个人。',
+  },
+  recluse: {
+    id: 'recluse', title: '隐世退避', color: '#7f8c8d',
+    desc: '你放下了剑,回到平静的日子。有些约,你没能守完——只能交给下一个人。',
+  },
+  odyssey: {
+    id: 'odyssey', title: '未尽征程', color: '#6fc0e8',
+    desc: '你做了你的决定。山海未尽,守约未竟。现在,轮到下一位少年,做他的决定。',
+  },
 };

@@ -6,6 +6,13 @@
 
 import { Enemy } from './entity.js';
 
+const STATUS_CN = {
+  vulnerable: '易伤',
+  weak: '虚弱',
+  frail: '脆弱',
+  strength: '力量',
+};
+
 export class Battle {
   constructor({ player, deck, enemyDef, rng, bus }) {
     this.player = player;
@@ -16,6 +23,7 @@ export class Battle {
     this.turn = 0;
     this.over = false;
     this.result = null;
+    this._fxQueue = [];   // 伤害飘字等特效,待 DOM 刷新后再广播
   }
 
   start() {
@@ -43,6 +51,7 @@ export class Battle {
     this.bus.emit('battle:log', `打出 ${card.name}`);
     this._checkEnd();
     this._refresh();
+    this._flushFx();
     return true;
   }
 
@@ -66,12 +75,15 @@ export class Battle {
         let dmg = intent.value;
         if (this.enemy.getStatus('weak') > 0) dmg = Math.floor(dmg * 0.75);
         const dealt = this.player.takeDamage(dmg);
-        this.bus.emit('battle:log', `${this.enemy.name} 攻击造成 ${dealt} 伤害`);
+        this._queueFx({ target: 'player', kind: 'damage', value: dealt });
+        this.bus.emit('battle:log', `${this.enemy.name} 攻击,造成 ${dealt} 伤害`);
       } else if (intent.kind === 'block') {
         this.enemy.addBlock(intent.value);
+        this._queueFx({ target: 'enemy', kind: 'block', value: intent.value });
         this.bus.emit('battle:log', `${this.enemy.name} 获得 ${intent.value} 护甲`);
       } else if (intent.kind === 'buff') {
         this.enemy.applyStatus(intent.name, intent.stacks);
+        this.bus.emit('battle:log', `${this.enemy.name} 强化「${STATUS_CN[intent.name] || intent.name}」`);
       }
     }
     this.enemy.tickStatuses();
@@ -84,6 +96,7 @@ export class Battle {
       this.deck.draw(5);
       this._refresh();
     }
+    this._flushFx();
   }
 
   /** 解释卡牌 effects 并应用 */
@@ -91,21 +104,29 @@ export class Battle {
     const str = this.player.getStatus('strength');
     for (const e of effects) {
       switch (e.kind) {
-        case 'damage':
-          this.enemy.takeDamage(e.amount + str);
+        case 'damage': {
+          const dealt = this.enemy.takeDamage(e.amount + str);
+          this._queueFx({ target: 'enemy', kind: 'damage', value: dealt });
           break;
+        }
         case 'block':
           this.player.addBlock(e.amount);
+          this._queueFx({ target: 'player', kind: 'block', value: e.amount });
           break;
         case 'status_enemy':
           this.enemy.applyStatus(e.name, e.stacks);
+          this.bus.emit('battle:log', `${this.enemy.name} 被施加「${STATUS_CN[e.name] || e.name}」×${e.stacks}`);
           break;
         case 'status_self':
           this.player.applyStatus(e.name, e.stacks);
+          this.bus.emit('battle:log', `你获得「${STATUS_CN[e.name] || e.name}」×${e.stacks}`);
           break;
-        case 'heal':
+        case 'heal': {
+          const before = this.player.hp;
           this.player.hp = Math.min(this.player.maxHp, this.player.hp + e.amount);
+          this._queueFx({ target: 'player', kind: 'heal', value: this.player.hp - before });
           break;
+        }
         case 'draw':
           this.deck.draw(e.amount);
           break;
@@ -113,6 +134,19 @@ export class Battle {
           this.bus.emit('battle:log', `未知效果: ${e.kind}`);
       }
     }
+  }
+
+  /** 入队一条战斗特效(待 DOM 刷新后再广播,避免被重建清掉) */
+  _queueFx(fx) {
+    if (fx && fx.value) this._fxQueue.push(fx);
+  }
+
+  /** 广播已入队的特效 */
+  _flushFx() {
+    if (this._fxQueue.length === 0) return;
+    const queue = this._fxQueue;
+    this._fxQueue = [];
+    for (const fx of queue) this.bus.emit('battle:fx', fx);
   }
 
   _checkEnd() {
