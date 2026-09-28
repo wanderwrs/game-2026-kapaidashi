@@ -4,7 +4,7 @@
  * 不持有战斗/剧情状态,仅做视图;逻辑集中在 Game/Battle/NarrativeEngine。
  *
  * 交互增强:
- *   · 剧情文本打字机呈现,点击可跳过,读毕再浮现选项
+ *   · 剧情文本逐段渐显,点击可跳过,读毕再浮现选项
  *   · 键盘操作:数字键选选项 / 空格·回车推进 / 点击文本区域推进
  *   · 战斗:血条动画、伤害飘字、受击抖动、手牌类型描边
  *   · 章节进度条、职业解锁提示、结局面板
@@ -36,10 +36,11 @@ const TYPE_LABELS = {
   power: '能力',
 };
 
-/** 打字机速度:每字毫秒(会按文本长度自适应压缩总时长) */
-const TYPE_CHAR_MS = 14;
-const TYPE_MAX_MS = 9000;
-const TYPE_MIN_MS = 1400;
+/** 逐段渐显节奏:段间基础间隔(ms) + 按段长加权 */
+const PARA_BASE_MS = 380;
+const PARA_PER_CHAR_MS = 18;
+const PARA_MAX_MS = 1600;
+const PARA_FADE_MS = 520;
 
 export class UI {
   constructor(rootEl, bus) {
@@ -47,11 +48,12 @@ export class UI {
     this.bus = bus;
     this.battle = null;
     this.engine = null;
-    this._typeTimer = null;      // 打字机计时器
-    this._typing = false;        // 是否正在打字
-    this._fullText = '';         // 当前节点全文
-    this._revealed = 0;          // 已显示字符数
-    this._choicesReady = false;  // 选项是否已浮现
+    this._paraTimer = null;       // 逐段渐显计时器
+    this._typing = false;         // 是否正在逐段呈现
+    this._fullText = '';          // 当前节点全文
+    this._paraEls = [];           // 段落 DOM 列表
+    this._paraIndex = 0;          // 下一段待显示索引
+    this._choicesReady = false;   // 选项是否已浮现
     this._lastEnemyHp = null;    // 用于计算伤害飘字
     this._lastPlayerHp = null;
     this._cache();
@@ -288,7 +290,7 @@ export class UI {
 
     const fullText = node.text || '';
     this._fullText = fullText;
-    this._startTyping(body, fullText);
+    this._startParagraphReveal(body, fullText);
 
     // 选项(先构建,打字完成后再浮现)
     this._buildChoices(node, snap);
@@ -319,61 +321,89 @@ export class UI {
     `;
   }
 
-  /** 打字机 */
-  _startTyping(body, text) {
-    const total = text.length;
-    if (total === 0) {
+  /** 逐段渐显 */
+  _startParagraphReveal(body, text) {
+    // 按空行分段,保留段内换行
+    const paragraphs = text
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    this._paraEls = [];
+    this._paraIndex = 0;
+
+    if (paragraphs.length === 0) {
       this._finishTyping();
       return;
     }
-    const duration = Math.min(TYPE_MAX_MS, Math.max(TYPE_MIN_MS, total * TYPE_CHAR_MS));
-    const interval = 16;
-    const perTick = Math.max(1, Math.ceil(total / Math.max(1, duration / interval)));
 
     this._typing = true;
-    this._revealed = 0;
-    this._renderTyped(body, '');
-    const caret = document.createElement('span');
-    caret.className = 'tw-caret';
-    caret.textContent = '▍';
-    body.appendChild(caret);
+    body.innerHTML = '';
 
-    this._typeTimer = setInterval(() => {
-      this._revealed = Math.min(total, this._revealed + perTick);
-      const shown = text.slice(0, this._revealed);
-      body.textContent = shown;
-      body.appendChild(caret);
-      // 自动滚到底部,让新字可见
-      this.el.narrativeText.scrollTop = this.el.narrativeText.scrollHeight;
-      if (this._revealed >= total) {
-        this._stopTyping();
-        this._finishTyping();
-      }
-    }, interval);
+    // 预创建所有段落(初始不可见)
+    paragraphs.forEach((p) => {
+      const el = document.createElement('p');
+      el.textContent = p;
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(10px)';
+      el.style.transition = `opacity ${PARA_FADE_MS}ms var(--ease), transform ${PARA_FADE_MS}ms var(--ease)`;
+      body.appendChild(el);
+      this._paraEls.push(el);
+    });
+
+    // 立即显示第一段
+    this._revealNextParagraph();
+
+    // 按节奏逐段浮现
+    this._scheduleNext();
   }
 
-  _renderTyped(body, shown) {
-    body.textContent = shown;
+  _scheduleNext() {
+    if (this._paraIndex >= this._paraEls.length) {
+      this._stopTyping();
+      this._finishTyping();
+      return;
+    }
+    const current = this._paraEls[this._paraIndex - 1];
+    const len = current ? current.textContent.length : 0;
+    const delay = Math.min(PARA_MAX_MS, PARA_BASE_MS + len * PARA_PER_CHAR_MS);
+    this._paraTimer = setTimeout(() => {
+      this._revealNextParagraph();
+      this._scheduleNext();
+    }, delay);
+  }
+
+  _revealNextParagraph() {
+    if (this._paraIndex >= this._paraEls.length) return;
+    const el = this._paraEls[this._paraIndex];
+    el.style.opacity = '1';
+    el.style.transform = 'none';
+    this._paraIndex++;
+    // 自动滚动,让新段可见
+    this.el.narrativeText.scrollTop = this.el.narrativeText.scrollHeight;
   }
 
   _skipTyping() {
     if (!this._typing) return;
     this._stopTyping();
-    const body = this.el.narrativeText.querySelector('.narrative-text-body');
-    if (body) body.textContent = this._fullText;
+    // 一次性浮现全部剩余段落
+    for (let i = this._paraIndex; i < this._paraEls.length; i++) {
+      const el = this._paraEls[i];
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    }
+    this._paraIndex = this._paraEls.length;
     this.el.narrativeText.scrollTop = 0;
     this._finishTyping();
   }
 
   _stopTyping() {
-    if (this._typeTimer) { clearInterval(this._typeTimer); this._typeTimer = null; }
+    if (this._paraTimer) { clearTimeout(this._paraTimer); this._paraTimer = null; }
     this._typing = false;
   }
 
-  /** 打字完成:移除光标,浮现选项 */
+  /** 呈现完成:浮现选项 */
   _finishTyping() {
-    const caret = this.el.narrativeText.querySelector('.tw-caret');
-    if (caret) caret.remove();
     this.el.narrativeChoices.classList.remove('is-waiting');
     this._choicesReady = true;
   }
