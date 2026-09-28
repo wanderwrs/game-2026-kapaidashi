@@ -286,6 +286,7 @@ export class UI {
       ? `<img class="narrative-image" src="${snap.image}" alt="剧情插图" loading="lazy" />`
       : '';
     this.el.narrativeText.innerHTML = imgHtml + '<div class="narrative-text-body"></div>';
+    this.el.narrativeText.scrollTop = 0;
     const body = this.el.narrativeText.querySelector('.narrative-text-body');
 
     const fullText = node.text || '';
@@ -379,8 +380,7 @@ export class UI {
     el.style.opacity = '1';
     el.style.transform = 'none';
     this._paraIndex++;
-    // 自动滚动,让新段可见
-    this.el.narrativeText.scrollTop = this.el.narrativeText.scrollHeight;
+    // 不自动滚动,保持用户当前阅读位置
   }
 
   _skipTyping() {
@@ -393,7 +393,7 @@ export class UI {
       el.style.transform = 'none';
     }
     this._paraIndex = this._paraEls.length;
-    this.el.narrativeText.scrollTop = 0;
+    // 不强制滚动,保持用户当前阅读位置
     this._finishTyping();
   }
 
