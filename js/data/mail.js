@@ -15,6 +15,10 @@
  *
  * 使用次数:默认每个兑换码在同一台设备上只能兑换一次(记在 localStorage.used 里)。
  *   若某条码设 unlimited: true,则不记使用、不拦重复 —— 可无限次兑换(持久码)。
+ *   注意:unlimited 且 deliver: 'mail' 的码,每次兑换会重新唤起同一封信(可反复领取)。
+ *
+ * 速通:若某条码设 skipChapter: 'ch01',兑换当即把该大章标记为已通关
+ *   (写入 longji.progress.v1,解锁后续大章),并把该章「首通补给」按上面规则发放。
  *
  * 下面两条邮件与两个兑换码是「示例」,可自由替换 / 删除。
  */
@@ -79,5 +83,28 @@ export const REDEEM_CODES = [
         '本信附上全部道具(各 99 件)与全部可切换职业。点「领取」一次性收入行囊。',
     },
     reward: { allItems: 99, allCareers: true },
+  },
+  {
+    // 速通码:兑换后立即把「第一大章」标记为通关(解锁第二大章),
+    // 并把第一章首通补给(+ 剑术职业,进入后续章节时自动分配)寄到邮箱。
+    // unlimited → 持续有效、可反复兑换;重复兑换会重新唤起同一封信,可再次领取。
+    code: 'LONGJI-CH1',
+    no: 'R005',
+    label: '第一章速通码',
+    unlimited: true,
+    skipChapter: 'ch01',
+    deliver: 'mail',
+    mail: {
+      from: '守约 · 驿站',
+      title: '速通第一章 · 首通补给',
+      body:
+        '你不必再走一遍那条烧焦的村路 —— 驿站已替你走完第一章。\n' +
+        '第二大章「踏上旅程」自此解锁;剑术职业会在你启程时自动握在手里。\n' +
+        '本信附上第一章的首通补给。点「领取」一次性收入行囊。',
+    },
+    reward: {
+      gold: 500,
+      items: { hp_small: 5, mp_small: 3, bread: 5, dried_meat: 2, swift_incense: 2, wind_tonic: 2, iron_sword: 1 },
+    },
   },
 ];

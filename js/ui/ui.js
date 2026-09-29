@@ -10,18 +10,18 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929x';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929x';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929x';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20260929x';
-import { cardMpCost } from '../data/data.js?v=20260929x';
-import { ENDINGS } from '../narrative/engine.js?v=20260929x';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929x';
-import { SceneView } from './scene.js?v=20260929x';
-import { Minigame } from '../minigame/minigame.js?v=20260929x';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929x';
-import { TERRAIN_CN } from '../data/world.js?v=20260929x';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929x';
+import { GameState } from '../core/game.js?v=20260929y';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929y';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929y';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20260929y';
+import { cardMpCost } from '../data/data.js?v=20260929y';
+import { ENDINGS } from '../narrative/engine.js?v=20260929y';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929y';
+import { SceneView } from './scene.js?v=20260929y';
+import { Minigame } from '../minigame/minigame.js?v=20260929y';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929y';
+import { TERRAIN_CN } from '../data/world.js?v=20260929y';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929y';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',

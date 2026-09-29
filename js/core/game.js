@@ -11,31 +11,31 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929x';
-import { EventBus } from './eventbus.js?v=20260929x';
-import { AudioEngine } from './audio.js?v=20260929x';
-import { Player } from '../combat/entity.js?v=20260929x';
-import { Deck } from '../card/deck.js?v=20260929x';
-import { Battle } from '../combat/battle.js?v=20260929x';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929x';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929x';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929x';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929x';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929x';
-import { jobsFor } from '../data/jobs.js?v=20260929x';
+import { RNG, seedFromString } from './rng.js?v=20260929y';
+import { EventBus } from './eventbus.js?v=20260929y';
+import { AudioEngine } from './audio.js?v=20260929y';
+import { Player } from '../combat/entity.js?v=20260929y';
+import { Deck } from '../card/deck.js?v=20260929y';
+import { Battle } from '../combat/battle.js?v=20260929y';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929y';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929y';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929y';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929y';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929y';
+import { jobsFor } from '../data/jobs.js?v=20260929y';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929x';
-import { NPCS } from '../data/npcs.js?v=20260929x';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929x';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929x';
-import { Economy } from './economy.js?v=20260929x';
-import { Travel } from './travel.js?v=20260929x';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929x';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929x';
-import { CAREERS } from '../narrative/careers.js?v=20260929x';
-import { UI } from '../ui/ui.js?v=20260929x';
+} from '../data/world.js?v=20260929y';
+import { NPCS } from '../data/npcs.js?v=20260929y';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929y';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929y';
+import { Economy } from './economy.js?v=20260929y';
+import { Travel } from './travel.js?v=20260929y';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929y';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929y';
+import { CAREERS } from '../narrative/careers.js?v=20260929y';
+import { UI } from '../ui/ui.js?v=20260929y';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -1142,6 +1142,14 @@ export class Game {
     if (!hit.unlimited && this.mailState.used[code]) { this.ui.renderRedeem({ msg: '这个兑换码已经兑换过了', kind: 'bad' }); return; }
     const label = hit.label ? `「${hit.label}」` : '';
 
+    // 速通:兑换当即把指定大章标记为已通关(解锁后续大章),与奖励如何投递无关
+    let skipNote = '';
+    if (hit.skipChapter) {
+      const isNew = this._skipChapter(hit.skipChapter);
+      const name = hit.skipChapter === 'ch01' ? '第一大章「家园破碎」' : '目标大章';
+      skipNote = isNew ? `${name}已速通并解锁,` : `${name}此前已通关,`;
+    }
+
     // 寄到邮箱:兑换当即生效,奖励需去「邮箱」点领取才入袋
     if (hit.deliver === 'mail') {
       const id = `grant_${code}`;
@@ -1154,18 +1162,20 @@ export class Game {
         body: (hit.mail && hit.mail.body) || '兑换成功,点「领取」入袋。',
         reward: hit.reward || null,
       };
+      // 持久码重复兑换:重新唤起同一封信,允许再次领取
+      if (hit.unlimited) { this.mailState.claimed = this.mailState.claimed || {}; delete this.mailState.claimed[id]; }
       if (!hit.unlimited) this.mailState.used[code] = true;
       saveMailState(this.mailState);
       this._refreshMailBadge();
-      this.ui.renderRedeem({ msg: `兑换成功${label}:已寄达「邮箱」,请在邮箱点「领取」`, kind: 'ok' });
+      this.ui.renderRedeem({ msg: `兑换成功${label}:${skipNote}已寄达「邮箱」,请在邮箱点「领取」`, kind: 'ok' });
       return;
     }
 
-    if (!this.economy) { this.ui.renderRedeem({ msg: '先开始一局旅程,再来兑换', kind: 'bad' }); return; }
+    if (!this.economy) { this.ui.renderRedeem({ msg: `${skipNote}先开始一局旅程,再来领奖励`, kind: skipNote ? 'ok' : 'bad' }); return; }
     const got = this._applyReward(hit.reward) || [];
     if (!hit.unlimited) this.mailState.used[code] = true;
     saveMailState(this.mailState);
-    this.ui.renderRedeem({ msg: `兑换成功${label}:${got.length ? got.join('、') : '（无奖励）'}`, kind: 'ok' });
+    this.ui.renderRedeem({ msg: `兑换成功${label}:${skipNote}${got.length ? got.join('、') : '（无奖励）'}`, kind: 'ok' });
   }
 
   // ===== 背包 =====
@@ -1490,6 +1500,14 @@ export class Game {
         cleared: !!cleared.ch02,
       },
     ];
+  }
+
+  /** 速通:把指定大章标记为已通关(写入进度,解锁后续大章);返回是否为新标记 */
+  _skipChapter(chapterId) {
+    if (this.progress?.cleared?.[chapterId]) return false;
+    this.progress = markChapterCleared(chapterId);
+    this.ui.renderChapterSelect(this._chapterEntries());
+    return true;
   }
 
   /** 检测本局是否离开了起始大章;若是,则记录该大章通关 */
