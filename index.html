@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260929" />
+  <link rel="stylesheet" href="css/style.css?v=20260929b" />
 </head>
 <body>
   <div id="app" class="app">
@@ -29,10 +29,12 @@
       <div class="topbar-right">
         <button id="btn-howto" class="icon-btn" type="button" data-howto title="游戏说明" aria-label="游戏说明">?</button>
         <button id="btn-music" class="music-toggle is-on" type="button" aria-pressed="true" title="背景音乐:开">♪</button>
+        <span class="meta-label">金币</span>
+        <code id="gold-display" class="meta-value">0</code>
+        <span class="meta-label">行动力</span>
+        <code id="ap-display" class="meta-value">0/0</code>
         <span class="meta-label">回合</span>
         <code id="turn-display" class="meta-value">0</code>
-        <span class="meta-label">层数</span>
-        <code id="floor-display" class="meta-value">0</code>
       </div>
     </header>
 
@@ -58,7 +60,7 @@
           <button id="btn-howto-menu" class="btn btn-ghost" type="button" data-howto>游戏说明</button>
           <button id="btn-seed-run" class="btn btn-ghost">指定种子</button>
         </div>
-        <p class="menu-hint">文字冒险 + 卡牌对战 · 6 职业 / 15 章 / 4 结局</p>
+        <p class="menu-hint">文字冒险 + 卡牌对战 · 地图探索 / 市场 / 打工 · 6 职业 / 15 章 / 4 结局</p>
       </div>
     </section>
 
@@ -109,10 +111,58 @@
       </aside>
     </section>
 
-    <!-- 地图视图 -->
+    <!-- 地区地图视图:前往地点 / 找到 NPC 才能开启下一段剧情 -->
     <section id="view-map" class="view view-map">
-      <h2 class="view-title">选择路径</h2>
-      <div id="map-nodes" class="map-nodes"></div>
+      <div class="panel-head">
+        <h2 class="view-title" id="map-region-name">—</h2>
+        <div id="map-res" class="map-res"></div>
+      </div>
+      <p id="map-hint" class="map-hint">—</p>
+      <div id="map-stops" class="map-stops"></div>
+      <div id="map-services" class="map-services"></div>
+      <div class="panel-actions">
+        <button id="btn-map-story" class="btn btn-primary">开 始 剧 情</button>
+        <button id="btn-map-bag" class="btn btn-ghost">背 包</button>
+      </div>
+    </section>
+
+    <!-- 市场 -->
+    <section id="view-shop" class="view view-shop">
+      <div class="panel-head">
+        <h2 class="view-title">市 场</h2>
+        <div id="shop-res" class="map-res"></div>
+      </div>
+      <p class="view-sub">买入所需,卖出冗余</p>
+      <div id="shop-list" class="shop-list"></div>
+      <div class="panel-actions">
+        <button id="btn-shop-back" class="btn btn-ghost">返 回 地 图</button>
+      </div>
+    </section>
+
+    <!-- 背包 -->
+    <section id="view-bag" class="view view-bag">
+      <div class="panel-head">
+        <h2 class="view-title">背 包</h2>
+        <div id="bag-res" class="map-res"></div>
+      </div>
+      <div id="bag-equipped" class="bag-equipped"></div>
+      <div id="bag-list" class="bag-list"></div>
+      <div class="panel-actions">
+        <button id="btn-bag-back" class="btn btn-ghost">返 回 地 图</button>
+      </div>
+    </section>
+
+    <!-- 打工 -->
+    <section id="view-job" class="view view-job">
+      <div class="panel-head">
+        <h2 class="view-title">打 工</h2>
+        <div id="job-res" class="map-res"></div>
+      </div>
+      <p class="view-sub">消耗行动力,换取金币</p>
+      <div id="job-list" class="job-list"></div>
+      <div class="panel-actions">
+        <button id="btn-job-back" class="btn btn-ghost">返 回 地 图</button>
+      </div>
     </section>
 
     <!-- 战斗视图 -->
@@ -135,6 +185,7 @@
           <span id="energy-display" class="energy-orb">0/0</span>
         </div>
       </div>
+      <div id="battle-items" class="battle-items"></div>
       <div id="hand" class="hand"></div>
       <div class="battle-actions">
         <button id="btn-end-turn" class="btn btn-primary">结束回合</button>
@@ -144,7 +195,7 @@
     <!-- 战利品视图 -->
     <section id="view-reward" class="view view-reward">
       <h2 class="view-title">战 利 品</h2>
-      <p class="view-sub">从战场上拾起一张卡牌,加入你的牌组</p>
+      <p id="reward-sub" class="view-sub">从战场上拾起一张卡牌,加入你的牌组</p>
       <div id="reward-grid" class="reward-grid"></div>
       <button id="btn-skip-reward" class="btn btn-ghost">放 弃</button>
     </section>
@@ -204,6 +255,62 @@
               <span class="guide-key">状态效果</span>
               <span class="guide-desc">易伤 / 虚弱 / 脆弱 为减益,力量 为增益</span>
             </li>
+            <li>
+              <span class="guide-key">魔力 ✦</span>
+              <span class="guide-desc">稀有卡额外消耗 1 点魔力,战斗开始时回满</span>
+            </li>
+            <li>
+              <span class="guide-key">战力 ⚔</span>
+              <span class="guide-desc">由武器与服饰加成,直接提升攻击牌伤害</span>
+            </li>
+            <li>
+              <span class="guide-key">战斗中用药</span>
+              <span class="guide-desc">手牌下方列出药品,点击即用,不消耗回合</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="guide-group">
+          <h3 class="guide-group-title">地图与探索</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="guide-key">地区地图</span>
+              <span class="guide-desc">每章是一处地区,含 3 个地点;按剧情提示前往指定地点、找到关键 NPC</span>
+            </li>
+            <li>
+              <span class="guide-key">旅行</span>
+              <span class="guide-desc">在地图上行进会消耗行动力,载具可降低消耗</span>
+            </li>
+            <li>
+              <span class="guide-key">开启剧情</span>
+              <span class="guide-desc">抵达目标地点后,点「开始剧情」才会推进故事——不能跳章</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="guide-group">
+          <h3 class="guide-group-title">金钱与物资</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="guide-key">金币 🪙</span>
+              <span class="guide-desc">战斗、出售物品与打工获得,用于在市场买入</span>
+            </li>
+            <li>
+              <span class="guide-key">行动力 ⚡</span>
+              <span class="guide-desc">旅行与打工消耗;休息或吃食品可恢复</span>
+            </li>
+            <li>
+              <span class="guide-key">背包</span>
+              <span class="guide-desc">拾取 / 使用 / 装备 / 丢弃物品;在市场可出售</span>
+            </li>
+            <li>
+              <span class="guide-key">装备</span>
+              <span class="guide-desc">武器(战力)、服饰(生命 / 魔力)、载具(降低旅行消耗)</span>
+            </li>
+            <li>
+              <span class="guide-key">打工</span>
+              <span class="guide-desc">在部分地点用行动力换取金币</span>
+            </li>
           </ul>
         </div>
 
@@ -217,6 +324,10 @@
             <li>
               <span class="guide-key">解锁规则</span>
               <span class="guide-desc">通关第一大章后,第二大章才会解锁——不能跳章</span>
+            </li>
+            <li>
+              <span class="guide-key">死亡代价</span>
+              <span class="guide-desc">战斗失败会退回地区起点并损失金币,须重新前往目标地点再战</span>
             </li>
             <li>
               <span class="guide-key">指定种子</span>
@@ -246,6 +357,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260929"></script>
+  <script type="module" src="js/main.js?v=20260929b"></script>
 </body>
 </html>

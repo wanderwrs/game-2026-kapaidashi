@@ -11,8 +11,9 @@
  */
 
 import { GameState } from '../core/game.js';
-import { NodeLabel } from '../map/map.js';
 import { CAREERS, CAREER_MAP } from '../narrative/careers.js';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js';
+import { cardMpCost } from '../data/data.js';
 import { ENDINGS } from '../narrative/engine.js';
 import { CHAPTER_ORDER } from '../narrative/chapters/index.js';
 import { SceneView } from './scene.js';
@@ -49,6 +50,7 @@ export class UI {
     this.bus = bus;
     this.battle = null;
     this.engine = null;
+    this.economy = null;          // 由 Game 注入,用于渲染金币/背包/战斗药品
     this._paraTimer = null;       // 逐段渐显计时器
     this._typing = false;         // 是否正在逐段呈现
     this._fullText = '';          // 当前节点全文
@@ -80,7 +82,8 @@ export class UI {
     this.el = {
       seed: $('seed-display'),
       turn: $('turn-display'),
-      floor: $('floor-display'),
+      gold: $('gold-display'),
+      ap: $('ap-display'),
       chapterTitle: $('chapter-title'),
       progressFill: $('progress-fill'),
       views: {
@@ -88,6 +91,9 @@ export class UI {
         career: $('view-career'),
         narrative: $('view-narrative'),
         map: $('view-map'),
+        shop: $('view-shop'),
+        bag: $('view-bag'),
+        job: $('view-job'),
         battle: $('view-battle'),
         reward: $('view-reward'),
         result: $('view-result'),
@@ -108,7 +114,25 @@ export class UI {
       sceneCharStatus: $('scene-char-status'),
       sceneEnvName: $('scene-env-name'),
       sceneEnvDesc: $('scene-env-desc'),
-      mapNodes: $('map-nodes'),
+      // 地区地图 / 市场 / 背包 / 打工
+      mapRegionName: $('map-region-name'),
+      mapRes: $('map-res'),
+      mapHint: $('map-hint'),
+      mapStops: $('map-stops'),
+      mapServices: $('map-services'),
+      btnMapStory: $('btn-map-story'),
+      shopRes: $('shop-res'),
+      shopList: $('shop-list'),
+      btnShopBack: $('btn-shop-back'),
+      bagRes: $('bag-res'),
+      bagEquipped: $('bag-equipped'),
+      bagList: $('bag-list'),
+      btnBagBack: $('btn-bag-back'),
+      jobRes: $('job-res'),
+      jobList: $('job-list'),
+      btnJobBack: $('btn-job-back'),
+      battleItems: $('battle-items'),
+      rewardSub: $('reward-sub'),
       enemyZone: $('enemy-zone'),
       playerZone: $('player-zone'),
       battleLog: $('battle-log'),
@@ -148,6 +172,11 @@ export class UI {
     });
     if (this.el.btnEndTurn) this.el.btnEndTurn.addEventListener('click', () => this.bus.emit('ui:end-turn'));
     if (this.el.btnSkipReward) this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
+    // 地图 / 市场 / 背包 / 打工
+    if (this.el.btnMapStory) this.el.btnMapStory.addEventListener('click', () => this.bus.emit('ui:map-story'));
+    if (this.el.btnShopBack) this.el.btnShopBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    if (this.el.btnBagBack) this.el.btnBagBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    if (this.el.btnJobBack) this.el.btnJobBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     // 点击剧情文本区域:正在打字则跳过,否则推进
     if (this.el.narrativeText) this.el.narrativeText.addEventListener('click', () => this._onTextAreaClick());
   }
@@ -245,6 +274,9 @@ export class UI {
     else if (state === GameState.CAREER) target = this.el.views.career;
     else if (state === GameState.NARRATIVE) target = this.el.views.narrative;
     else if (state === GameState.MAP) target = this.el.views.map;
+    else if (state === GameState.SHOP) target = this.el.views.shop;
+    else if (state === GameState.BAG) target = this.el.views.bag;
+    else if (state === GameState.JOB) target = this.el.views.job;
     else if (state === GameState.BATTLE) target = this.el.views.battle;
     else if (state === GameState.REWARD) target = this.el.views.reward;
     else if (state === GameState.VICTORY || state === GameState.DEFEAT) target = this.el.views.result;
@@ -258,8 +290,17 @@ export class UI {
     this.el.seed.textContent = `#${(seed >>> 0).toString(16)}`;
   }
 
-  updateFloor(floor) {
-    this.el.floor.textContent = floor;
+  /** 顶栏与各面板的资源显示(金币 / 行动力) */
+  renderResources(economy) {
+    if (!economy) return;
+    const goldTxt = `${economy.gold}`;
+    const apTxt = `${economy.ap}/${economy.apCap()}`;
+    if (this.el.gold) this.el.gold.textContent = goldTxt;
+    if (this.el.ap) this.el.ap.textContent = apTxt;
+    const chips = `<span class="res-chip">🪙 ${goldTxt}</span><span class="res-chip">⚡ ${apTxt}</span>`;
+    for (const el of [this.el.mapRes, this.el.shopRes, this.el.bagRes, this.el.jobRes]) {
+      if (el) el.innerHTML = chips;
+    }
   }
 
   /** 章节进度 */
@@ -422,7 +463,7 @@ export class UI {
     const p = this.engine?.player;
     if (!p) { this.el.narrativeVitals.innerHTML = ''; return; }
     const hpPct = Math.max(0, Math.round((p.hp / p.maxHp) * 100));
-    const enPct = p.energyMax ? 100 : 0;
+    const mpPct = p.maxMp ? Math.max(0, Math.round((p.mp / p.maxMp) * 100)) : 0;
     this.el.narrativeVitals.innerHTML = `
       <span class="vital">
         <span>HP</span>
@@ -430,10 +471,11 @@ export class UI {
         <code>${p.hp}/${p.maxHp}</code>
       </span>
       <span class="vital">
-        <span>能量</span>
-        <span class="vital-bar energy-bar"><i style="width:${enPct}%"></i></span>
-        <code>${p.energyMax}</code>
+        <span>魔力</span>
+        <span class="vital-bar mp-bar"><i style="width:${mpPct}%"></i></span>
+        <code>${p.mp}/${p.maxMp}</code>
       </span>
+      <span class="vital"><span>战力</span><code>${p.power || 0}</code></span>
     `;
   }
 
@@ -632,29 +674,213 @@ export class UI {
       .replace(/>/g, '&gt;');
   }
 
-  // ===== 地图视图 =====
-  renderMap(map, currentNode) {
-    this.el.mapNodes.innerHTML = '';
-    const byFloor = new Map();
-    for (const n of map.nodes) {
-      if (!byFloor.has(n.floor)) byFloor.set(n.floor, []);
-      byFloor.get(n.floor).push(n);
+  // ===== 地区地图 =====
+  /** 渲染地区地图:地点、目标提示、旅行消耗与本地服务 */
+  renderMap(state) {
+    const { region, chapterNum, currentIndex, objectiveIndex, travelCost, economy } = state;
+    if (!region) return;
+    if (this.el.mapRegionName) this.el.mapRegionName.textContent = `第${chapterNum}章 · ${region.name}`;
+
+    const obj = objectiveIndex >= 0 ? region.stops[objectiveIndex] : null;
+    if (this.el.mapHint) {
+      this.el.mapHint.textContent = obj
+        ? `剧情提示:${obj.hint}${obj.npc ? `(找到「${obj.npc}」)` : ''}`
+        : '当前没有待开启的剧情,可自由探索。';
     }
-    const floors = [...byFloor.keys()].sort((a, b) => a - b);
-    for (const f of floors) {
-      const row = document.createElement('div');
-      row.className = 'map-row';
-      for (const n of byFloor.get(f)) {
-        const node = document.createElement('button');
-        node.className = 'map-node';
-        if (currentNode && n.id === currentNode.id) node.classList.add('is-current');
-        if (n.visited) node.style.opacity = '0.4';
-        node.textContent = `第${f}层 · ${NodeLabel[n.type] || n.type}`;
-        node.addEventListener('click', () => this.bus.emit('ui:select-node', n.id));
-        row.appendChild(node);
+
+    // 地点卡片
+    const box = this.el.mapStops;
+    if (box) {
+      box.innerHTML = '';
+      region.stops.forEach((s, i) => {
+        const here = i === currentIndex;
+        const isObj = i === objectiveIndex;
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = `stop-card${here ? ' is-here' : ''}${isObj ? ' is-objective' : ''}`;
+        card.innerHTML = `
+          <div class="stop-head">
+            <span class="stop-name">${this._escapeHtml(s.name)}</span>
+            <span class="stop-tag">${here ? '所在' : (isObj ? '目标' : `⚡${travelCost[i]}`)}</span>
+          </div>
+          <div class="stop-meta">${s.npc ? `人物 · ${this._escapeHtml(s.npc)}` : '无人驻留'}</div>
+          <div class="stop-services">${this._serviceTags(s.services)}</div>
+        `;
+        card.disabled = here;
+        if (!here) card.addEventListener('click', () => this.bus.emit('ui:map-travel', i));
+        box.appendChild(card);
+      });
+    }
+
+    // 当前地点的服务按钮
+    const cur = region.stops[currentIndex];
+    if (this.el.mapServices) {
+      const svc = cur?.services || {};
+      this.el.mapServices.innerHTML = '';
+      const mk = (label, ev, ok) => {
+        const b = document.createElement('button');
+        b.className = 'btn btn-ghost';
+        b.textContent = label;
+        b.disabled = !ok;
+        if (ok) b.addEventListener('click', () => this.bus.emit(ev));
+        return b;
+      };
+      this.el.mapServices.appendChild(mk('市 场', 'ui:map-shop', !!svc.shop));
+      this.el.mapServices.appendChild(mk('打 工', 'ui:map-job', !!svc.job));
+      this.el.mapServices.appendChild(mk('休 息', 'ui:map-rest', !!svc.rest));
+    }
+
+    if (this.el.btnMapStory) {
+      const can = objectiveIndex >= 0 && currentIndex === objectiveIndex;
+      this.el.btnMapStory.disabled = !can;
+      this.el.btnMapStory.textContent = can ? '开 始 剧 情' : (obj ? `前往「${obj.name}」` : '暂无剧情');
+    }
+    this.renderResources(economy);
+  }
+
+  _serviceTags(services = {}) {
+    const tags = [];
+    if (services.shop) tags.push('<span class="svc">市场</span>');
+    if (services.job) tags.push('<span class="svc">打工</span>');
+    if (services.rest) tags.push('<span class="svc">休息</span>');
+    return tags.join('') || '<span class="svc is-off">无</span>';
+  }
+
+  // ===== 市场 =====
+  renderShop({ stock, economy }) {
+    const box = this.el.shopList;
+    if (!box) return;
+    box.innerHTML = '';
+    (stock || []).forEach((id) => {
+      const it = ITEMS[id];
+      if (!it) return;
+      const afford = economy.gold >= it.price;
+      box.appendChild(this._shopRow(it, afford, `🪙 ${it.price}`, '买入', 'data-buy', () => this.bus.emit('ui:shop-buy', id)));
+    });
+
+    const sellables = [...economy.bag.entries()].filter(([id]) => !economy.isEquipped(id));
+    if (sellables.length) {
+      const title = document.createElement('div');
+      title.className = 'shop-section-title';
+      title.textContent = '出售(背包)';
+      box.appendChild(title);
+      sellables.forEach(([id, qty]) => {
+        const it = ITEMS[id];
+        if (!it) return;
+        const row = this._shopRow(it, true, `🪙 ${sellPrice(id)}`, '卖出', 'data-sell', () => this.bus.emit('ui:shop-sell', id), qty);
+        box.appendChild(row);
+      });
+    } else {
+      const empty = document.createElement('p');
+      empty.className = 'bag-empty';
+      empty.textContent = '背包里没有可出售的物品。';
+      box.appendChild(empty);
+    }
+    this.renderResources(economy);
+  }
+
+  _shopRow(it, enabled, priceTxt, btnTxt, attr, onClick, qty = 0) {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `
+      <div class="item-icon">${it.icon || '📦'}</div>
+      <div class="item-body">
+        <div class="item-name">${this._escapeHtml(it.name)}${qty > 1 ? ` <span class="item-qty">×${qty}</span>` : ''}<span class="item-cat">${ITEM_CATEGORY_CN[it.category] || ''}</span></div>
+        <div class="item-desc">${this._escapeHtml(it.desc || '')}</div>
+      </div>
+      <div class="item-actions">
+        <span class="item-price${enabled ? '' : ' is-poor'}">${priceTxt}</span>
+        <button class="btn btn-primary btn-sm" ${attr} ${enabled ? '' : 'disabled'}>${btnTxt}</button>
+      </div>
+    `;
+    const btn = row.querySelector(`[${attr}]`);
+    if (btn && enabled) btn.addEventListener('click', onClick);
+    return row;
+  }
+
+  // ===== 背包 =====
+  renderBag({ economy, player }) {
+    const SLOT_CN = { weapon: '武器', outfit: '服饰', vehicle: '载具' };
+    if (this.el.bagEquipped) {
+      this.el.bagEquipped.innerHTML = Object.entries(SLOT_CN).map(([slot, label]) => {
+        const id = economy.equipped[slot];
+        const it = id ? ITEMS[id] : null;
+        return `<div class="equip-slot">
+          <span class="equip-label">${label}</span>
+          <span class="equip-value">${it ? `${it.icon || ''} ${this._escapeHtml(it.name)}` : '——'}</span>
+          ${it ? `<button class="btn btn-ghost btn-sm" data-unequip="${slot}">卸下</button>` : ''}
+        </div>`;
+      }).join('');
+      this.el.bagEquipped.querySelectorAll('[data-unequip]').forEach((b) => {
+        b.addEventListener('click', () => this.bus.emit('ui:bag-unequip', b.dataset.unequip));
+      });
+    }
+
+    const box = this.el.bagList;
+    if (box) {
+      box.innerHTML = '';
+      const entries = [...economy.bag.entries()];
+      if (!entries.length) {
+        box.innerHTML = '<p class="bag-empty">背包空空如也。</p>';
       }
-      this.el.mapNodes.appendChild(row);
+      entries.forEach(([id, qty]) => {
+        const it = ITEMS[id];
+        if (!it) return;
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <div class="item-icon">${it.icon || '📦'}</div>
+          <div class="item-body">
+            <div class="item-name">${this._escapeHtml(it.name)} <span class="item-qty">×${qty}</span><span class="item-cat">${ITEM_CATEGORY_CN[it.category] || ''}</span></div>
+            <div class="item-desc">${this._escapeHtml(it.desc || '')}</div>
+          </div>
+          <div class="item-actions">
+            ${it.effect ? `<button class="btn btn-primary btn-sm" data-use="${id}">使用</button>` : ''}
+            ${it.equipment ? `<button class="btn btn-ghost btn-sm" data-equip="${id}">装备</button>` : ''}
+            <button class="btn btn-ghost btn-sm" data-drop="${id}">丢弃</button>
+          </div>
+        `;
+        row.querySelector('[data-use]')?.addEventListener('click', () => this.bus.emit('ui:bag-use', id));
+        row.querySelector('[data-equip]')?.addEventListener('click', () => this.bus.emit('ui:bag-equip', id));
+        row.querySelector('[data-drop]')?.addEventListener('click', () => this.bus.emit('ui:bag-drop', id));
+        box.appendChild(row);
+      });
     }
+
+    // 底部数值概览
+    if (this.el.bagRes && player) {
+      const chips = `<span class="res-chip">❤ ${player.hp}/${player.maxHp}</span><span class="res-chip">✦ ${player.mp}/${player.maxMp}</span><span class="res-chip">⚔ 战力 ${player.power || 0}</span><span class="res-chip">🪙 ${economy.gold}</span><span class="res-chip">⚡ ${economy.ap}/${economy.apCap()}</span>`;
+      this.el.bagRes.innerHTML = chips;
+    } else {
+      this.renderResources(economy);
+    }
+  }
+
+  // ===== 打工 =====
+  renderJobs({ jobs, economy }) {
+    const box = this.el.jobList;
+    if (!box) return;
+    box.innerHTML = '';
+    (jobs || []).forEach((j) => {
+      const ok = economy.ap >= j.ap;
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <div class="item-icon">🛠️</div>
+        <div class="item-body">
+          <div class="item-name">${this._escapeHtml(j.name)}</div>
+          <div class="item-desc">${this._escapeHtml(j.desc || '')}</div>
+        </div>
+        <div class="item-actions">
+          <span class="item-price${ok ? '' : ' is-poor'}">⚡ ${j.ap} → 🪙 ${j.gold}</span>
+          <button class="btn btn-primary btn-sm" data-work="${j.id}" ${ok ? '' : 'disabled'}>开工</button>
+        </div>
+      `;
+      const btn = row.querySelector('[data-work]');
+      if (btn && ok) btn.addEventListener('click', () => this.bus.emit('ui:job-work', j.id));
+      box.appendChild(row);
+    });
+    this.renderResources(economy);
   }
 
   bindBattle(battle) {
@@ -668,7 +894,7 @@ export class UI {
     this.el.turn.textContent = snap.turn;
     this.el.drawCount.textContent = snap.drawCount;
     this.el.discardCount.textContent = snap.discardCount;
-    this.el.energy.textContent = `${snap.player.energy}/${snap.player.energyMax}`;
+    this.el.energy.textContent = `${snap.player.energy}/${snap.player.energyMax} · ✦${snap.player.mp}`;
     this.el.btnEndTurn.disabled = snap.over;
 
     // 能量脉动:能量回升时提示
@@ -686,8 +912,31 @@ export class UI {
       this.el.hand.appendChild(this._handCardEl(card, snap));
     }
 
+    this._renderBattleItems();
     this._lastEnemyHp = snap.enemy.hp;
     this._lastPlayerHp = snap.player.hp;
+  }
+
+  /** 战斗中可用的药品(恢复生命 / 魔力),点击即用 */
+  _renderBattleItems() {
+    const box = this.el.battleItems;
+    if (!box) return;
+    const eco = this.economy;
+    if (!eco) { box.innerHTML = ''; return; }
+    const usable = [...eco.bag.entries()].filter(([id]) => {
+      const it = ITEMS[id];
+      return it?.effect && (it.effect.kind === 'heal' || it.effect.kind === 'mp');
+    });
+    if (!usable.length) { box.innerHTML = '<span class="battle-items-empty">无可用药品</span>'; return; }
+    box.innerHTML = '';
+    usable.forEach(([id, qty]) => {
+      const it = ITEMS[id];
+      const b = document.createElement('button');
+      b.className = 'item-chip';
+      b.textContent = `${it.icon || '🧪'} ${it.name} ×${qty}`;
+      b.addEventListener('click', () => this.bus.emit('ui:bag-use', id));
+      box.appendChild(b);
+    });
   }
 
   _playerName() {
@@ -697,9 +946,11 @@ export class UI {
   _handCardEl(card, snap) {
     const el = document.createElement('div');
     el.className = `card type-${card.type || 'attack'}`;
-    if (snap.player.energy < card.cost) el.classList.add('is-unplayable');
+    const mp = cardMpCost(card);
+    if (snap.player.energy < card.cost || (mp > 0 && snap.player.mp < mp)) el.classList.add('is-unplayable');
     el.innerHTML = `
       <div class="card-cost">${card.cost}</div>
+      ${mp > 0 ? `<div class="card-mp">✦${mp}</div>` : ''}
       <div class="card-name">${this._escapeHtml(card.name)}</div>
       <div class="card-type-tag">${TYPE_LABELS[card.type] || ''}</div>
       <div class="card-desc">${this._escapeHtml(card.description || '')}</div>
@@ -798,7 +1049,15 @@ export class UI {
   }
 
   // ===== 战利品 =====
-  renderRewards(cards) {
+  renderRewards(cards, extra) {
+    if (this.el.rewardSub) {
+      let t = '从战场上拾起一张卡牌,加入你的牌组';
+      if (extra) {
+        const loot = extra.loot ? `,拾得「${ITEMS[extra.loot]?.name || extra.loot}」` : '';
+        t = `获得 🪙 ${extra.gold} 金币${loot} · 再选一张卡牌加入牌组`;
+      }
+      this.el.rewardSub.textContent = t;
+    }
     this.el.rewardGrid.innerHTML = '';
     cards.forEach((card, i) => {
       const el = this._rewardCardEl(card);
@@ -811,8 +1070,10 @@ export class UI {
   _rewardCardEl(card) {
     const el = document.createElement('div');
     el.className = `card type-${card.type || 'attack'}`;
+    const mp = cardMpCost(card);
     el.innerHTML = `
       <div class="card-cost">${card.cost}</div>
+      ${mp > 0 ? `<div class="card-mp">✦${mp}</div>` : ''}
       <div class="card-name">${this._escapeHtml(card.name)}</div>
       <div class="card-type-tag">${TYPE_LABELS[card.type] || ''} · ${this._rarityLabel(card.rarity)}</div>
       <div class="card-desc">${this._escapeHtml(card.description || '')}</div>

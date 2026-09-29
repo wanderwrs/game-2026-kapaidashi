@@ -68,10 +68,18 @@ export class Player extends Entity {
     super({ maxHp: opts.maxHp ?? 70 });
     this.energy = 0;
     this.energyMax = opts.energyMax ?? 3;
+    this.maxMp = opts.maxMp ?? 3;
+    this.mp = this.maxMp;
+    this.power = 0;   // 战力(装备加成),开战时折算为力量
   }
 
   resetEnergy() {
     this.energy = this.energyMax;
+  }
+
+  /** 战斗开始时魔力回满 */
+  resetMp() {
+    this.mp = this.maxMp;
   }
 }
 

@@ -5,6 +5,7 @@
  */
 
 import { Enemy } from './entity.js';
+import { cardMpCost } from '../data/data.js';
 
 const STATUS_CN = {
   vulnerable: '易伤',
@@ -14,12 +15,13 @@ const STATUS_CN = {
 };
 
 export class Battle {
-  constructor({ player, deck, enemyDef, rng, bus }) {
+  constructor({ player, deck, enemyDef, rng, bus, bonusStrength = 0 }) {
     this.player = player;
     this.deck = deck;
     this.enemy = new Enemy(enemyDef, rng);
     this.rng = rng;
     this.bus = bus;
+    this.bonusStrength = bonusStrength;   // 装备战力 + 战力药剂
     this.turn = 0;
     this.over = false;
     this.result = null;
@@ -30,6 +32,9 @@ export class Battle {
     this.deck.reset();
     this.player.clearBlock();
     this.player.resetEnergy();
+    this.player.resetMp();
+    this.player.statuses = {};   // 状态为战斗内资源,开战清零
+    if (this.bonusStrength > 0) this.player.applyStatus('strength', this.bonusStrength);
     this.enemy.clearBlock();
     this.enemy.rollIntent();
     this.deck.draw(5);
@@ -41,11 +46,17 @@ export class Battle {
   playCard(card) {
     if (this.over) return false;
     if (!this.deck.hand.includes(card)) return false;
+    const mpCost = cardMpCost(card);
     if (this.player.energy < card.cost) {
       this.bus.emit('battle:log', '能量不足,无法打出该牌');
       return false;
     }
+    if (mpCost > 0 && this.player.mp < mpCost) {
+      this.bus.emit('battle:log', '魔力不足,无法打出该牌');
+      return false;
+    }
     this.player.energy -= card.cost;
+    if (mpCost > 0) this.player.mp -= mpCost;
     this._applyEffects(card.effects);
     this.deck.discard(card);
     this.bus.emit('battle:log', `打出 ${card.name}`);
@@ -177,6 +188,8 @@ export class Battle {
         block: this.player.block,
         energy: this.player.energy,
         energyMax: this.player.energyMax,
+        mp: this.player.mp,
+        maxMp: this.player.maxMp,
         statuses: { ...this.player.statuses },
       },
       enemy: {

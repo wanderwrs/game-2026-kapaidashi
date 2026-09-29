@@ -130,3 +130,29 @@ export const RELICS = [
   { id: 'anchor',        name: '锚',     description: '每回合开始获得 3 护甲。',  trigger: 'on_turn_start' },
   { id: 'vajra',         name: '金刚杵', description: '战斗开始获得 1 力量。',    trigger: 'on_battle_start' },
 ];
+
+/** 卡牌魔力消耗:稀有牌统一消耗 1 点魔力,可用 mpCost 覆盖 */
+export function cardMpCost(card) {
+  if (!card) return 0;
+  return card.mpCost ?? (card.rarity === 'rare' ? 1 : 0);
+}
+
+/**
+ * 动态难度:随章节推进逐渐变强,强敌(高 HP)额外增幅。
+ * 小怪 → 首领的爬升由调用方按地区进度选择敌人池中的不同条目完成。
+ * @param {object} def 敌人定义
+ * @param {number} chapterNum 章节序号(1 起)
+ */
+export function scaleEnemy(def, chapterNum = 1) {
+  const chMul = 1 + 0.10 * Math.max(0, chapterNum - 1);
+  const eliteMul = def.hp >= 60 ? 1.15 : 1;
+  const mul = chMul * eliteMul;
+  if (mul === 1) return def;
+  return {
+    ...def,
+    hp: Math.round(def.hp * mul),
+    actions: (def.actions || []).map((a) =>
+      a.kind === 'attack' ? { ...a, value: Math.round(a.value * mul) } : { ...a }),
+  };
+}
+

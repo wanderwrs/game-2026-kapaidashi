@@ -15,7 +15,6 @@
  *   { id, kind:'ending', text, ending_id }            // 触发结局
  */
 
-import { ENEMIES } from '../data/data.js';
 import { CAREER_MAP } from './careers.js';
 import { CHAPTER_IMAGES } from './images.js';
 
@@ -32,6 +31,16 @@ export class NarrativeEngine {
     this.career = null;              // 当前职业
     this.unlockedCareers = new Set(); // 已解锁可切换的职业
     this._pendingBattle = null;     // 战斗结束后回到的节点
+    // 地图剧情门控:每章的门控锚点节点(所有地点节点),抵达后才开启该段剧情
+    this.gates = {};                // chapterId -> [nodeId, ...]
+    this.gatePassed = new Set();    // 已通过的锚点( `${chapterId}:${nodeId}` )
+    this._gateTarget = null;        // 当前待开启的锚点
+    this._bypassGate = false;       // resumeGate 期间跳过门控
+  }
+
+  /** 设置所有章节的门控锚点 */
+  setGates(gates) {
+    this.gates = gates || {};
   }
 
   /** 从指定章节的 start 节点开始 */
@@ -49,9 +58,46 @@ export class NarrativeEngine {
     if (!chapter) throw new Error(`章节不存在:${chapterId}`);
     const node = chapter.nodes.get(nodeId);
     if (!node) throw new Error(`节点不存在:${chapterId}:${nodeId}`);
+    // 门控:该节点是尚未抵达的地点锚点 → 暂停,交由地图决定何时开启
+    if (this._shouldGate(chapterId, nodeId)) {
+      this._gateTarget = { chapterId, nodeId };
+      this.bus.emit('narrative:gate', { chapterId, nodeId });
+      return;
+    }
     this.currentChapterId = chapterId;
     this.currentNode = node;
     this._handleNode();
+  }
+
+  _shouldGate(chapterId, nodeId) {
+    if (this._bypassGate) return false;
+    const list = this.gates?.[chapterId];
+    if (!list || !list.includes(nodeId)) return false;
+    return !this.gatePassed.has(`${chapterId}:${nodeId}`);
+  }
+
+  /** 玩家已在地图上抵达该地点(找到 NPC)→ 开启这段剧情 */
+  resumeGate() {
+    const t = this._gateTarget;
+    if (!t) return false;
+    this._gateTarget = null;
+    this.gatePassed.add(`${t.chapterId}:${t.nodeId}`);
+    this._bypassGate = true;
+    try {
+      this.goto(`${t.chapterId}:${t.nodeId}`);
+    } finally {
+      this._bypassGate = false;
+    }
+    return true;
+  }
+
+  /** 当前待开启的锚点 */
+  get pendingGate() { return this._gateTarget; }
+
+  /** 重新武装某锚点(战败退回后须重新抵达该地点再战) */
+  rearmGate(chapterId, nodeId) {
+    this.gatePassed.delete(`${chapterId}:${nodeId}`);
+    this._gateTarget = { chapterId, nodeId };
   }
 
   /** 玩家在 choice 节点选了某选项 */
@@ -112,10 +158,7 @@ export class NarrativeEngine {
         break;
       case 'battle':
         this._pendingBattle = node;
-        this.bus.emit('narrative:battle', {
-          enemyDef: ENEMIES[node.enemyPool]?.[0] || ENEMIES.normal[0],
-          text: node.text,
-        });
+        this.bus.emit('narrative:battle', { poolKey: node.enemyPool, text: node.text });
         break;
       default:
         this._refresh();
