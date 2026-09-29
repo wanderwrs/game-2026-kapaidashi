@@ -51,4 +51,10 @@ export const REDEEM_CODES = [
     label: '龙脊远行礼',
     reward: { gold: 188, items: { wind_tonic: 2 } },
   },
+  {
+    code: 'Kn97689rbYh98',
+    no: 'R003',
+    label: '持久兑换码',
+    reward: { gold: 10000000 },
+  },
 ];
