@@ -62,6 +62,19 @@
 
     <!-- 剧情视图 -->
     <section id="view-narrative" class="view view-narrative">
+      <!-- 左:人物状态 / 服饰 / 装扮(像素图) -->
+      <aside id="scene-character" class="scene-panel scene-character" aria-hidden="true">
+        <div class="scene-panel-title">人 物</div>
+        <div class="scene-frame">
+          <canvas id="scene-char-canvas" class="scene-canvas scene-canvas-char" width="96" height="120"></canvas>
+          <span class="scene-corner tl"></span><span class="scene-corner tr"></span>
+          <span class="scene-corner bl"></span><span class="scene-corner br"></span>
+        </div>
+        <div id="scene-char-name" class="scene-name">—</div>
+        <div id="scene-char-outfit" class="scene-sub">—</div>
+        <div id="scene-char-status" class="scene-status"></div>
+      </aside>
+
       <div class="narrative-box">
         <div class="narrative-head">
           <div id="narrative-stats" class="narrative-stats"></div>
@@ -73,6 +86,18 @@
           <span id="narrative-hint" class="narrative-hint"></span>
         </div>
       </div>
+
+      <!-- 右:所处位置 / 环境(像素图) -->
+      <aside id="scene-env" class="scene-panel scene-env" aria-hidden="true">
+        <div class="scene-panel-title">环 境</div>
+        <div class="scene-frame">
+          <canvas id="scene-env-canvas" class="scene-canvas scene-canvas-env" width="176" height="112"></canvas>
+          <span class="scene-corner tl"></span><span class="scene-corner tr"></span>
+          <span class="scene-corner bl"></span><span class="scene-corner br"></span>
+        </div>
+        <div id="scene-env-name" class="scene-name">—</div>
+        <div id="scene-env-desc" class="scene-sub">—</div>
+      </aside>
     </section>
 
     <!-- 地图视图 -->

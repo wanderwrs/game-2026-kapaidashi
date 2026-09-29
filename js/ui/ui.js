@@ -15,6 +15,7 @@ import { NodeLabel } from '../map/map.js';
 import { CAREERS, CAREER_MAP } from '../narrative/careers.js';
 import { ENDINGS } from '../narrative/engine.js';
 import { CHAPTER_ORDER } from '../narrative/chapters/index.js';
+import { SceneView } from './scene.js';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -57,6 +58,16 @@ export class UI {
     this._lastEnemyHp = null;    // 用于计算伤害飘字
     this._lastPlayerHp = null;
     this._cache();
+    // 像素图侧栏(人物 / 环境),独立于剧情文字窗口
+    this.scene = new SceneView({
+      charCanvas: this.el.sceneCharCanvas,
+      envCanvas: this.el.sceneEnvCanvas,
+      charName: this.el.sceneCharName,
+      charOutfit: this.el.sceneCharOutfit,
+      charStatus: this.el.sceneCharStatus,
+      envName: this.el.sceneEnvName,
+      envDesc: this.el.sceneEnvDesc,
+    });
     this._bindStaticButtons();
     this._bindBus();
     this._bindKeyboard();
@@ -86,6 +97,13 @@ export class UI {
       narrativeText: $('narrative-text'),
       narrativeChoices: $('narrative-choices'),
       narrativeHint: $('narrative-hint'),
+      sceneCharCanvas: $('scene-char-canvas'),
+      sceneEnvCanvas: $('scene-env-canvas'),
+      sceneCharName: $('scene-char-name'),
+      sceneCharOutfit: $('scene-char-outfit'),
+      sceneCharStatus: $('scene-char-status'),
+      sceneEnvName: $('scene-env-name'),
+      sceneEnvDesc: $('scene-env-desc'),
       mapNodes: $('map-nodes'),
       enemyZone: $('enemy-zone'),
       playerZone: $('player-zone'),
@@ -300,6 +318,21 @@ export class UI {
 
     // 底部提示
     this.el.narrativeHint.innerHTML = `<kbd>空格</kbd> 推进 · <kbd>1</kbd>~<kbd>9</kbd> 选择 · 点击文本可跳过`;
+
+    // 像素图侧栏:人物状态 / 服饰 + 所处环境
+    this._renderScene(node, snap);
+  }
+
+  /** 刷新像素图侧栏(不影响剧情文字窗口) */
+  _renderScene(node, snap) {
+    if (!this.scene) return;
+    this.scene.render({
+      chapterId: snap.chapter,
+      nodeId: node.id,
+      career: snap.career,
+      player: this.engine?.player,
+      flags: snap.flags,
+    });
   }
 
   /** HP / 能量条 */
