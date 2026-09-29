@@ -10,17 +10,17 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929t';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929t';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929t';
-import { cardMpCost } from '../data/data.js?v=20260929t';
-import { ENDINGS } from '../narrative/engine.js?v=20260929t';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929t';
-import { SceneView } from './scene.js?v=20260929t';
-import { Minigame } from '../minigame/minigame.js?v=20260929t';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929t';
-import { TERRAIN_CN } from '../data/world.js?v=20260929t';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929t';
+import { GameState } from '../core/game.js?v=20260929u';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929u';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929u';
+import { cardMpCost } from '../data/data.js?v=20260929u';
+import { ENDINGS } from '../narrative/engine.js?v=20260929u';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929u';
+import { SceneView } from './scene.js?v=20260929u';
+import { Minigame } from '../minigame/minigame.js?v=20260929u';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929u';
+import { TERRAIN_CN } from '../data/world.js?v=20260929u';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929u';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',

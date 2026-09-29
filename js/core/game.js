@@ -11,31 +11,31 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929t';
-import { EventBus } from './eventbus.js?v=20260929t';
-import { AudioEngine } from './audio.js?v=20260929t';
-import { Player } from '../combat/entity.js?v=20260929t';
-import { Deck } from '../card/deck.js?v=20260929t';
-import { Battle } from '../combat/battle.js?v=20260929t';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929t';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929t';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929t';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929t';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929t';
-import { jobsFor } from '../data/jobs.js?v=20260929t';
+import { RNG, seedFromString } from './rng.js?v=20260929u';
+import { EventBus } from './eventbus.js?v=20260929u';
+import { AudioEngine } from './audio.js?v=20260929u';
+import { Player } from '../combat/entity.js?v=20260929u';
+import { Deck } from '../card/deck.js?v=20260929u';
+import { Battle } from '../combat/battle.js?v=20260929u';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929u';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929u';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929u';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929u';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929u';
+import { jobsFor } from '../data/jobs.js?v=20260929u';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929t';
-import { NPCS } from '../data/npcs.js?v=20260929t';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929t';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929t';
-import { Economy } from './economy.js?v=20260929t';
-import { Travel } from './travel.js?v=20260929t';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929t';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929t';
-import { CAREERS } from '../narrative/careers.js?v=20260929t';
-import { UI } from '../ui/ui.js?v=20260929t';
+} from '../data/world.js?v=20260929u';
+import { NPCS } from '../data/npcs.js?v=20260929u';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929u';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929u';
+import { Economy } from './economy.js?v=20260929u';
+import { Travel } from './travel.js?v=20260929u';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929u';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929u';
+import { CAREERS } from '../narrative/careers.js?v=20260929u';
+import { UI } from '../ui/ui.js?v=20260929u';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -1139,7 +1139,7 @@ export class Game {
     if (!code) { this.ui.renderRedeem({ msg: '请输入兑换码', kind: 'bad' }); return; }
     const hit = REDEEM_CODES.find((c) => String(c.code || '').toUpperCase() === code);
     if (!hit) { this.ui.renderRedeem({ msg: '兑换码无效,请核对后重试', kind: 'bad' }); return; }
-    if (this.mailState.used[code]) { this.ui.renderRedeem({ msg: '这个兑换码已经兑换过了', kind: 'bad' }); return; }
+    if (!hit.unlimited && this.mailState.used[code]) { this.ui.renderRedeem({ msg: '这个兑换码已经兑换过了', kind: 'bad' }); return; }
     const label = hit.label ? `「${hit.label}」` : '';
 
     // 寄到邮箱:兑换当即生效,奖励需去「邮箱」点领取才入袋
@@ -1154,7 +1154,7 @@ export class Game {
         body: (hit.mail && hit.mail.body) || '兑换成功,点「领取」入袋。',
         reward: hit.reward || null,
       };
-      this.mailState.used[code] = true;
+      if (!hit.unlimited) this.mailState.used[code] = true;
       saveMailState(this.mailState);
       this._refreshMailBadge();
       this.ui.renderRedeem({ msg: `兑换成功${label}:已寄达「邮箱」,请在邮箱点「领取」`, kind: 'ok' });
@@ -1163,7 +1163,7 @@ export class Game {
 
     if (!this.economy) { this.ui.renderRedeem({ msg: '先开始一局旅程,再来兑换', kind: 'bad' }); return; }
     const got = this._applyReward(hit.reward) || [];
-    this.mailState.used[code] = true;
+    if (!hit.unlimited) this.mailState.used[code] = true;
     saveMailState(this.mailState);
     this.ui.renderRedeem({ msg: `兑换成功${label}:${got.length ? got.join('、') : '（无奖励）'}`, kind: 'ok' });
   }
