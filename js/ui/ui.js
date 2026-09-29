@@ -10,17 +10,17 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929m';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929m';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929m';
-import { cardMpCost } from '../data/data.js?v=20260929m';
-import { ENDINGS } from '../narrative/engine.js?v=20260929m';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929m';
-import { SceneView } from './scene.js?v=20260929m';
-import { Minigame } from '../minigame/minigame.js?v=20260929m';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929m';
-import { TERRAIN_CN } from '../data/world.js?v=20260929m';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929m';
+import { GameState } from '../core/game.js?v=20260929n';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929n';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929n';
+import { cardMpCost } from '../data/data.js?v=20260929n';
+import { ENDINGS } from '../narrative/engine.js?v=20260929n';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929n';
+import { SceneView } from './scene.js?v=20260929n';
+import { Minigame } from '../minigame/minigame.js?v=20260929n';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929n';
+import { TERRAIN_CN } from '../data/world.js?v=20260929n';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929n';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -86,6 +86,8 @@ export class UI {
       charStatus: this.el.sceneCharStatus,
       envName: this.el.sceneEnvName,
       envDesc: this.el.sceneEnvDesc,
+      mapCanvas: this.el.mapCharCanvas,
+      mapCharName: this.el.mapCharName,
     });
     this._bindStaticButtons();
     this._bindBus();
@@ -110,6 +112,7 @@ export class UI {
         world: $('view-world'),
         travel: $('view-travel'),
         shop: $('view-shop'),
+        market: $('view-market'),
         bag: $('view-bag'),
         job: $('view-job'),
         battle: $('view-battle'),
@@ -142,6 +145,8 @@ export class UI {
       btnMapBag: $('btn-map-bag'),
       btnMapWorld: $('btn-map-world'),
       mapNpcs: $('map-npcs'),
+      mapCharCanvas: $('map-char-canvas'),
+      mapCharName: $('map-char-name'),
       // 世界地图
       worldMap: $('world-map'),
       worldPanel: $('world-panel'),
@@ -194,6 +199,11 @@ export class UI {
       shopRes: $('shop-res'),
       shopList: $('shop-list'),
       btnShopBack: $('btn-shop-back'),
+      marketTitle: $('market-title'),
+      marketNote: $('market-note'),
+      marketRes: $('market-res'),
+      marketList: $('market-list'),
+      btnMarketBack: $('btn-market-back'),
       bagRes: $('bag-res'),
       bagEquipped: $('bag-equipped'),
       bagList: $('bag-list'),
@@ -281,6 +291,7 @@ export class UI {
     if (this.el.btnNpcClose) this.el.btnNpcClose.addEventListener('click', () => this.bus.emit('ui:npc-close'));
     if (this.el.btnTutorialClose) this.el.btnTutorialClose.addEventListener('click', () => this.bus.emit('ui:tutorial-close'));
     if (this.el.btnShopBack) this.el.btnShopBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    if (this.el.btnMarketBack) this.el.btnMarketBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnBagBack) this.el.btnBagBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnJobBack) this.el.btnJobBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     // 点击剧情文本区域:正在打字则跳过,否则推进
@@ -403,6 +414,7 @@ export class UI {
     else if (state === GameState.WORLD) target = this.el.views.world;
     else if (state === GameState.TRAVEL) target = this.el.views.travel;
     else if (state === GameState.SHOP) target = this.el.views.shop;
+    else if (state === GameState.MARKET) target = this.el.views.market;
     else if (state === GameState.BAG) target = this.el.views.bag;
     else if (state === GameState.JOB) target = this.el.views.job;
     else if (state === GameState.BATTLE) target = this.el.views.battle;
@@ -425,8 +437,14 @@ export class UI {
     const apTxt = `${economy.ap}/${economy.apCap()}`;
     if (this.el.gold) this.el.gold.textContent = goldTxt;
     if (this.el.ap) this.el.ap.textContent = apTxt;
-    const chips = `<span class="res-chip">🪙 ${goldTxt}</span><span class="res-chip">⚡ ${apTxt}</span>`;
-    for (const el of [this.el.mapRes, this.el.shopRes, this.el.bagRes, this.el.jobRes]) {
+    let chips = `<span class="res-chip">🪙 ${goldTxt}</span><span class="res-chip">⚡ ${apTxt}</span>`;
+    // 拥有的特殊交易币(专属集市用)
+    if (typeof economy.tokens === 'function') {
+      for (const t of economy.tokens()) {
+        chips += `<span class="res-chip is-token" title="${this._escapeHtml(t.name)}">${t.icon} ${t.qty}</span>`;
+      }
+    }
+    for (const el of [this.el.mapRes, this.el.shopRes, this.el.marketRes, this.el.bagRes, this.el.jobRes]) {
       if (el) el.innerHTML = chips;
     }
   }
@@ -808,7 +826,7 @@ export class UI {
   renderMap(state) {
     const {
       region, chapterNum, currentIndex, objectiveIndex, travelCost, travelSeconds,
-      isStoryRegion, npcs, chest, stopChests, intelCount, economy,
+      isStoryRegion, npcs, chest, stopChests, intelCount, economy, venue,
     } = state;
     if (!region) return;
     if (this.el.mapRegionName) this.el.mapRegionName.textContent = `第${chapterNum}章 · ${region.name}`;
@@ -821,6 +839,9 @@ export class UI {
         this.el.mapHint.textContent = obj
           ? `剧情提示:${obj.hint}${obj.npc ? `(找到「${obj.npc}」)` : ''}`
           : '当前没有待开启的剧情,可自由探索。';
+      }
+      if (venue && venue.here) {
+        this.el.mapHint.textContent += ` · 此处有隐秘集市(只收 ${venue.tokenIcon}${venue.tokenName},管理费 ${Math.round(venue.fee * 100)}%)`;
       }
     }
 
@@ -867,8 +888,17 @@ export class UI {
         return b;
       };
       this.el.mapServices.appendChild(mk('商 店', 'ui:map-shop', !!svc.shop));
+      // 市场:全品类的玩家集市,处处可去(另收 10% 管理费)
+      this.el.mapServices.appendChild(mk('市 场', 'ui:map-market', true));
       this.el.mapServices.appendChild(mk('打 工', 'ui:map-job', !!svc.job));
       this.el.mapServices.appendChild(mk('休 息', 'ui:map-rest', !!svc.rest));
+      if (venue && venue.here) {
+        const b = document.createElement('button');
+        b.className = 'btn btn-primary';
+        b.textContent = `密 市 ${venue.tokenIcon}${venue.tokenOwned}`;
+        b.addEventListener('click', () => this.bus.emit('ui:map-venue'));
+        this.el.mapServices.appendChild(b);
+      }
       if (chest) {
         const b = document.createElement('button');
         b.className = `btn ${chest.opened ? 'btn-ghost' : 'btn-primary'}`;
@@ -898,6 +928,19 @@ export class UI {
       }
     }
     this.renderResources(economy);
+    this._renderMapPortrait();
+  }
+
+  /** 地图左下角的人物形象(随换装变化) */
+  _renderMapPortrait() {
+    if (!this.scene) return;
+    const snap = this.engine?.snapshot?.() || {};
+    this.scene.renderMapPortrait({
+      career: this.engine?.career || snap.career,
+      player: this.engine?.player,
+      flags: snap.flags,
+      appearance: this.economy ? this.economy.appearance() : null,
+    });
   }
 
   /** 当地驻留的随机 NPC 列表 */
@@ -1271,7 +1314,7 @@ export class UI {
       box.appendChild(this._shopRow(it, afford, priceTxt, '买入', 'data-buy', () => this.bus.emit('ui:shop-buy', id)));
     });
 
-    const sellables = [...economy.bag.entries()].filter(([id]) => !economy.isEquipped(id));
+    const sellables = [...economy.bag.entries()].filter(([id]) => !economy.isEquipped(id) && ITEMS[id]?.category !== 'token');
     if (sellables.length) {
       const title = document.createElement('div');
       title.className = 'shop-section-title';
@@ -1292,13 +1335,13 @@ export class UI {
     this.renderResources(economy);
   }
 
-  _shopRow(it, enabled, priceTxt, btnTxt, attr, onClick, qty = 0) {
+  _shopRow(it, enabled, priceTxt, btnTxt, attr, onClick, qty = 0, tag = '') {
     const row = document.createElement('div');
     row.className = 'item-row';
     row.innerHTML = `
       <div class="item-icon">${it.icon || '📦'}</div>
       <div class="item-body">
-        <div class="item-name">${this._escapeHtml(it.name)}${qty > 1 ? ` <span class="item-qty">×${qty}</span>` : ''}<span class="item-cat">${ITEM_CATEGORY_CN[it.category] || ''}</span></div>
+        <div class="item-name">${this._escapeHtml(it.name)}${qty > 1 ? ` <span class="item-qty">×${qty}</span>` : ''}<span class="item-cat">${ITEM_CATEGORY_CN[it.category] || ''}</span>${tag}</div>
         <div class="item-desc">${this._escapeHtml(it.desc || '')}</div>
       </div>
       <div class="item-actions">
@@ -1309,6 +1352,88 @@ export class UI {
     const btn = row.querySelector(`[${attr}]`);
     if (btn && enabled) btn.addEventListener('click', onClick);
     return row;
+  }
+
+  // ===== 市场(玩家集市:全品类,另收管理费) =====
+  renderMarket({ stalls, economy, fee = 0 }) {
+    const box = this.el.marketList;
+    if (!box) return;
+    box.innerHTML = '';
+    if (this.el.marketTitle) this.el.marketTitle.textContent = '市 场';
+    if (this.el.marketNote) {
+      this.el.marketNote.textContent = `全品类的玩家集市 · 每笔交易另收 ${Math.round(fee * 100)}% 管理费`;
+    }
+
+    (stalls || []).forEach((s) => {
+      const head = document.createElement('div');
+      head.className = 'market-stall-head';
+      head.innerHTML = `<span class="stall-icon">${s.icon || '🧺'}</span><span class="stall-name">${this._escapeHtml(s.name)}</span><span class="stall-title">${this._escapeHtml(s.title || '')}</span>`;
+      box.appendChild(head);
+      (s.items || []).forEach((id) => {
+        const it = ITEMS[id];
+        if (!it) return;
+        const price = typeof economy.marketBuyPrice === 'function' ? economy.marketBuyPrice(id, fee) : it.price;
+        const afford = economy.gold >= price;
+        box.appendChild(this._shopRow(it, afford, `🪙 ${price}<s class="item-was">${it.price}</s>`, '买入', 'data-buy', () => this.bus.emit('ui:market-buy', id)));
+      });
+    });
+
+    this._renderMarketSell(box, economy, fee, 'ui:market-sell');
+    this.renderResources(economy);
+  }
+
+  /** 市场 / 密市共用的「出售(背包)」区块 */
+  _renderMarketSell(box, economy, fee, evt) {
+    const sellables = [...economy.bag.entries()]
+      .filter(([id]) => !economy.isEquipped(id) && ITEMS[id]?.category !== 'token');
+    const title = document.createElement('div');
+    title.className = 'shop-section-title';
+    title.textContent = '出售(背包)';
+    box.appendChild(title);
+    if (!sellables.length) {
+      const empty = document.createElement('p');
+      empty.className = 'bag-empty';
+      empty.textContent = '背包里没有可出售的物品。';
+      box.appendChild(empty);
+      return;
+    }
+    sellables.forEach(([id, qty]) => {
+      const it = ITEMS[id];
+      if (!it) return;
+      const net = typeof economy.marketSellPrice === 'function' ? economy.marketSellPrice(id, fee) : sellPrice(id);
+      const row = this._shopRow(it, true, `🪙 ${net}<s class="item-was">${sellPrice(id)}</s>`, '卖出', 'data-sell', () => this.bus.emit(evt, id), qty);
+      box.appendChild(row);
+    });
+  }
+
+  // ===== 专属交易场所(只收当地主题的特殊交易币) =====
+  renderVenue({ venue, economy }) {
+    const box = this.el.marketList;
+    if (!box || !venue) return;
+    box.innerHTML = '';
+    const feePct = Math.round(venue.fee * 100);
+    if (this.el.marketTitle) this.el.marketTitle.textContent = '密 市';
+    if (this.el.marketNote) {
+      this.el.marketNote.textContent = `${venue.tokenIcon} 只收「${venue.tokenName}」(现有 ${economy.count(venue.token)} 枚) · 管理费 ${feePct}%`;
+    }
+
+    const note = document.createElement('div');
+    note.className = 'market-venue-note';
+    note.textContent = `隐秘集市不认金币,交易一律用 ${venue.tokenIcon}${venue.tokenName};这里的货架还会偶尔摆出绝世稀有之物。`;
+    box.appendChild(note);
+
+    (venue.stock || []).forEach((id) => {
+      const it = ITEMS[id];
+      if (!it) return;
+      const price = economy.venuePrice(id, venue.fee);
+      const afford = economy.count(venue.token) >= price;
+      const tag = it.rare ? '<span class="item-rare">绝世稀有</span>' : '';
+      const row = this._shopRow(it, afford, `${venue.tokenIcon} ${price}`, '兑换', 'data-buy', () => this.bus.emit('ui:venue-buy', id), 0, tag);
+      if (it.rare) row.classList.add('is-rare');
+      box.appendChild(row);
+    });
+
+    this.renderResources(economy);
   }
 
   // ===== 背包 =====

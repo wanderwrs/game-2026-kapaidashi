@@ -765,7 +765,7 @@ body {
   image-rendering: crisp-edges;
   -ms-interpolation-mode: nearest-neighbor;
 }
-.scene-canvas-char { width: 96px; margin: 0 auto; }
+.scene-canvas-char { width: 128px; margin: 0 auto; }
 .scene-corner {
   position: absolute;
   width: 7px; height: 7px;
@@ -1139,9 +1139,9 @@ body {
 }
 
 /* ============================================================
-   地区地图 / 商店 / 背包 / 打工
+   地区地图 / 商店 / 市场 / 背包 / 打工
    ============================================================ */
-.view-map, .view-shop, .view-bag, .view-job { gap: var(--sp-12); overflow-y: auto; padding-right: var(--sp-4); }
+.view-map, .view-shop, .view-market, .view-bag, .view-job { gap: var(--sp-12); overflow-y: auto; padding-right: var(--sp-4); }
 
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-12); flex-wrap: wrap; }
 .map-res { display: flex; gap: var(--sp-8); }
@@ -1365,6 +1365,49 @@ body {
   background: linear-gradient(90deg, var(--success), #8fd0a0);
   box-shadow: 0 0 12px rgba(111, 184, 122, 0.5);
 }
+
+/* ============================================================
+   地区地图 · 左下角人物形象
+   ============================================================ */
+.map-bottom { display: flex; align-items: flex-end; gap: var(--sp-16); margin-top: var(--sp-4); }
+.map-actions { flex: 1 1 auto; justify-content: flex-end; }
+.map-portrait {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: var(--sp-8) var(--sp-8) var(--sp-8);
+  background: linear-gradient(180deg, rgba(20, 26, 37, 0.94), rgba(9, 12, 18, 0.96));
+  border: 1px solid var(--border); border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+}
+.scene-canvas-map { width: 80px; height: 100px; display: block; }
+.map-portrait-name {
+  font-family: var(--font-display); font-size: 11px; letter-spacing: 1px;
+  color: var(--gold-bright); text-align: center;
+}
+
+/* ============================================================
+   市场 / 密市
+   ============================================================ */
+.market-stall-head {
+  display: flex; align-items: baseline; gap: var(--sp-8);
+  margin-top: var(--sp-8); padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.market-stall-head .stall-icon { font-size: 16px; }
+.market-stall-head .stall-name { font-family: var(--font-display); font-size: 13.5px; color: var(--gold-bright); letter-spacing: 1px; }
+.market-stall-head .stall-title { font-size: 11px; color: var(--text-faint); }
+.market-venue-note {
+  font-size: 12px; line-height: 1.7; color: var(--text-soft);
+  background: var(--surface-2); border: 1px dashed var(--border);
+  border-radius: var(--radius); padding: var(--sp-8) var(--sp-12);
+}
+.item-rare {
+  font-size: 10.5px; font-weight: 600;
+  color: #e8cd6e; border: 1px solid rgba(232, 205, 110, 0.5);
+  border-radius: var(--radius-full); padding: 0 6px;
+}
+.item-row.is-rare { border-color: rgba(232, 205, 110, 0.45); box-shadow: inset 0 0 22px rgba(232, 205, 110, 0.08); }
+.res-chip.is-token { color: var(--gold-bright); border-color: rgba(232, 205, 110, 0.35); }
 
 /* ============================================================
    NPC 对话 / 新手引导

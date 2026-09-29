@@ -9,9 +9,14 @@
  *   vehicle 载具:减少地图旅行的行动力消耗,并加快旅途的真实耗时
  *            speedMul 为旅途耗时倍率(越小越快,1 = 步行)
  *   misc    杂物:无效果,可捡拾、可出售换取金币
+ *   token   交易币:专属交易场所专用,不能换成金币(见 data/market.js)
+ * rare: true 的物品不会进普通商店,只在专属交易场所低概率出现。
  *
- * effect(消耗品):{ kind: 'heal'|'mp'|'power'|'ap', amount }
- * equipment:slot + stats { atkPower, maxHp, maxMp, apMax, travelDiscount }
+ * effect(消耗品):{ kind: 'heal'|'mp'|'power'|'ap'|'full'|'rest_haste'|'travel_haste', amount }
+ *   full         生命与魔力尽数回满
+ *   rest_haste   缩短之后 N 次休息的真实耗时
+ *   travel_haste 缩短之后 N 段旅途的真实耗时
+ * equipment:slot + stats { atkPower, maxHp, maxMp, apMax, travelDiscount, shopDiscount, goldBonus, restBonus }
  *
  * sell 未填时按 price 的 50% 计算。
  */
@@ -23,7 +28,34 @@ export const ITEM_CATEGORY_CN = {
   outfit: '服饰',
   vehicle: '载具',
   misc: '杂物',
+  token: '交易币',
 };
+
+/** 1 枚特殊交易币 ≈ 7 金币的货值(见 data/market.js) */
+export const TOKEN_PER_GOLD = 1 / 7;
+
+/** 物品的特殊币标价(≈买价的七分之一,至少 1 枚) */
+export function tokenPrice(itemId) {
+  const it = ITEMS[itemId];
+  return it ? Math.max(1, Math.round((it.price || 0) * TOKEN_PER_GOLD)) : 0;
+}
+
+/** 地区主题 → 专属交易币 */
+export const THEME_TOKEN = {
+  village: 'token_village',
+  forest: 'token_forest',
+  mountain: 'token_mountain',
+  city: 'token_city',
+  port: 'token_port',
+  sky: 'token_sky',
+  ruins: 'token_ruins',
+  cliff: 'token_cliff',
+  camp: 'token_camp',
+};
+
+export function tokenForTheme(theme) {
+  return THEME_TOKEN[theme] || THEME_TOKEN.village;
+}
 
 export const ITEMS = {
   // ===== 药品 =====
@@ -32,6 +64,12 @@ export const ITEMS = {
   mp_small:    { id: 'mp_small',    name: '凝神散',   category: 'potion', price: 25, icon: '🫧', desc: '恢复 2 点魔力。',         effect: { kind: 'mp',    amount: 2 } },
   mp_large:    { id: 'mp_large',    name: '回气丹',   category: 'potion', price: 60, icon: '🔮', desc: '恢复 5 点魔力。',         effect: { kind: 'mp',    amount: 5 } },
   power_elixir:{ id: 'power_elixir',name: '战力药剂', category: 'potion', price: 70, icon: '💪', desc: '下一场战斗战力 +3。',      effect: { kind: 'power', amount: 3 } },
+  phoenix_blood:{ id: 'phoenix_blood',name:'不死鸟之血', category: 'potion', price: 760, icon: '🩸', rare: true, desc: '传说一滴即续命。生命与魔力尽数回满。', effect: { kind: 'full', amount: 0 } },
+
+  // ===== 加速恢复(缩短休息 / 旅途的真实耗时) =====
+  swift_incense:{ id: 'swift_incense', name: '醒神香', category: 'potion', price: 90,  icon: '🕯️', desc: '点上一支,下一次休息的耗时缩短至四分之一。', effect: { kind: 'rest_haste',   amount: 1 } },
+  long_incense: { id: 'long_incense',  name: '长明香', category: 'potion', price: 160, icon: '🪔', desc: '能烧一整夜。接下来 2 次休息的耗时缩短至四分之一。', effect: { kind: 'rest_haste', amount: 2 } },
+  wind_tonic:   { id: 'wind_tonic',    name: '疾风饮', category: 'potion', price: 110, icon: '🥤', desc: '一口气灌下,下一段旅途的耗时减半。', effect: { kind: 'travel_haste', amount: 1 } },
 
   // ===== 食品(恢复行动力) =====
   bread:       { id: 'bread',       name: '干面包',   category: 'food',   price: 12, icon: '🍞', desc: '恢复 2 点行动力。',        effect: { kind: 'ap', amount: 2 } },
@@ -86,6 +124,25 @@ export const ITEMS = {
   swift_boots:   { id: 'swift_boots',   name: '疾行靴',   category: 'outfit', price: 220, icon: '👢', desc: '旅行行动力消耗 −2。鞋底薄,脚感却轻。', equipment: { slot: 'shoes', stats: { travelDiscount: 2 } }, look: { boot: '#2f4a5a' } },
   emperor_new_boots: { id: 'emperor_new_boots', name: '皇帝的新靴', category: 'outfit', price: 999, icon: '✨', desc: '踩着虚无赶路,石子硌得生疼。', equipment: { slot: 'shoes', stats: {} }, hide: true, look: { style: 'none' } },
 
+  // ===== 绝世稀有(不会出现在普通商店,只在专属交易场所低概率上架) =====
+  starfall_blade:   { id: 'starfall_blade',   name: '陨星剑',   category: 'weapon', price: 980,  icon: '🌠', rare: true, desc: '剑脊嵌着一小块落星,挥动时带着余温。战力 +18,生命 +12。', equipment: { slot: 'weapon', stats: { atkPower: 18, maxHp: 12 } } },
+  void_mantle:      { id: 'void_mantle',      name: '虚无斗篷', category: 'outfit', price: 1040, icon: '🌑', rare: true, desc: '披上像被夜色收进去。生命 +34,魔力 +6。', equipment: { slot: 'top', stats: { maxHp: 34, maxMp: 6 } }, look: { cloth: '#2a2740', cloth2: '#3b3760', trim: '#9b7fe8' } },
+  prophet_circlet:  { id: 'prophet_circlet',  name: '先知之冠', category: 'outfit', price: 900,  icon: '🔯', rare: true, desc: '冠心一颗缓慢转动的星。魔力 +7,生命 +8。特殊:商店购物 8 折。', equipment: { slot: 'hat', stats: { maxMp: 7, maxHp: 8, shopDiscount: 0.2 } }, look: { hat: '#3a2f6b', hatHi: '#9b7fe8', style: 'crown' } },
+  titan_greaves:    { id: 'titan_greaves',    name: '泰坦护腿', category: 'outfit', price: 860,  icon: '🦿', rare: true, desc: '沉得像两条石柱。生命 +18,战力 +3。', equipment: { slot: 'bottom', stats: { maxHp: 18, atkPower: 3 } }, look: { pants: '#4a4a55' } },
+  gale_boots:       { id: 'gale_boots',       name: '疾风长靴', category: 'outfit', price: 820,  icon: '👢', rare: true, desc: '落地无声。旅行行动力消耗 −5。', equipment: { slot: 'shoes', stats: { travelDiscount: 5 } }, look: { boot: '#20404a' } },
+  sage_stone:       { id: 'sage_stone',       name: '贤者之石', category: 'misc',   price: 880,  icon: '💎', rare: true, desc: '握久了他做梦。卖给识货者可换大钱。' },
+
+  // ===== 特殊交易币(专属交易场所专用;不能换成金币,只能在对应主题的集市里花) =====
+  token_village:  { id: 'token_village',  name: '谷币',   category: 'token', price: 280, icon: '🌾', sell: 0, desc: '村集通行的凭票,只在乡野的专属集市里认。' },
+  token_forest:   { id: 'token_forest',   name: '松脂珠', category: 'token', price: 280, icon: '🍃', sell: 0, desc: '凝住的松脂,林间集市把它当钱使。' },
+  token_mountain: { id: 'token_mountain', name: '雪晶',   category: 'token', price: 280, icon: '❄️', sell: 0, desc: '雪岭里结出的透明晶石,山民认它。' },
+  token_city:     { id: 'token_city',     name: '银筹',   category: 'token', price: 280, icon: '🪙', sell: 0, desc: '王城黑市流通的银质筹码。' },
+  token_port:     { id: 'token_port',     name: '贝壳币', category: 'token', price: 280, icon: '🐚', sell: 0, desc: '远洋商船带来的贝壳,只认港口。' },
+  token_sky:      { id: 'token_sky',      name: '云绵石', category: 'token', price: 280, icon: '☁️', sell: 0, desc: '浮空岛上采的轻石,云间集市通用。' },
+  token_ruins:    { id: 'token_ruins',    name: '残碑片', category: 'token', price: 280, icon: '🪨', sell: 0, desc: '废墟里掘出的古碑残片,拾荒者的硬通货。' },
+  token_cliff:    { id: 'token_cliff',    name: '崖铁钉', category: 'token', price: 280, icon: '⛏️', sell: 0, desc: '凿崖留下的铁钉,崖民当钱攒。' },
+  token_camp:     { id: 'token_camp',     name: '营灰印', category: 'token', price: 280, icon: '🔥', sell: 0, desc: '烧过的营灰压成的印记,荒野营地认它。' },
+
   // ===== 载具(降低旅行行动力消耗,并加快旅途的真实耗时) =====
   // equipment.stats.travelDiscount:降低行动力消耗;speedMul:旅途耗时倍率(越小越快)
   // terrain:该载具可通行的地形(land 陆地 / plateau 高原 / sea 海面·港口 / sky 浮空);
@@ -118,9 +175,9 @@ export const SHOP_STOCK = {
   village: ['hp_small', 'bread', 'hemp_shirt', 'patched_pants', 'cloth_shoes', 'straw_hat', 'old_horse'],
   forest:  ['hp_small', 'dried_meat', 'mp_small', 'leather_cap', 'leather_boots', 'iron_sword', 'swift_horse'],
   mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'iron_helm', 'iron_greaves', 'iron_boots', 'steel_blade', 'dragon_scale_mail', 'cart', 'snow_leopard'],
-  city:    ['hp_large', 'mp_large', 'power_elixir', 'noble_robe', 'silk_pants', 'feather_cap', 'dancer_shoes', 'crown', 'merchant_vest', 'steel_blade', 'swift_horse', 'airship', 'emperor_new_clothes', 'emperor_new_pants', 'emperor_new_hat', 'emperor_new_boots'],
-  port:    ['hp_small', 'dried_meat', 'mp_large', 'noble_robe', 'sailor_trousers', 'swift_boots', 'wind_coat', 'cart', 'skiff', 'steamship'],
-  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'scholar_robe', 'scholar_hood', 'feather_cap', 'swift_horse', 'wind_glider', 'airship'],
+  city:    ['hp_large', 'mp_large', 'power_elixir', 'swift_incense', 'wind_tonic', 'noble_robe', 'silk_pants', 'feather_cap', 'dancer_shoes', 'crown', 'merchant_vest', 'steel_blade', 'swift_horse', 'airship', 'emperor_new_clothes', 'emperor_new_pants', 'emperor_new_hat', 'emperor_new_boots'],
+  port:    ['hp_small', 'dried_meat', 'mp_large', 'wind_tonic', 'noble_robe', 'sailor_trousers', 'swift_boots', 'wind_coat', 'cart', 'skiff', 'steamship'],
+  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'swift_incense', 'long_incense', 'scholar_robe', 'scholar_hood', 'feather_cap', 'swift_horse', 'wind_glider', 'airship'],
   ruins:   ['hp_small', 'dried_meat', 'leather_pants', 'pilgrim_mantle', 'bone_charm', 'cart'],
   cliff:   ['hp_small', 'mp_small', 'iron_sword', 'swift_boots', 'wind_coat', 'swift_horse'],
   camp:    ['hp_small', 'bread', 'patched_pants', 'straw_hat', 'iron_sword', 'old_horse'],

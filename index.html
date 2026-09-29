@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260929m" />
+  <link rel="stylesheet" href="css/style.css?v=20260929n" />
 </head>
 <body>
   <div id="app" class="app">
@@ -77,7 +77,7 @@
       <aside id="scene-character" class="scene-panel scene-character" aria-hidden="true">
         <div class="scene-panel-title">人 物</div>
         <div class="scene-frame">
-          <canvas id="scene-char-canvas" class="scene-canvas scene-canvas-char" width="96" height="120"></canvas>
+          <canvas id="scene-char-canvas" class="scene-canvas scene-canvas-char" width="128" height="160"></canvas>
           <span class="scene-corner tl"></span><span class="scene-corner tr"></span>
           <span class="scene-corner bl"></span><span class="scene-corner br"></span>
         </div>
@@ -124,11 +124,18 @@
         <div class="map-npcs-title">本地人物(点击交谈)</div>
         <div id="map-npcs" class="map-npcs"></div>
       </div>
-      <div class="panel-actions">
-        <button id="btn-map-story" class="btn btn-primary">开 始 剧 情</button>
-        <button id="btn-map-world" class="btn btn-ghost">世 界 地 图</button>
-        <button id="btn-map-intel" class="btn btn-ghost">情 报</button>
-        <button id="btn-map-bag" class="btn btn-ghost">背 包</button>
+      <div class="map-bottom">
+        <!-- 左下角:人物形象(随换装变化) -->
+        <div class="map-portrait" aria-hidden="true">
+          <canvas id="map-char-canvas" class="scene-canvas scene-canvas-map" width="80" height="100"></canvas>
+          <div id="map-char-name" class="map-portrait-name">—</div>
+        </div>
+        <div class="panel-actions map-actions">
+          <button id="btn-map-story" class="btn btn-primary">开 始 剧 情</button>
+          <button id="btn-map-world" class="btn btn-ghost">世 界 地 图</button>
+          <button id="btn-map-intel" class="btn btn-ghost">情 报</button>
+          <button id="btn-map-bag" class="btn btn-ghost">背 包</button>
+        </div>
       </div>
     </section>
 
@@ -180,6 +187,19 @@
       <div id="shop-list" class="shop-list"></div>
       <div class="panel-actions">
         <button id="btn-shop-back" class="btn btn-ghost">返 回 地 图</button>
+      </div>
+    </section>
+
+    <!-- 市场 / 密市:玩家集市(全品类)与专属交易场所(只收特殊交易币) -->
+    <section id="view-market" class="view view-market">
+      <div class="panel-head">
+        <h2 class="view-title" id="market-title">市 场</h2>
+        <div id="market-res" class="map-res"></div>
+      </div>
+      <p id="market-note" class="view-sub">—</p>
+      <div id="market-list" class="shop-list"></div>
+      <div class="panel-actions">
+        <button id="btn-market-back" class="btn btn-ghost">返 回 地 图</button>
       </div>
     </section>
 
@@ -449,7 +469,7 @@
           <ul class="guide-list">
             <li>
               <span class="guide-key">地区地图</span>
-              <span class="guide-desc">每章是一处地区,含 3 个地点;按剧情提示前往指定地点、找到关键 NPC</span>
+              <span class="guide-desc">每章是一处地区,含 3 个地点;按剧情提示前往指定地点、找到关键 NPC。地图左下角常驻你的<b>人物形象</b>,随换装变化</span>
             </li>
             <li>
               <span class="guide-key">旅行</span>
@@ -516,6 +536,18 @@
               <span class="guide-desc">武器(战力);帽子 / 衣服 / 裤子 / 鞋子可自由搭配,改变外观,部分服饰带特殊增益(折扣 / 金币 / 休息);载具(降低旅行消耗)</span>
             </li>
             <li>
+              <span class="guide-key">市场 🧺</span>
+              <span class="guide-desc">与「商店」并列的玩家集市:<b>全品类货物</b>由不同玩家设摊发售,也可在这里卖掉背包里的东西;每笔交易额外收 <b>10% 管理费</b>(买贵一点、卖少一点)</span>
+            </li>
+            <li>
+              <span class="guide-key">密市与交易币</span>
+              <span class="guide-desc">部分地区随机会有一处<b>隐秘集市</b>(走到该地点时地图上会出现「密市」按钮)。密市只收当地主题的<b>特殊交易币</b>(谷币 / 松脂珠 / 雪晶 / 银筹 / 贝壳币 / 云绵石 / 残碑片 / 崖铁钉 / 营灰印),管理费 <b>5%~70%</b> 不等,货架上还可能摆出<b>绝世稀有</b>的兵器、服饰与药品。交易币可从宝箱、剧情推进与该地打工中获得(概率 30%~90%)</span>
+            </li>
+            <li>
+              <span class="guide-key">加速药水</span>
+              <span class="guide-desc">醒神香 / 长明香把之后的休息耗时缩到四分之一;疾风饮让下一段旅途耗时减半 —— 等不起时先喝一口</span>
+            </li>
+            <li>
               <span class="guide-key">打工</span>
               <span class="guide-desc">在部分地点玩一局小游戏(拾取 / 躲避 / 跑酷),达标才消耗行动力并发放金币;三档难度,金币越多越难</span>
             </li>
@@ -565,6 +597,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260929m"></script>
+  <script type="module" src="js/main.js?v=20260929n"></script>
 </body>
 </html>

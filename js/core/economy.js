@@ -10,8 +10,8 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice } from '../data/items.js?v=20260929m';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929m';
+import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20260929n';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929n';
 
 const SLOTS = ['weapon', 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
 const OUTFIT_SLOTS = ['hat', 'top', 'bottom', 'shoes'];
@@ -24,6 +24,8 @@ export class Economy {
     this.bag = new Map();            // itemId -> qty
     this.equipped = { weapon: null, hat: null, top: null, bottom: null, shoes: null, vehicle: null };
     this.pendingPower = 0;           // 战力药剂:下一场战斗生效
+    this.hasteRest = 0;              // 剩余「缩短休息耗时」次数
+    this.hasteTravel = 0;            // 剩余「缩短旅途耗时」次数
   }
 
   // ===== 背包 =====
@@ -62,6 +64,74 @@ export class Economy {
     if (this.gold < price) return false;
     this.gold -= price;
     this.addItem(id, 1);
+    return true;
+  }
+
+  // ===== 市场 / 专属交易场所(买卖均额外收管理费) =====
+  /** 市场买入价:原价 + 管理费 */
+  marketBuyPrice(id, fee = 0) {
+    const it = ITEMS[id];
+    if (!it) return 0;
+    return Math.max(1, Math.round((it.price || 0) * (1 + fee)));
+  }
+
+  /** 市场卖出净得:售价 − 管理费 */
+  marketSellPrice(id, fee = 0) {
+    return Math.max(1, Math.round(sellPrice(id) * (1 - fee)));
+  }
+
+  marketBuy(id, fee = 0) {
+    if (!ITEMS[id]) return false;
+    const price = this.marketBuyPrice(id, fee);
+    if (this.gold < price) return false;
+    this.gold -= price;
+    return this.addItem(id, 1);
+  }
+
+  marketSell(id, fee = 0) {
+    if (!this.removeItem(id, 1)) return false;
+    this.gold += this.marketSellPrice(id, fee);
+    return true;
+  }
+
+  /** 专属场所标价:以特殊币计价,再叠加该场所的管理费 */
+  venuePrice(id, fee = 0) {
+    const base = tokenPrice(id);
+    if (!base) return 0;
+    return Math.max(1, Math.round(base * (1 + fee)));
+  }
+
+  /** 用特殊币兑换;tokenId 为该场所认的币种 */
+  venueBuy(id, tokenId, fee = 0) {
+    if (!ITEMS[id] || !ITEMS[tokenId]) return false;
+    const price = this.venuePrice(id, fee);
+    if (this.count(tokenId) < price) return false;
+    this.removeItem(tokenId, price);
+    return this.addItem(id, 1);
+  }
+
+  /** 背包里各交易币的数量([{id,name,icon,qty}],只收 token 分类) */
+  tokens() {
+    const out = [];
+    for (const [id, qty] of this.bag.entries()) {
+      const it = ITEMS[id];
+      if (it && it.category === 'token' && qty > 0) out.push({ id, name: it.name, icon: it.icon || '🪙', qty });
+    }
+    return out;
+  }
+
+  // ===== 加速恢复(药水):缩短之后若干次休息 / 旅途的真实耗时 =====
+  /** 消耗一次「休息加速」,有则返回 true */
+  consumeRestHaste() {
+    if (this.hasteRest <= 0) return false;
+    this.hasteRest -= 1;
+    return true;
+  }
+
+  /** 消耗一次「旅途加速」,有则返回 true */
+  consumeTravelHaste() {
+    if (this.hasteTravel <= 0) return false;
+    this.hasteTravel -= 1;
     return true;
   }
 
@@ -237,6 +307,22 @@ export class Economy {
         msg = `下场战斗战力 +${amount}`;
         break;
       }
+      case 'full': {
+        player.hp = player.maxHp;
+        player.mp = player.maxMp;
+        msg = '生命与魔力尽数回满';
+        break;
+      }
+      case 'rest_haste': {
+        this.hasteRest += amount;
+        msg = `之后 ${amount} 次休息的耗时会大幅缩短`;
+        break;
+      }
+      case 'travel_haste': {
+        this.hasteTravel += amount;
+        msg = `之后 ${amount} 段旅途的耗时会减半`;
+        break;
+      }
       default:
         return { ok: false, msg: '此物无法使用' };
     }
@@ -259,6 +345,8 @@ export class Economy {
       apMax: this.apCap(),
       bag: [...this.bag.entries()].map(([id, qty]) => ({ id, qty })),
       equipped: { ...this.equipped },
+      hasteRest: this.hasteRest,
+      hasteTravel: this.hasteTravel,
     };
   }
 }

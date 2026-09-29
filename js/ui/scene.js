@@ -394,11 +394,22 @@ const FLAG_CHIPS = {
    ============================================================ */
 export class SceneView {
   constructor(els) {
-    this.els = els; // { charCanvas, envCanvas, charName, charOutfit, charStatus, envName, envDesc }
+    this.els = els; // { charCanvas, envCanvas, charName, charOutfit, charStatus, envName, envDesc, mapCanvas, mapCharName }
     this._charCtx = els.charCanvas ? els.charCanvas.getContext('2d') : null;
     this._envCtx = els.envCanvas ? els.envCanvas.getContext('2d') : null;
+    this._mapCtx = els.mapCanvas ? els.mapCanvas.getContext('2d') : null;
     if (this._charCtx) this._charCtx.imageSmoothingEnabled = false;
     if (this._envCtx) this._envCtx.imageSmoothingEnabled = false;
+    if (this._mapCtx) this._mapCtx.imageSmoothingEnabled = false;
+  }
+
+  /** 地区地图左下角的人物形象(与剧情界面同一套像素画法) */
+  renderMapPortrait({ career, player, flags, appearance }) {
+    if (!this._mapCtx) return;
+    const flagSet = new Set(flags || []);
+    const hpRatio = player && player.maxHp ? Math.max(0, Math.min(1, player.hp / player.maxHp)) : 1;
+    drawCharacter(this._mapCtx, 5, career && career.id, hpRatio, flagSet, appearance);
+    if (this.els.mapCharName) this.els.mapCharName.textContent = career ? career.name : '无名少年';
   }
 
   render({ chapterId, nodeId, career, player, flags, appearance }) {
@@ -407,7 +418,7 @@ export class SceneView {
     const hpRatio = player && player.maxHp ? Math.max(0, Math.min(1, player.hp / player.maxHp)) : 1;
 
     // ---- 人物 ----
-    drawCharacter(this._charCtx, 6, career && career.id, hpRatio, flagSet, appearance);
+    drawCharacter(this._charCtx, 8, career && career.id, hpRatio, flagSet, appearance);
     const o = OUTFITS[career && career.id] || OUTFIT_DEFAULT;
     if (this.els.charName) this.els.charName.textContent = career ? career.name : '无名少年';
     if (this.els.charOutfit) this.els.charOutfit.textContent = (appearance && appearance.label) || o.outfit;

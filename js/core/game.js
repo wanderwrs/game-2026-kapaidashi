@@ -11,28 +11,29 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929m';
-import { EventBus } from './eventbus.js?v=20260929m';
-import { AudioEngine } from './audio.js?v=20260929m';
-import { Player } from '../combat/entity.js?v=20260929m';
-import { Deck } from '../card/deck.js?v=20260929m';
-import { Battle } from '../combat/battle.js?v=20260929m';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929m';
-import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929m';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929m';
-import { jobsFor } from '../data/jobs.js?v=20260929m';
+import { RNG, seedFromString } from './rng.js?v=20260929n';
+import { EventBus } from './eventbus.js?v=20260929n';
+import { AudioEngine } from './audio.js?v=20260929n';
+import { Player } from '../combat/entity.js?v=20260929n';
+import { Deck } from '../card/deck.js?v=20260929n';
+import { Battle } from '../combat/battle.js?v=20260929n';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929n';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929n';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929n';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929n';
+import { jobsFor } from '../data/jobs.js?v=20260929n';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929m';
-import { NPCS } from '../data/npcs.js?v=20260929m';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929m';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929m';
-import { Economy } from './economy.js?v=20260929m';
-import { Travel } from './travel.js?v=20260929m';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929m';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929m';
-import { UI } from '../ui/ui.js?v=20260929m';
+} from '../data/world.js?v=20260929n';
+import { NPCS } from '../data/npcs.js?v=20260929n';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929n';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929n';
+import { Economy } from './economy.js?v=20260929n';
+import { Travel } from './travel.js?v=20260929n';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929n';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929n';
+import { UI } from '../ui/ui.js?v=20260929n';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -40,6 +41,10 @@ const TUTORIAL_KEY = 'longji.tutorial.v1';
 const MAX_STOP_NPCS = 3;
 /** 一次休息的真实耗时(秒);期间复用旅途界面,不可操作 */
 const REST_SECONDS = 300;
+/** 用了「醒神香」后休息耗时的倍率 */
+const REST_HASTE_MUL = 0.25;
+/** 用了「疾风饮」后旅途耗时的倍率 */
+const TRAVEL_HASTE_MUL = 0.5;
 
 /** 教程是否已看过 */
 function loadTutorialSeen() {
@@ -73,6 +78,7 @@ export const GameState = Object.freeze({
   WORLD: 'world',
   TRAVEL: 'travel',
   SHOP: 'shop',
+  MARKET: 'market',
   BAG: 'bag',
   JOB: 'job',
   BATTLE: 'battle',
@@ -147,6 +153,8 @@ export class Game {
     this._intel = new Map();
     this._openedChests = new Set();
     this._visited = new Set([startChapter]);
+    this._venueCache = new Map();     // regionId -> 专属交易场所(可能为 null)
+    this._marketMode = 'market';      // 市场视图当前展示:'market' | 'venue'
     this.travel = new Travel({ bus: this.bus, rng: this.rng });
 
     // 经济:初始一点金币与补给
@@ -230,6 +238,22 @@ export class Game {
         return c ? { opened: this._openedChests.has(c.id), known: this._intel.has(c.id) } : null;
       }),
       intelCount: this._intel.size,
+      marketFee: MARKET_FEE,
+      venue: (() => {
+        const v = this._venueFor(this.regionId);
+        if (!v) return null;
+        return {
+          here: v.stopIndex === this.stopIndex,
+          stopIndex: v.stopIndex,
+          stopName: region.stops[v.stopIndex]?.name || '',
+          fee: v.fee,
+          token: v.token,
+          tokenName: v.tokenName,
+          tokenIcon: v.tokenIcon,
+          tokenOwned: this.economy.count(v.token),
+        };
+      })(),
+      tokens: this.economy.tokens(),
       economy: this.economy,
     };
   }
@@ -252,6 +276,12 @@ export class Game {
     this._syncPlayerStats();
     this.transition(GameState.MAP);
     this._renderMap();
+    // 剧情推进一步:有机会获得当地主题的特殊交易币
+    const token = this._grantToken(this._currentTheme());
+    if (token) {
+      this._renderMap();
+      this.ui.showToast(`剧情推进,有人塞来 ${token.name} ×${token.amount}`);
+    }
   }
 
   // ===== 世界地图 / 旅途 =====
@@ -401,17 +431,21 @@ export class Game {
   /** 真正开启一段实时旅途 */
   _depart(trip) {
     this._trip = { kind: trip.kind, regionId: trip.regionId, stopIndex: trip.stopIndex };
+    // 疾风饮:把这一段旅途的耗时减半
+    const haste = this.economy.consumeTravelHaste();
+    const baseSec = tripSeconds(trip.dist, this.economy.travelSpeedMul());
     this.travel.start({
       fromLabel: trip.fromLabel,
       toLabel: trip.toLabel,
       dist: trip.dist,
-      seconds: tripSeconds(trip.dist, this.economy.travelSpeedMul()),
+      seconds: Math.max(1, Math.round(baseSec * (haste ? TRAVEL_HASTE_MUL : 1))),
       level: trip.level,
       poolKey: trip.poolKey,
       vehicle: this.economy.vehicleName(),
       terrain: regionTerrain(trip.regionId),
       npcPool: this._npcsForTheme(trip.theme),
     });
+    if (haste) this.travel.pushLog('疾风饮下肚,脚下的路缩了一半。');
     this.transition(GameState.TRAVEL);
   }
 
@@ -663,6 +697,9 @@ export class Game {
     for (const [id, qty] of Object.entries(chest.loot?.items || {})) {
       if (this.economy.addItem(id, qty)) got.push(`${ITEMS[id]?.name || id}×${qty}`);
     }
+    // 宝箱里也可能藏着当地主题的特殊交易币
+    const token = this._grantToken(this._currentTheme());
+    if (token) got.push(`${token.name}×${token.amount}`);
     this._syncUi();
     this.ui.closeChest();
     this._renderMap();
@@ -726,17 +763,20 @@ export class Game {
     if (this.travel.active) return;
     const region = REGIONS[this.regionId];
     const place = region?.stops?.[this.stopIndex]?.name || region?.name || '此地';
+    // 醒神香:把这一次的休息耗时缩到四分之一
+    const haste = this.economy.consumeRestHaste();
     this.travel.start({
       mode: 'rest',
       fromLabel: place,
       toLabel: '休整',
       dist: 0,
-      seconds: REST_SECONDS,
+      seconds: haste ? Math.max(1, Math.round(REST_SECONDS * REST_HASTE_MUL)) : REST_SECONDS,
       level: WORLD[this.regionId]?.level ?? this._chapterNum(),
       poolKey: this.regionId,
       terrain: regionTerrain(this.regionId),
       events: this._buildRestEvents(),
     });
+    if (haste) this.travel.pushLog('醒神香起了效,这一觉短了许多。');
     this.transition(GameState.TRAVEL);
   }
 
@@ -829,6 +869,114 @@ export class Game {
     this._syncUi();
   }
 
+  // ===== 市场(玩家集市:全品类,另收 10% 管理费) =====
+  _openMarket() {
+    this._marketMode = 'market';
+    this.ui.renderMarket({ stalls: marketStalls(), economy: this.economy, fee: MARKET_FEE });
+    this._syncUi();
+    this.transition(GameState.MARKET);
+  }
+
+  _marketRefresh() {
+    if (this._marketMode === 'venue') this._openVenueRefresh();
+    else this._openMarketRefreshOnly();
+  }
+
+  _openMarketRefreshOnly() {
+    this.ui.renderMarket({ stalls: marketStalls(), economy: this.economy, fee: MARKET_FEE });
+    this._syncUi();
+  }
+
+  _marketBuy(id) {
+    const it = ITEMS[id];
+    if (!it) return;
+    const price = this.economy.marketBuyPrice(id, MARKET_FEE);
+    if (this.economy.marketBuy(id, MARKET_FEE)) this.ui.showToast(`购入「${it.name}」,含管理费共 ${price} 金币`);
+    else this.ui.showToast('金币不足');
+    this._marketRefresh();
+  }
+
+  _marketSell(id) {
+    if (!this.economy.has(id)) { this.ui.showToast('背包里没有这件物品'); return; }
+    if (this.economy.isEquipped(id)) { this.ui.showToast('已装备的物品需先卸下'); return; }
+    if (ITEMS[id]?.category === 'token') { this.ui.showToast('交易币不能换金币'); return; }
+    const net = this.economy.marketSellPrice(id, MARKET_FEE);
+    if (this.economy.marketSell(id, MARKET_FEE)) {
+      this.ui.showToast(`卖出「${ITEMS[id]?.name || id}」,扣管理费后得 ${net} 金币`);
+    }
+    this._marketRefresh();
+  }
+
+  // ===== 专属交易场所(随机出现,只收当地主题的特殊交易币) =====
+  /** 该地区本局是否存在专属交易场所(整局固定) */
+  _venueFor(regionId) {
+    if (!this._venueCache) this._venueCache = new Map();
+    if (this._venueCache.has(regionId)) return this._venueCache.get(regionId);
+    const region = REGIONS[regionId];
+    let venue = null;
+    if (region && this.rng.next() < VENUE_CHANCE) {
+      const theme = region.theme || 'village';
+      const token = tokenForTheme(theme);
+      venue = {
+        regionId,
+        theme,
+        token,
+        tokenName: ITEMS[token]?.name || '特殊交易币',
+        tokenIcon: ITEMS[token]?.icon || '🪙',
+        stopIndex: Math.floor(this.rng.next() * region.stops.length),
+        fee: venueFee(this.rng),
+        stock: venueStock(SHOP_STOCK[theme] || SHOP_STOCK.village, () => this.rng.next()),
+      };
+    }
+    this._venueCache.set(regionId, venue);
+    return venue;
+  }
+
+  /** 当前地点的专属交易场所(不在该地点则为 null) */
+  _venueHere() {
+    const v = this._venueFor(this.regionId);
+    return v && v.stopIndex === this.stopIndex ? v : null;
+  }
+
+  _openVenue() {
+    const venue = this._venueHere();
+    if (!venue) { this.ui.showToast('这里没有隐秘集市'); return; }
+    this._marketMode = 'venue';
+    this.ui.renderVenue({ venue, economy: this.economy });
+    this._syncUi();
+    this.transition(GameState.MARKET);
+  }
+
+  _openVenueRefresh() {
+    const venue = this._venueHere();
+    if (!venue) { this._backToMap(); return; }
+    this.ui.renderVenue({ venue, economy: this.economy });
+    this._syncUi();
+  }
+
+  _venueBuy(id) {
+    const venue = this._venueHere();
+    if (!venue) return;
+    const it = ITEMS[id];
+    if (!it) return;
+    const price = this.economy.venuePrice(id, venue.fee);
+    if (this.economy.venueBuy(id, venue.token, venue.fee)) {
+      this.ui.showToast(`以 ${price} 枚${venue.tokenName}换得「${it.name}」`);
+    } else {
+      this.ui.showToast(`${venue.tokenName}不足(需 ${price} 枚)`);
+    }
+    this._openVenueRefresh();
+  }
+
+  /** 特殊交易币的发放:宝箱 / 剧情推进 / 打工 共用(概率 30%~90%) */
+  _grantToken(theme) {
+    const amount = tokenDrop(() => this.rng.next());
+    if (amount <= 0) return null;
+    const id = tokenForTheme(theme);
+    this.economy.addItem(id, amount);
+    return { id, name: ITEMS[id]?.name || '特殊交易币', amount };
+  }
+
   // ===== 背包 =====
   _openBag() {
     this._syncUi();
@@ -896,7 +1044,9 @@ export class Game {
     if (success) {
       if (!this.economy.spendAp(tier.ap)) { this.ui.showToast('行动力不足,奖励未发放'); return; }
       const gold = this._grantGold(tier.gold);
-      this.ui.showToast(`「${job.name}」达标,赚得 ${gold} 金币`);
+      // 打工收工:有机会结到当地主题的特殊交易币
+      const token = this._grantToken(this._currentTheme());
+      this.ui.showToast(`「${job.name}」达标,赚得 ${gold} 金币${token ? ` 与 ${token.name}×${token.amount}` : ''}`);
     } else {
       this.ui.showToast(`「${job.name}」未达标,再试一次`);
     }
@@ -1204,9 +1354,14 @@ export class Game {
     this.bus.on('travel:event', (payload) => this._onTravelEvent(payload));
     this.bus.on('travel:arrive', () => this._onTravelArrive());
 
-    // 商店 / 背包 / 打工
+    // 商店 / 市场 / 背包 / 打工
     this.bus.on('ui:shop-buy', (id) => this._buy(id));
     this.bus.on('ui:shop-sell', (id) => this._sell(id));
+    this.bus.on('ui:map-market', () => this._openMarket());
+    this.bus.on('ui:map-venue', () => this._openVenue());
+    this.bus.on('ui:market-buy', (id) => this._marketBuy(id));
+    this.bus.on('ui:market-sell', (id) => this._marketSell(id));
+    this.bus.on('ui:venue-buy', (id) => this._venueBuy(id));
     this.bus.on('ui:bag-use', (id) => this._useItem(id));
     this.bus.on('ui:bag-equip', (id) => this._equipItem(id));
     this.bus.on('ui:bag-unequip', (slot) => this._unequipItem(slot));
