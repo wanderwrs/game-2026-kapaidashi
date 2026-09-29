@@ -126,10 +126,19 @@ export class UI {
     };
   }
 
+  /**
+   * 绑定静态按钮。
+   * 所有查询均做空值保护:任一元素缺失也不会中断绑定流程,
+   * 避免因单个节点缺失导致整个应用初始化失败、所有按钮失效。
+   */
   _bindStaticButtons() {
-    document.getElementById('btn-seed-run').addEventListener('click', () => this.bus.emit('ui:seed-run'));
-    document.getElementById('btn-restart').addEventListener('click', () => this.bus.emit('ui:restart'));
-    document.getElementById('btn-music').addEventListener('click', () => this.bus.emit('ui:toggle-music'));
+    const on = (id, event, handler) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener(event, handler);
+    };
+    on('btn-seed-run', 'click', () => this.bus.emit('ui:seed-run'));
+    on('btn-restart', 'click', () => this.bus.emit('ui:restart'));
+    on('btn-music', 'click', () => this.bus.emit('ui:toggle-music'));
     // 游戏说明:任意 [data-howto] 按钮打开,[data-howto-close] 关闭
     document.querySelectorAll('[data-howto]').forEach((b) => {
       b.addEventListener('click', () => this.openHowto());
@@ -137,10 +146,10 @@ export class UI {
     document.querySelectorAll('[data-howto-close]').forEach((b) => {
       b.addEventListener('click', () => this.closeHowto());
     });
-    this.el.btnEndTurn.addEventListener('click', () => this.bus.emit('ui:end-turn'));
-    this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
+    if (this.el.btnEndTurn) this.el.btnEndTurn.addEventListener('click', () => this.bus.emit('ui:end-turn'));
+    if (this.el.btnSkipReward) this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
     // 点击剧情文本区域:正在打字则跳过,否则推进
-    this.el.narrativeText.addEventListener('click', () => this._onTextAreaClick());
+    if (this.el.narrativeText) this.el.narrativeText.addEventListener('click', () => this._onTextAreaClick());
   }
 
   _bindBus() {

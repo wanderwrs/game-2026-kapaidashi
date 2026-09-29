@@ -203,6 +203,7 @@ body {
   padding: var(--sp-32) var(--sp-32) var(--sp-24);
   max-width: 640px;
   width: 100%;
+  margin: auto;
   box-shadow: var(--shadow-md), var(--shadow-gold);
   animation: cardReveal 0.8s var(--ease) both;
 }
@@ -1124,6 +1125,18 @@ body {
 .btn-ghost { background: transparent; color: var(--text-soft); border-color: var(--gold-line); }
 .btn-ghost:hover { border-color: var(--gold); color: var(--gold-bright); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* 触屏优化:移除点击延迟,扩大可点区域的即时响应 */
+.btn, .icon-btn, .music-toggle, .chapter-entry,
+.narrative-choice-btn, .narrative-continue, .modal-close, .map-node, .card {
+  touch-action: manipulation;
+}
+
+/* 通用:按钮按下反馈(触屏无 hover 时也能感知点击) */
+@media (hover: none) {
+  .chapter-entry:active { transform: scale(0.985); border-color: var(--gold-line); }
+  .icon-btn:active, .music-toggle:active, .modal-close:active { transform: scale(0.92); }
+}
 
 /* ============================================================
    地图视图
