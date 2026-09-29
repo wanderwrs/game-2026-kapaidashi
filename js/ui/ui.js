@@ -10,7 +10,7 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929d';
+import { GameState } from '../core/game.js?v=20260929e';
 import { CAREERS, CAREER_MAP } from '../narrative/careers.js';
 import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js';
 import { cardMpCost } from '../data/data.js';
@@ -58,6 +58,10 @@ export class UI {
     this._paraIndex = 0;          // 下一段待显示索引
     this._choicesReady = false;   // 选项是否已浮现
     this._howtoOpen = false;      // 游戏说明弹窗是否打开
+    this._npcOpen = false;        // NPC 对话弹窗是否打开
+    this._tutorialOpen = false;   // 新手引导是否打开
+    this._worldSelected = null;   // 世界地图上选中的地区 id
+    this._worldState = null;      // 最近一次世界地图数据
     this._lastEnemyHp = null;    // 用于计算伤害飘字
     this._lastPlayerHp = null;
     this._cache();
@@ -91,6 +95,8 @@ export class UI {
         career: $('view-career'),
         narrative: $('view-narrative'),
         map: $('view-map'),
+        world: $('view-world'),
+        travel: $('view-travel'),
         shop: $('view-shop'),
         bag: $('view-bag'),
         job: $('view-job'),
@@ -122,6 +128,30 @@ export class UI {
       mapServices: $('map-services'),
       btnMapStory: $('btn-map-story'),
       btnMapBag: $('btn-map-bag'),
+      btnMapWorld: $('btn-map-world'),
+      mapNpcs: $('map-npcs'),
+      // 世界地图
+      worldMap: $('world-map'),
+      worldPanel: $('world-panel'),
+      worldList: $('world-list'),
+      worldNote: $('world-note'),
+      btnWorldBack: $('btn-world-back'),
+      // 旅途
+      travelFrom: $('travel-from'),
+      travelTo: $('travel-to'),
+      travelBar: $('travel-bar'),
+      travelRemain: $('travel-remain'),
+      travelNote: $('travel-note'),
+      travelLog: $('travel-log'),
+      // NPC 对话 / 教程
+      npcDialog: $('npc-dialog'),
+      npcName: $('npc-name'),
+      npcTag: $('npc-tag'),
+      npcTitle: $('npc-title'),
+      npcLines: $('npc-lines'),
+      btnNpcClose: $('btn-npc-close'),
+      tutorial: $('tutorial'),
+      btnTutorialClose: $('btn-tutorial-close'),
       shopRes: $('shop-res'),
       shopList: $('shop-list'),
       btnShopBack: $('btn-shop-back'),
@@ -171,11 +201,22 @@ export class UI {
     document.querySelectorAll('[data-howto-close]').forEach((b) => {
       b.addEventListener('click', () => this.closeHowto());
     });
+    // NPC 对话 / 新手引导:关闭按钮与遮罩
+    document.querySelectorAll('[data-npc-close]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:npc-close'));
+    });
+    document.querySelectorAll('[data-tutorial-close]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:tutorial-close'));
+    });
     if (this.el.btnEndTurn) this.el.btnEndTurn.addEventListener('click', () => this.bus.emit('ui:end-turn'));
     if (this.el.btnSkipReward) this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
     // 地图 / 市场 / 背包 / 打工
     if (this.el.btnMapStory) this.el.btnMapStory.addEventListener('click', () => this.bus.emit('ui:map-story'));
     if (this.el.btnMapBag) this.el.btnMapBag.addEventListener('click', () => this.bus.emit('ui:map-bag'));
+    if (this.el.btnMapWorld) this.el.btnMapWorld.addEventListener('click', () => this.bus.emit('ui:map-world'));
+    if (this.el.btnWorldBack) this.el.btnWorldBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    if (this.el.btnNpcClose) this.el.btnNpcClose.addEventListener('click', () => this.bus.emit('ui:npc-close'));
+    if (this.el.btnTutorialClose) this.el.btnTutorialClose.addEventListener('click', () => this.bus.emit('ui:tutorial-close'));
     if (this.el.btnShopBack) this.el.btnShopBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnBagBack) this.el.btnBagBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnJobBack) this.el.btnJobBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
@@ -200,9 +241,17 @@ export class UI {
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-      // 游戏说明弹窗打开时,仅响应 Esc 关闭,屏蔽其余游戏操作
+      // 弹窗打开时,仅响应 Esc 关闭,屏蔽其余游戏操作
       if (this._howtoOpen) {
         if (e.key === 'Escape') { e.preventDefault(); this.closeHowto(); }
+        return;
+      }
+      if (this._tutorialOpen) {
+        if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.bus.emit('ui:tutorial-close'); }
+        return;
+      }
+      if (this._npcOpen) {
+        if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.bus.emit('ui:npc-close'); }
         return;
       }
 
@@ -276,6 +325,8 @@ export class UI {
     else if (state === GameState.CAREER) target = this.el.views.career;
     else if (state === GameState.NARRATIVE) target = this.el.views.narrative;
     else if (state === GameState.MAP) target = this.el.views.map;
+    else if (state === GameState.WORLD) target = this.el.views.world;
+    else if (state === GameState.TRAVEL) target = this.el.views.travel;
     else if (state === GameState.SHOP) target = this.el.views.shop;
     else if (state === GameState.BAG) target = this.el.views.bag;
     else if (state === GameState.JOB) target = this.el.views.job;
@@ -679,15 +730,22 @@ export class UI {
   // ===== 地区地图 =====
   /** 渲染地区地图:地点、目标提示、旅行消耗与本地服务 */
   renderMap(state) {
-    const { region, chapterNum, currentIndex, objectiveIndex, travelCost, economy } = state;
+    const {
+      region, chapterNum, currentIndex, objectiveIndex, travelCost, travelSeconds,
+      isStoryRegion, npcs, economy,
+    } = state;
     if (!region) return;
     if (this.el.mapRegionName) this.el.mapRegionName.textContent = `第${chapterNum}章 · ${region.name}`;
 
     const obj = objectiveIndex >= 0 ? region.stops[objectiveIndex] : null;
     if (this.el.mapHint) {
-      this.el.mapHint.textContent = obj
-        ? `剧情提示:${obj.hint}${obj.npc ? `(找到「${obj.npc}」)` : ''}`
-        : '当前没有待开启的剧情,可自由探索。';
+      if (!isStoryRegion) {
+        this.el.mapHint.textContent = '此地暂无剧情。可在世界地图上启程,前往剧情所在地区。';
+      } else {
+        this.el.mapHint.textContent = obj
+          ? `剧情提示:${obj.hint}${obj.npc ? `(找到「${obj.npc}」)` : ''}`
+          : '当前没有待开启的剧情,可自由探索。';
+      }
     }
 
     // 地点卡片
@@ -700,13 +758,16 @@ export class UI {
         const card = document.createElement('button');
         card.type = 'button';
         card.className = `stop-card${here ? ' is-here' : ''}${isObj ? ' is-objective' : ''}`;
+        const tag = here ? '所在' : (isObj ? '目标' : `⚡${travelCost[i]}`);
+        const eta = here ? '' : `<span class="stop-eta">约 ${this._fmtDuration(travelSeconds[i])}</span>`;
         card.innerHTML = `
           <div class="stop-head">
             <span class="stop-name">${this._escapeHtml(s.name)}</span>
-            <span class="stop-tag">${here ? '所在' : (isObj ? '目标' : `⚡${travelCost[i]}`)}</span>
+            <span class="stop-tag">${tag}</span>
           </div>
           <div class="stop-meta">${s.npc ? `人物 · ${this._escapeHtml(s.npc)}` : '无人驻留'}</div>
           <div class="stop-services">${this._serviceTags(s.services)}</div>
+          ${eta}
         `;
         card.disabled = here;
         if (!here) card.addEventListener('click', () => this.bus.emit('ui:map-travel', i));
@@ -732,12 +793,50 @@ export class UI {
       this.el.mapServices.appendChild(mk('休 息', 'ui:map-rest', !!svc.rest));
     }
 
+    // 本地随机 NPC:点击即交谈
+    this._renderMapNpcs(npcs);
+
     if (this.el.btnMapStory) {
       const can = objectiveIndex >= 0 && currentIndex === objectiveIndex;
-      this.el.btnMapStory.disabled = !can;
-      this.el.btnMapStory.textContent = can ? '开 始 剧 情' : (obj ? `前往「${obj.name}」` : '暂无剧情');
+      if (!isStoryRegion) {
+        // 不在剧情地区:按钮改为「去世界地图」并保持可点(由 Game 引导启程)
+        this.el.btnMapStory.disabled = false;
+        this.el.btnMapStory.textContent = '去 世 界 地 图';
+      } else {
+        this.el.btnMapStory.disabled = !can;
+        this.el.btnMapStory.textContent = can ? '开 始 剧 情' : (obj ? `前往「${obj.name}」` : '暂无剧情');
+      }
     }
     this.renderResources(economy);
+  }
+
+  /** 当地驻留的随机 NPC 列表 */
+  _renderMapNpcs(npcs) {
+    const box = this.el.mapNpcs;
+    if (!box) return;
+    const list = Array.isArray(npcs) ? npcs : [];
+    box.innerHTML = '';
+    if (!list.length) {
+      box.innerHTML = '<span class="npc-empty">此地没有可交谈的人。</span>';
+      return;
+    }
+    list.forEach((npc) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'npc-chip';
+      b.innerHTML = `<span class="npc-chip-name">${this._escapeHtml(npc.name)}</span><span class="npc-chip-tag">${this._escapeHtml(npc.tag || '')}</span>`;
+      b.addEventListener('click', () => this.bus.emit('ui:npc-talk', npc.id));
+      box.appendChild(b);
+    });
+  }
+
+  /** 秒 →「x 分 y 秒」 */
+  _fmtDuration(sec) {
+    const s = Math.max(0, Math.round(Number(sec) || 0));
+    if (s < 60) return `${s} 秒`;
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return r ? `${m} 分 ${r} 秒` : `${m} 分`;
   }
 
   _serviceTags(services = {}) {
@@ -746,6 +845,176 @@ export class UI {
     if (services.job) tags.push('<span class="svc">打工</span>');
     if (services.rest) tags.push('<span class="svc">休息</span>');
     return tags.join('') || '<span class="svc is-off">无</span>';
+  }
+
+  // ===== 世界地图(全部地区总览,仿 FF14) =====
+  renderWorld(state) {
+    if (!state?.regions) return;
+    this._worldState = state;
+    const { regions, currentId, economy } = state;
+    const cur = regions.find((r) => r.id === currentId) || null;
+
+    // 地图上的地区标记(位置即世界坐标)
+    const map = this.el.worldMap;
+    if (map) {
+      map.innerHTML = '';
+      regions.forEach((r) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = [
+          'wm-marker',
+          `theme-${r.theme}`,
+          r.current ? 'is-current' : '',
+          r.story ? 'is-story' : '',
+          r.city ? 'is-city' : '',
+          r.visited ? 'is-visited' : '',
+          this._worldSelected === r.id ? 'is-selected' : '',
+        ].filter(Boolean).join(' ');
+        b.style.left = `${r.x}%`;
+        b.style.top = `${r.y}%`;
+        b.title = `${r.name} · ${r.dist} 里`;
+        b.innerHTML = `
+          <span class="wm-dot"></span>
+          <span class="wm-label">${this._escapeHtml(r.name)}</span>
+        `;
+        b.addEventListener('click', () => {
+          this._worldSelected = r.id;
+          this.renderWorld(this._worldState);
+          this.renderResources(economy);
+        });
+        map.appendChild(b);
+      });
+    }
+
+    // 右侧详情:选中的地区(默认当前所在地)
+    const sel = regions.find((r) => r.id === this._worldSelected) || cur;
+    this._renderWorldPanel(sel, cur, state);
+
+    // 全部地点清单(含里程 / 耗时 / 穿梭费用)
+    const list = this.el.worldList;
+    if (list) {
+      list.innerHTML = '';
+      [...regions].sort((a, b) => a.dist - b.dist).forEach((r) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = `world-row${r.current ? ' is-current' : ''}${r.story ? ' is-story' : ''}`;
+        row.innerHTML = `
+          <span class="wr-name">${this._escapeHtml(r.name)}</span>
+          <span class="wr-meta">${r.city ? '<b class="wr-city">主城</b>' : ''}<span class="wr-lv">Lv.${r.level} · ${r.levelLabel}</span></span>
+          <span class="wr-dist">${r.current ? '所在地' : `${r.dist} 里 · 约 ${this._fmtDuration(r.seconds)}`}</span>
+        `;
+        row.addEventListener('click', () => {
+          this._worldSelected = r.id;
+          this.renderWorld(this._worldState);
+          this.renderResources(economy);
+        });
+        list.appendChild(row);
+      });
+    }
+
+    if (this.el.worldNote) {
+      const veh = state.vehicle ? `当前载具:${state.vehicle}(旅途耗时 ×${state.speedMul})` : '当前徒步(可在商店或指定地点购买载具提速)';
+      this.el.worldNote.textContent = `${veh} · 全部 ${regions.length} 处地区已标注`;
+    }
+    this.renderResources(economy);
+  }
+
+  _renderWorldPanel(sel, cur, state) {
+    const box = this.el.worldPanel;
+    if (!box || !sel) return;
+    const here = sel.id === state.currentId;
+    const canShuttle = !!sel.city && !!cur?.city && !here;
+    box.innerHTML = `
+      <div class="wp-head">
+        <h3 class="wp-name">${this._escapeHtml(sel.name)}</h3>
+        <div class="wp-tags">
+          ${sel.city ? '<span class="wp-tag wp-tag-city">主城</span>' : ''}
+          ${sel.story ? '<span class="wp-tag wp-tag-story">剧情在此</span>' : ''}
+          ${sel.current ? '<span class="wp-tag wp-tag-here">所在地</span>' : ''}
+          <span class="wp-tag">Lv.${sel.level} · ${sel.levelLabel}</span>
+        </div>
+      </div>
+      <dl class="wp-stats">
+        <div><dt>里程</dt><dd>${here ? '—' : `${sel.dist} 里`}</dd></div>
+        <div><dt>预计耗时</dt><dd>${here ? '—' : this._fmtDuration(sel.seconds)}</dd></div>
+        <div><dt>行动力</dt><dd>${here ? '—' : `⚡ ${sel.ap}`}</dd></div>
+        <div><dt>途中遭遇</dt><dd>Lv.${sel.level} 敌人</dd></div>
+      </dl>
+      <p class="wp-note">
+        ${here ? '你正在此地。可前往「地区地图」查看本地 3 个地点。'
+          : (canShuttle ? `主城之间可「穿梭」:花费 🪙 ${sel.shuttleGold} 立即抵达。`
+            : (sel.city && !cur?.city ? '你所在处不是主城,无法穿梭 —— 先步行抵达任意主城。'
+              : '此地不是主城,只能步行前往(或购买载具提速)。'))}
+      </p>
+      <div class="wp-actions">
+        <button class="btn btn-primary" data-act="depart" ${here ? 'disabled' : ''}>启 程 前 往</button>
+        <button class="btn btn-ghost" data-act="shuttle" ${canShuttle ? '' : 'disabled'}>穿 梭 🪙${sel.shuttleGold}</button>
+        <button class="btn btn-ghost" data-act="local" ${here ? '' : 'disabled'}>地 区 地 图</button>
+      </div>
+    `;
+    box.querySelector('[data-act="depart"]')?.addEventListener('click', () => this.bus.emit('ui:world-depart', sel.id));
+    box.querySelector('[data-act="shuttle"]')?.addEventListener('click', () => this.bus.emit('ui:world-shuttle', sel.id));
+    box.querySelector('[data-act="local"]')?.addEventListener('click', () => this.bus.emit('ui:back-map'));
+  }
+
+  // ===== 旅途(实时行进) =====
+  renderTravel(snap) {
+    if (!snap) return;
+    if (this.el.travelFrom) this.el.travelFrom.textContent = snap.fromLabel || '—';
+    if (this.el.travelTo) this.el.travelTo.textContent = snap.toLabel || '—';
+    if (this.el.travelBar) this.el.travelBar.style.width = `${Math.round((snap.pct || 0) * 100)}%`;
+    if (this.el.travelRemain) {
+      this.el.travelRemain.textContent = snap.paused
+        ? `遭遇!已暂停 —— 还剩约 ${this._fmtDuration(snap.remainSec)}`
+        : `还剩约 ${this._fmtDuration(snap.remainSec)}`;
+    }
+    if (this.el.travelNote) {
+      const veh = snap.vehicle ? `载具:${snap.vehicle}` : '徒步';
+      this.el.travelNote.textContent = `全程 ${snap.dist} 里 · 预计 ${this._fmtDuration(snap.totalSec)} · ${veh} · 途经 Lv.${snap.level} 地带`;
+    }
+    if (this.el.travelLog) {
+      this.el.travelLog.innerHTML = (snap.log || []).map((t) => `<div class="tl-line">${this._escapeHtml(t)}</div>`).join('');
+    }
+  }
+
+  // ===== NPC 对话 =====
+  showNpcDialog(npc, lines, opts = {}) {
+    const box = this.el.npcDialog;
+    if (!box || !npc) return;
+    if (this.el.npcTitle) this.el.npcTitle.textContent = opts.title || '交 谈';
+    if (this.el.npcName) this.el.npcName.textContent = npc.name || '路人';
+    if (this.el.npcTag) this.el.npcTag.textContent = npc.tag || '';
+    if (this.el.npcLines) {
+      this.el.npcLines.innerHTML = (lines || []).map((t) => `<p class="npc-line">「${this._escapeHtml(t)}」</p>`).join('');
+    }
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._npcOpen = true;
+  }
+
+  closeNpcDialog() {
+    const box = this.el.npcDialog;
+    this._npcOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._npcOpen) box.hidden = true; }, 200);
+  }
+
+  // ===== 新手引导 =====
+  openTutorial() {
+    const box = this.el.tutorial;
+    if (!box) return;
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._tutorialOpen = true;
+  }
+
+  closeTutorial() {
+    const box = this.el.tutorial;
+    this._tutorialOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._tutorialOpen) box.hidden = true; }, 200);
   }
 
   // ===== 市场 =====

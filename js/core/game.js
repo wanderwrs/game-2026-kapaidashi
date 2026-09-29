@@ -20,12 +20,30 @@ import { Battle } from '../combat/battle.js';
 import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js';
 import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js';
 import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js';
-import { Economy } from './economy.js?v=20260929d';
+import {
+  WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
+} from '../data/world.js';
+import { NPCS } from '../data/npcs.js';
+import { Economy } from './economy.js?v=20260929e';
+import { Travel } from './travel.js?v=20260929e';
 import { NarrativeEngine, ENDINGS } from '../narrative/engine.js';
 import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js';
-import { UI } from '../ui/ui.js?v=20260929d';
+import { UI } from '../ui/ui.js?v=20260929e';
 
 const PROGRESS_KEY = 'longji.progress.v1';
+const TUTORIAL_KEY = 'longji.tutorial.v1';
+/** 途中遭遇可用的随机 NPC 上限(每次最多出现的候选数) */
+const MAX_STOP_NPCS = 3;
+
+/** 教程是否已看过 */
+function loadTutorialSeen() {
+  try { return localStorage.getItem(TUTORIAL_KEY) === '1'; } catch { return false; }
+}
+
+/** 记录教程已看过 */
+function markTutorialSeen() {
+  try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch { /* 忽略存储异常 */ }
+}
 
 /** 读取本机通关进度(记录哪些大章已通关) */
 function loadProgress() {
@@ -46,6 +64,8 @@ export const GameState = Object.freeze({
   CAREER: 'career',
   NARRATIVE: 'narrative',
   MAP: 'map',
+  WORLD: 'world',
+  TRAVEL: 'travel',
   SHOP: 'shop',
   BAG: 'bag',
   JOB: 'job',
@@ -69,9 +89,17 @@ export class Game {
     this.currentBattle = null;
     this._currentRewards = null;
     this._runStartChapter = null;   // 本局起始大章(用于通关判定)
-    this.regionId = null;           // 当前地区(=章节)
+    this.regionId = null;           // 玩家当前所在地区(=章节)
+    this.storyRegionId = null;      // 剧情门控所在地区(此刻该去哪儿开剧情)
     this.stopIndex = 0;             // 当前所在地点索引
     this.segment = null;            // 当前剧情段落 { chapterId, nodeId, stopIndex }
+    this.travel = null;             // 旅途控制器(实时计时)
+    this._trip = null;              // 本次旅途的目的地 { kind, regionId, stopIndex }
+    this._wildBattle = false;       // 当前战斗是否为途中遭遇(而非剧情战斗)
+    this._npcCache = new Map();     // `${regionId}:${stopIndex}` → 驻留 NPC 列表
+    this._themeNpcCache = new Map(); // theme → 该主题的 NPC 池
+    this._visited = new Set();      // 本局已到过的地区
+    this.tutorialSeen = loadTutorialSeen();
     this.audio = new AudioEngine();
     this.audio.arm();
     this.progress = loadProgress();
@@ -99,8 +127,15 @@ export class Game {
     this.currentBattle = null;
     this._currentRewards = null;
     this.regionId = startChapter;
+    this.storyRegionId = startChapter;
     this.stopIndex = 0;
     this.segment = null;
+    this._trip = null;
+    this._wildBattle = false;
+    this._npcCache = new Map();
+    this._themeNpcCache = new Map();
+    this._visited = new Set([startChapter]);
+    this.travel = new Travel({ bus: this.bus, rng: this.rng });
 
     // 经济:初始一点金币与补给
     this.economy = new Economy({ gold: 40, apMax: 10 });
@@ -161,7 +196,8 @@ export class Game {
   _mapState() {
     const region = REGIONS[this.regionId];
     const gate = this.engine?.pendingGate;
-    const objectiveIndex = gate && gate.chapterId === this.regionId
+    const isStoryRegion = !!gate && gate.chapterId === this.regionId;
+    const objectiveIndex = isStoryRegion
       ? region.stops.findIndex((s) => s.node === gate.nodeId)
       : -1;
     return {
@@ -170,7 +206,11 @@ export class Game {
       chapterNum: this._chapterNum(),
       currentIndex: this.stopIndex,
       objectiveIndex,
+      isStoryRegion,
+      storyRegionId: this.storyRegionId,
       travelCost: region.stops.map((_, i) => this.economy.travelCost(this.stopIndex, i)),
+      travelSeconds: region.stops.map((_, i) => tripSeconds(stopDistance(this.stopIndex, i), this.economy.travelSpeedMul())),
+      npcs: this._npcsAt(this.regionId, this.stopIndex),
       economy: this.economy,
     };
   }
@@ -184,6 +224,7 @@ export class Game {
   _onGate({ chapterId, nodeId }) {
     const region = REGIONS[chapterId];
     this.regionId = chapterId;
+    this.storyRegionId = chapterId;
     if (!region) { this.transition(GameState.NARRATIVE); return; }
     const idx = region.stops.findIndex((s) => s.node === nodeId);
     // 门控开启:玩家须依剧情提示自行前往目标地点(回到地区起点,消耗行动力抵达)
@@ -194,30 +235,261 @@ export class Game {
     this._renderMap();
   }
 
-  /** 前往地区内的另一地点(消耗行动力) */
-  _travelTo(i) {
-    const region = REGIONS[this.regionId];
-    if (!region || i < 0 || i >= region.stops.length || i === this.stopIndex) return;
-    const cost = this.economy.travelCost(this.stopIndex, i);
-    if (!this.economy.spendAp(cost)) {
+  // ===== 世界地图 / 旅途 =====
+  /** 世界地图状态:全部地区 + 里程 / 耗时 / 穿梭费用 */
+  _worldState() {
+    const cur = this.regionId;
+    const city = this.economy.travelSpeedMul();
+    const discount = this.economy.equipStats().travelDiscount;
+    const regions = Object.keys(WORLD).map((id) => {
+      const dist = regionDistance(cur, id);
+      return {
+        id,
+        name: REGIONS[id]?.name || id,
+        theme: REGIONS[id]?.theme || 'village',
+        x: WORLD[id].x,
+        y: WORLD[id].y,
+        level: WORLD[id].level,
+        levelLabel: levelLabel(WORLD[id].level),
+        city: !!WORLD[id].city,
+        current: id === cur,
+        story: id === this.storyRegionId,
+        visited: this._visited.has(id),
+        dist,
+        seconds: tripSeconds(dist, city),
+        ap: travelApCost(dist, discount),
+        shuttleGold: shuttleGold(dist),
+      };
+    });
+    return {
+      regions,
+      currentId: cur,
+      storyRegionId: this.storyRegionId,
+      vehicle: this.economy.vehicleName(),
+      speedMul: city,
+      cities: Object.keys(WORLD).filter((id) => WORLD[id].city),
+      tutorialSeen: this.tutorialSeen,
+      economy: this.economy,
+    };
+  }
+
+  /** 打开世界地图(全部地区总览) */
+  _openWorld() {
+    this._visited.add(this.regionId);
+    this.ui.renderWorld(this._worldState());
+    this._syncUi();
+    this.transition(GameState.WORLD);
+    this._maybeShowTutorial();
+  }
+
+  /** 从世界地图「启程」前往某地区:花行动力 + 真实旅途时间 */
+  _worldDepart(regionId) {
+    if (!WORLD[regionId] || regionId === this.regionId) {
+      this.ui.showToast('你已经在这里了');
+      return;
+    }
+    const dist = regionDistance(this.regionId, regionId);
+    const discount = this.economy.equipStats().travelDiscount;
+    const ap = travelApCost(dist, discount);
+    if (!this.economy.spendAp(ap)) {
       this.ui.showToast('行动力不足 —— 休息一下,或吃点干粮');
       return;
     }
-    this.stopIndex = i;
-    this._renderMap();
-    this.ui.showToast(`抵达「${region.stops[i].name}」,消耗 ${cost} 行动力`);
+    this._syncUi();
+    this._depart({
+      kind: 'region',
+      regionId,
+      stopIndex: 0,
+      fromLabel: REGIONS[this.regionId]?.name || '此地',
+      toLabel: REGIONS[regionId]?.name || regionId,
+      dist,
+      level: WORLD[regionId].level,
+      poolKey: regionId,
+      theme: REGIONS[regionId]?.theme || 'village',
+      ap,
+    });
   }
 
-  /** 在当前地点开启下一段剧情(必须在目标地点) */
+  /** 主城之间「穿梭」:花金币,瞬间抵达 */
+  _worldShuttle(regionId) {
+    const fromCity = !!WORLD[this.regionId]?.city;
+    const toCity = !!WORLD[regionId]?.city;
+    if (!fromCity || !toCity) {
+      this.ui.showToast('「穿梭」只往返于主城之间');
+      return;
+    }
+    if (regionId === this.regionId) { this.ui.showToast('你已经在这里了'); return; }
+    const dist = regionDistance(this.regionId, regionId);
+    const gold = shuttleGold(dist);
+    if (this.economy.gold < gold) { this.ui.showToast(`金币不足(需 ${gold})`); return; }
+    this.economy.gold -= gold;
+    this.regionId = regionId;
+    this.stopIndex = 0;
+    this._visited.add(regionId);
+    this._syncUi();
+    this.transition(GameState.MAP);
+    this._renderMap();
+    this.ui.showToast(`穿梭至「${REGIONS[regionId]?.name}」,花费 ${gold} 金币`);
+  }
+
+  /** 地区内短途移动:同样按真实时间行进 */
+  _travelTo(i) {
+    const region = REGIONS[this.regionId];
+    if (!region || i < 0 || i >= region.stops.length || i === this.stopIndex) return;
+    const dist = stopDistance(this.stopIndex, i);
+    const discount = this.economy.equipStats().travelDiscount;
+    const ap = travelApCost(dist, discount);
+    if (!this.economy.spendAp(ap)) {
+      this.ui.showToast('行动力不足 —— 休息一下,或吃点干粮');
+      return;
+    }
+    this._syncUi();
+    this._depart({
+      kind: 'stop',
+      regionId: this.regionId,
+      stopIndex: i,
+      fromLabel: region.stops[this.stopIndex].name,
+      toLabel: region.stops[i].name,
+      dist,
+      level: WORLD[this.regionId]?.level ?? this._chapterNum(),
+      poolKey: this.regionId,
+      theme: region.stops[i].theme || region.theme || 'village',
+      ap,
+    });
+  }
+
+  /** 真正开启一段实时旅途 */
+  _depart(trip) {
+    this._trip = { kind: trip.kind, regionId: trip.regionId, stopIndex: trip.stopIndex };
+    this.travel.start({
+      fromLabel: trip.fromLabel,
+      toLabel: trip.toLabel,
+      dist: trip.dist,
+      seconds: tripSeconds(trip.dist, this.economy.travelSpeedMul()),
+      level: trip.level,
+      poolKey: trip.poolKey,
+      vehicle: this.economy.vehicleName(),
+      npcPool: this._npcsForTheme(trip.theme),
+    });
+    this.transition(GameState.TRAVEL);
+  }
+
+  /** 旅途结束:落到目的地点 */
+  _onTravelArrive() {
+    const trip = this._trip;
+    if (!trip) return;
+    this._trip = null;
+    if (trip.kind === 'region') {
+      this.regionId = trip.regionId;
+      this.stopIndex = 0;
+      this._visited.add(trip.regionId);
+    } else {
+      this.stopIndex = trip.stopIndex;
+    }
+    this._npcCache.delete(`${this.regionId}:${this.stopIndex}`);
+    this.transition(GameState.MAP);
+    this._renderMap();
+    const region = REGIONS[this.regionId];
+    this.ui.showToast(`抵达「${region?.stops[this.stopIndex]?.name || region?.name}」`);
+  }
+
+  /** 途中遭遇(怪物 / 路人 NPC) */
+  _onTravelEvent({ type, npc }) {
+    if (type === 'encounter') {
+      const level = WORLD[this.regionId]?.level ?? this._chapterNum();
+      this._startWildBattle(level);
+      return;
+    }
+    if (type === 'npc' && npc) {
+      this.ui.showNpcDialog(npc, this._npcLines(npc, 3), { title: '路上遇见' });
+    }
+  }
+
+  // ===== 随机 NPC =====
+  /** 某地驻留的随机 NPC(每局固定,缓存) */
+  _npcsAt(regionId, stopIndex) {
+    const key = `${regionId}:${stopIndex}`;
+    if (this._npcCache.has(key)) return this._npcCache.get(key);
+    const stop = REGIONS[regionId]?.stops?.[stopIndex];
+    const theme = stop?.theme || REGIONS[regionId]?.theme || 'village';
+    const pool = this._npcsForTheme(theme);
+    const picked = [];
+    const used = new Set();
+    let guard = 0;
+    while (picked.length < MAX_STOP_NPCS && used.size < pool.length && guard++ < 200) {
+      const n = pool[Math.floor(this.rng.next() * pool.length)];
+      if (!n || used.has(n.id)) continue;
+      used.add(n.id);
+      picked.push(n);
+    }
+    this._npcCache.set(key, picked);
+    return picked;
+  }
+
+  /** 按地区主题筛选 NPC 池 */
+  _npcsForTheme(theme) {
+    if (this._themeNpcCache.has(theme)) return this._themeNpcCache.get(theme);
+    const pool = NPCS.filter((n) => Array.isArray(n.where) && n.where.includes(theme));
+    this._themeNpcCache.set(theme, pool);
+    return pool;
+  }
+
+  /** 抽取该 NPC 的随机台词(1~maxLines 句,不重复) */
+  _npcLines(npc, maxLines = 5) {
+    const lines = Array.isArray(npc?.lines) ? npc.lines : [];
+    if (!lines.length) return [];
+    const want = 1 + Math.floor(this.rng.next() * Math.min(maxLines, lines.length));
+    const pool = [...lines];
+    const out = [];
+    while (out.length < want && pool.length) {
+      const i = Math.floor(this.rng.next() * pool.length);
+      out.push(pool.splice(i, 1)[0]);
+    }
+    return out;
+  }
+
+  /** 点击驻留 NPC:弹出随机对话 */
+  _talkNpc(npcId) {
+    const npc = NPCS.find((n) => n.id === npcId);
+    if (!npc) return;
+    this.ui.showNpcDialog(npc, this._npcLines(npc, 5), { title: '交谈' });
+  }
+
+  /** 关闭 NPC 对话;若是旅途中的路人,则继续赶路 */
+  _closeNpcDialog() {
+    this.ui.closeNpcDialog();
+    if (this.travel?.active && this.travel.paused) this.travel.resume();
+  }
+
+  /** 在当前地点开启下一段剧情(必须身处剧情地区、且站在目标地点) */
   _beginStory() {
     const region = REGIONS[this.regionId];
     const state = this._mapState();
+    // 不在剧情地区:引导回世界地图,前往剧情所在地区
+    if (!state.isStoryRegion) {
+      this.ui.showToast(`剧情在「${REGIONS[this.storyRegionId]?.name || '别处'}」—— 先去世界地图启程`);
+      this._openWorld();
+      return;
+    }
     if (!region || state.objectiveIndex < 0) { this.transition(GameState.NARRATIVE); return; }
     if (this.stopIndex !== state.objectiveIndex) {
       this.ui.showToast(`需先前往「${region.stops[state.objectiveIndex].name}」`);
       return;
     }
     if (this.engine.resumeGate()) this.transition(GameState.NARRATIVE);
+  }
+
+  // ===== 教程引导 =====
+  /** 首次进入世界地图时弹出引导 */
+  _maybeShowTutorial() {
+    if (this.tutorialSeen) return;
+    this.ui.openTutorial();
+  }
+
+  _closeTutorial() {
+    this.tutorialSeen = true;
+    markTutorialSeen();
+    this.ui.closeTutorial();
   }
 
   _rest() {
@@ -360,6 +632,8 @@ export class Game {
   }
 
   onBattleEnd(result) {
+    // 途中遭遇战:不入战利品流程,胜利后继续赶路
+    if (this._wildBattle) { this._onWildBattleEnd(result); return; }
     // 非剧情战斗(框架战斗):直接进结算
     if (!this.engine || !this.engine._pendingBattle) {
       this.transition(result === 'victory' ? GameState.VICTORY : GameState.DEFEAT);
@@ -375,6 +649,76 @@ export class Game {
     } else {
       this._onDefeat();
     }
+  }
+
+  // ===== 途中遭遇战 =====
+  /** 旅途中随机遭遇:从该地区敌人池随机取一个,按地区等级缩放 */
+  _startWildBattle(level) {
+    if (!this.deck) {
+      const base = ['strike', 'strike', 'strike', 'defend', 'defend', 'cleave', 'pommel', 'shield_bash'];
+      this.deck = new Deck(base.map((id) => CARDS[id]).filter(Boolean), this.rng);
+    }
+    const poolKey = this.regionId;
+    const pool = ENEMIES[poolKey] || ENEMIES.normal;
+    const raw = pool[Math.floor(this.rng.next() * pool.length)] || pool[0];
+    const def = scaleEnemy(raw, level);
+
+    this.player.power = this.economy.equipStats().atkPower;
+    const bonusStrength = this.player.power + this.economy.consumePendingPower();
+
+    this._wildBattle = true;
+    this.currentBattle = new Battle({
+      player: this.player,
+      deck: this.deck,
+      enemyDef: def,
+      rng: this.rng,
+      bus: this.bus,
+      bonusStrength,
+    });
+    this.ui.bindBattle(this.currentBattle);
+    this.transition(GameState.BATTLE);
+    this.currentBattle.start();
+  }
+
+  /** 途中遭遇战结束:胜则继续赶路,败则中止旅途退回起点 */
+  _onWildBattleEnd(result) {
+    this._wildBattle = false;
+    this.currentBattle = null;
+    if (result === 'victory') {
+      const ch = this._chapterNum();
+      const gold = 5 + Math.floor(this.rng.next() * 5) + ch;
+      this.economy.gold += gold;
+      let loot = null;
+      if (this.rng.next() < 0.35) {
+        loot = LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
+        this.economy.addItem(loot, 1);
+      }
+      this._syncUi();
+      this.ui.showToast(`击退拦路者,拾得 ${gold} 金币${loot ? `与「${ITEMS[loot]?.name || loot}」` : ''}`);
+      if (this.travel?.active) {
+        this.transition(GameState.TRAVEL);
+        this.travel.resume();
+      } else {
+        this.transition(GameState.MAP);
+        this._renderMap();
+      }
+      return;
+    }
+
+    // 战败:中止旅途,退回出发地
+    const fromId = this.regionId;
+    const penalty = Math.max(10, Math.floor(this.economy.gold * 0.15));
+    this.economy.gold = Math.max(0, this.economy.gold - penalty);
+    this.travel?.cancel();
+    this._trip = null;
+    this.stopIndex = 0;
+    this._syncPlayerStats();
+    this.player.hp = this.player.maxHp;
+    this.player.mp = this.player.maxMp;
+    this._syncUi();
+    this.transition(GameState.MAP);
+    this._renderMap();
+    this.ui.showToast(`你倒在了路上……退回「${REGIONS[fromId]?.stops[0]?.name || '出发地'}」,损失 ${penalty} 金币`);
   }
 
   /** 胜利奖励:金币 + 概率掉落杂物 */
@@ -520,7 +864,19 @@ export class Game {
     this.bus.on('ui:map-shop', () => this._openShop());
     this.bus.on('ui:map-job', () => this._openJobs());
     this.bus.on('ui:map-bag', () => this._openBag());
+    this.bus.on('ui:map-world', () => this._openWorld());
     this.bus.on('ui:back-map', () => this._backToMap());
+
+    // 世界地图 / 旅途 / NPC / 教程
+    this.bus.on('ui:world-depart', (id) => this._worldDepart(id));
+    this.bus.on('ui:world-shuttle', (id) => this._worldShuttle(id));
+    this.bus.on('ui:npc-talk', (id) => this._talkNpc(id));
+    this.bus.on('ui:npc-close', () => this._closeNpcDialog());
+    this.bus.on('ui:tutorial-close', () => this._closeTutorial());
+    this.bus.on('travel:progress', (snap) => this.ui.renderTravel(snap));
+    this.bus.on('travel:start', (snap) => this.ui.renderTravel(snap));
+    this.bus.on('travel:event', (payload) => this._onTravelEvent(payload));
+    this.bus.on('travel:arrive', () => this._onTravelArrive());
 
     // 市场 / 背包 / 打工
     this.bus.on('ui:shop-buy', (id) => this._buy(id));

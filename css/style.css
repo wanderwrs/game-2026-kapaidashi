@@ -1190,6 +1190,179 @@ body {
 .map-services { display: flex; gap: var(--sp-12); justify-content: center; flex-wrap: wrap; }
 .panel-actions { display: flex; gap: var(--sp-12); justify-content: center; flex-wrap: wrap; margin-top: var(--sp-4); }
 
+/* 本地随机 NPC */
+.map-npcs-wrap { display: flex; flex-direction: column; gap: 6px; }
+.map-npcs-title { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
+.map-npcs { display: flex; gap: var(--sp-8); flex-wrap: wrap; }
+.npc-chip {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font: inherit; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border-soft); border-radius: var(--radius-full);
+  padding: 3px 12px; transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
+  touch-action: manipulation;
+}
+.npc-chip:hover { border-color: var(--gold-line); transform: translateY(-2px); }
+.npc-chip-name { font-family: var(--font-display); font-size: 13px; letter-spacing: 1px; }
+.npc-chip-tag { font-size: 10.5px; color: var(--text-muted); }
+.npc-empty { font-size: 11.5px; color: var(--text-faint); }
+.stop-eta { display: block; margin-top: 6px; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+
+/* ============================================================
+   世界地图(全部地区总览)
+   ============================================================ */
+.view-world, .view-travel { gap: var(--sp-12); overflow-y: auto; padding-right: var(--sp-4); }
+.world-note { font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono); }
+
+.world-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); gap: var(--sp-12); align-items: start; }
+
+.world-map {
+  position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 340px;
+  background:
+    radial-gradient(circle at 22% 26%, rgba(63, 143, 196, 0.10), transparent 42%),
+    radial-gradient(circle at 76% 66%, rgba(208, 64, 43, 0.10), transparent 45%),
+    linear-gradient(160deg, #0b1017, #070a0f);
+  border: 1px solid var(--border); border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.wm-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(201, 162, 39, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 162, 39, 0.05) 1px, transparent 1px);
+  background-size: 10% 10%;
+}
+.wm-marker {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: none; border: 0; padding: 2px; cursor: pointer; font: inherit;
+  touch-action: manipulation;
+}
+.wm-dot {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--text-muted); border: 2px solid rgba(8, 10, 16, 0.9);
+  box-shadow: 0 0 0 1px var(--border-soft);
+  transition: transform 0.18s var(--ease), background 0.18s var(--ease);
+}
+.wm-label {
+  font-family: var(--font-display); font-size: 10px; letter-spacing: 1px;
+  color: var(--text-muted); white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.9);
+}
+.wm-marker:hover .wm-dot { transform: scale(1.35); }
+.wm-marker:hover .wm-label { color: var(--text); }
+.wm-marker.is-visited .wm-dot { background: var(--text-soft); }
+.wm-marker.is-city .wm-dot { background: var(--gold); box-shadow: 0 0 10px var(--gold-line); }
+.wm-marker.is-city .wm-label { color: var(--text-soft); }
+.wm-marker.is-current .wm-dot { background: var(--arcane-bright); box-shadow: 0 0 12px rgba(111, 192, 232, 0.7); }
+.wm-marker.is-current .wm-label { color: var(--arcane-bright); }
+.wm-marker.is-story .wm-dot { background: var(--ember-bright); box-shadow: 0 0 14px rgba(255, 106, 69, 0.75); animation: wmPulse 2.2s infinite; }
+.wm-marker.is-story .wm-label { color: var(--ember-bright); }
+.wm-marker.is-selected .wm-dot { outline: 2px solid var(--gold-bright); outline-offset: 3px; }
+.wm-marker.is-selected .wm-label { color: var(--gold-bright); }
+@keyframes wmPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 106, 69, 0.5); }
+  50%      { box-shadow: 0 0 20px rgba(255, 106, 69, 0.95); }
+}
+
+.world-side { display: flex; flex-direction: column; gap: var(--sp-8); min-width: 0; }
+.world-panel {
+  background: linear-gradient(180deg, var(--surface), var(--bg-soft));
+  border: 1px solid var(--border); border-radius: var(--radius-card);
+  padding: var(--sp-12);
+}
+.wp-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--sp-8); }
+.wp-name { font-family: var(--font-display); font-size: 18px; letter-spacing: 2px; margin: 0; }
+.wp-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.wp-tag {
+  font-size: 10.5px; color: var(--text-muted); border: 1px solid var(--border-soft);
+  border-radius: var(--radius-full); padding: 1px 8px; white-space: nowrap;
+}
+.wp-tag-city { color: var(--gold-bright); border-color: var(--gold-line); }
+.wp-tag-story { color: var(--ember-bright); border-color: var(--ember); }
+.wp-tag-here { color: var(--arcane-bright); border-color: var(--arcane); }
+.wp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px var(--sp-12); margin: 0 0 var(--sp-8); }
+.wp-stats > div { display: flex; justify-content: space-between; gap: var(--sp-8); border-bottom: 1px dashed var(--border-soft); padding-bottom: 3px; }
+.wp-stats dt { font-size: 11px; color: var(--text-muted); }
+.wp-stats dd { margin: 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-soft); }
+.wp-note { font-size: 11.5px; line-height: 1.7; color: var(--text-muted); margin: 0 0 var(--sp-8); }
+.wp-actions { display: flex; gap: var(--sp-8); flex-wrap: wrap; }
+
+.world-list-head { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; margin-top: var(--sp-4); }
+.world-list { display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow-y: auto; }
+.world-row {
+  display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'name meta' 'dist dist';
+  gap: 2px var(--sp-8); align-items: center; text-align: left; font: inherit; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius);
+  padding: 6px 10px; color: var(--text); touch-action: manipulation;
+  transition: border-color 0.2s var(--ease);
+}
+.world-row:hover { border-color: var(--gold-line); }
+.world-row.is-current { border-color: var(--arcane); background: var(--arcane-soft); }
+.world-row.is-story .wr-name { color: var(--ember-bright); }
+.wr-name { grid-area: name; font-family: var(--font-display); font-size: 13.5px; letter-spacing: 1px; }
+.wr-meta { grid-area: meta; display: flex; gap: 6px; align-items: center; }
+.wr-city { font-size: 10px; color: var(--gold-bright); border: 1px solid var(--gold-line); border-radius: var(--radius-full); padding: 0 6px; }
+.wr-lv { font-size: 10.5px; color: var(--text-muted); }
+.wr-dist { grid-area: dist; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+
+/* ============================================================
+   旅途(实时行进)
+   ============================================================ */
+.view-travel.is-active { display: flex; align-items: center; justify-content: center; }
+.travel-card {
+  width: min(560px, 100%);
+  background: linear-gradient(180deg, var(--surface), var(--bg-soft));
+  border: 1px solid var(--border); border-radius: var(--radius-card);
+  padding: var(--sp-24); text-align: center; box-shadow: var(--shadow-md);
+}
+.travel-eyebrow { font-size: 11px; letter-spacing: 6px; color: var(--text-muted); margin: 0 0 var(--sp-12); }
+.travel-route { display: flex; align-items: center; justify-content: center; gap: var(--sp-12); margin-bottom: var(--sp-16); }
+.travel-stop { font-family: var(--font-display); font-size: 17px; letter-spacing: 2px; }
+#travel-to { color: var(--gold-bright); }
+.travel-arrow { color: var(--text-faint); }
+.travel-track {
+  position: relative; height: 10px; border-radius: var(--radius-full);
+  background: var(--surface-muted); overflow: hidden; border: 1px solid var(--border-soft);
+}
+#travel-bar {
+  display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+  box-shadow: 0 0 12px var(--gold-line);
+  transition: width 0.25s linear;
+}
+.travel-remain { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-soft); margin: var(--sp-12) 0 4px; }
+.travel-note { font-size: 11.5px; color: var(--text-muted); margin: 0; }
+.travel-log { display: flex; flex-direction: column; gap: 4px; margin-top: var(--sp-12); }
+.tl-line {
+  font-size: 12px; color: var(--text-soft); font-family: var(--font-display);
+  border-left: 2px solid var(--border-soft); padding-left: var(--sp-8); text-align: left;
+}
+
+/* ============================================================
+   NPC 对话 / 新手引导
+   ============================================================ */
+.npc-panel { max-width: 520px; }
+.npc-dialog-title { letter-spacing: 4px; }
+.npc-who { display: flex; align-items: baseline; gap: var(--sp-8); padding: 0 var(--sp-4) var(--sp-8); border-bottom: 1px solid var(--border-soft); }
+.npc-dialog-name { font-family: var(--font-display); font-size: 17px; letter-spacing: 2px; color: var(--gold-bright); }
+.npc-dialog-tag { font-size: 11px; color: var(--text-muted); }
+.npc-lines { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-12) var(--sp-4); }
+.npc-line {
+  margin: 0; font-family: var(--font-display); font-size: 14px; line-height: 1.9;
+  color: var(--text); background: var(--surface-muted); border-left: 3px solid var(--gold-line);
+  border-radius: var(--radius); padding: var(--sp-8) var(--sp-12);
+}
+.tutorial-lead { font-family: var(--font-display); font-size: 14px; color: var(--gold-bright); margin: 0 0 var(--sp-12); }
+.tutorial-steps { margin: 0 0 var(--sp-16); padding-left: 1.4em; display: flex; flex-direction: column; gap: var(--sp-12); }
+.tutorial-steps li { font-size: 13px; line-height: 1.85; color: var(--text-soft); }
+.tutorial-steps b { color: var(--gold-bright); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .world-layout { grid-template-columns: 1fr; }
+  .world-map { min-height: 260px; }
+  .wm-label { font-size: 9px; }
+}
+
 /* 物品列表(市场 / 背包 / 打工共用) */
 .shop-list, .bag-list, .job-list { display: flex; flex-direction: column; gap: var(--sp-8); }
 .item-row {

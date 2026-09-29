@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260929b" />
+  <link rel="stylesheet" href="css/style.css?v=20260929e" />
 </head>
 <body>
   <div id="app" class="app">
@@ -120,9 +120,51 @@
       <p id="map-hint" class="map-hint">—</p>
       <div id="map-stops" class="map-stops"></div>
       <div id="map-services" class="map-services"></div>
+      <div class="map-npcs-wrap">
+        <div class="map-npcs-title">本地人物(点击交谈)</div>
+        <div id="map-npcs" class="map-npcs"></div>
+      </div>
       <div class="panel-actions">
         <button id="btn-map-story" class="btn btn-primary">开 始 剧 情</button>
+        <button id="btn-map-world" class="btn btn-ghost">世 界 地 图</button>
         <button id="btn-map-bag" class="btn btn-ghost">背 包</button>
+      </div>
+    </section>
+
+    <!-- 世界地图:全部地区总览,显示里程与耗时(仿 FF14) -->
+    <section id="view-world" class="view view-world">
+      <div class="panel-head">
+        <h2 class="view-title">世 界 地 图</h2>
+        <div id="world-note" class="world-note">—</div>
+      </div>
+      <div class="world-layout">
+        <div id="world-map" class="world-map">
+          <div class="wm-grid" aria-hidden="true"></div>
+        </div>
+        <div class="world-side">
+          <div id="world-panel" class="world-panel"></div>
+          <div class="world-list-head">全部地点(按距离由近及远)</div>
+          <div id="world-list" class="world-list"></div>
+        </div>
+      </div>
+      <div class="panel-actions">
+        <button id="btn-world-back" class="btn btn-ghost">返 回 地 区</button>
+      </div>
+    </section>
+
+    <!-- 旅途:按里程消耗真实时间的行进 -->
+    <section id="view-travel" class="view view-travel">
+      <div class="travel-card">
+        <p class="travel-eyebrow">旅 途 中</p>
+        <div class="travel-route">
+          <span id="travel-from" class="travel-stop">—</span>
+          <span class="travel-arrow">→</span>
+          <span id="travel-to" class="travel-stop">—</span>
+        </div>
+        <div class="travel-track"><i id="travel-bar"></i></div>
+        <p id="travel-remain" class="travel-remain">—</p>
+        <p id="travel-note" class="travel-note">—</p>
+        <div id="travel-log" class="travel-log"></div>
       </div>
     </section>
 
@@ -213,6 +255,60 @@
     </section>
   </div>
 
+  <!-- NPC 对话 -->
+  <div id="npc-dialog" class="modal" hidden>
+    <div class="modal-backdrop" data-npc-close></div>
+    <section class="modal-panel npc-panel" role="dialog" aria-modal="true" aria-labelledby="npc-name">
+      <header class="modal-head">
+        <h2 id="npc-title" class="modal-title npc-dialog-title">交 谈</h2>
+        <button id="btn-npc-close" class="modal-close" type="button" aria-label="关闭">✕</button>
+      </header>
+      <div class="npc-who">
+        <span id="npc-name" class="npc-dialog-name">路人</span>
+        <span id="npc-tag" class="npc-dialog-tag"></span>
+      </div>
+      <div id="npc-lines" class="npc-lines"></div>
+      <div class="panel-actions">
+        <button class="btn btn-primary" type="button" data-npc-close>告 辞</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 新手引导(首次进入世界地图时弹出) -->
+  <div id="tutorial" class="modal" hidden>
+    <div class="modal-backdrop" data-tutorial-close></div>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+      <header class="modal-head">
+        <h2 id="tutorial-title" class="modal-title">旅 程 指 引</h2>
+        <button class="modal-close" type="button" data-tutorial-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <p class="tutorial-lead">你要走的路,都画在这张地图上。四件事记牢:</p>
+        <ol class="tutorial-steps">
+          <li>
+            <b>看地图</b> —— 世界地图标出全部 15 处地区,并给出彼此之间的<b>里程</b>与<b>预计耗时</b>。
+            顶上带「剧情在此」的地方,就是当前该去的地方。
+          </li>
+          <li>
+            <b>赶路要花真实时间</b> —— 距离越远,行进越久(约 1~3 分钟,最远 5 分钟)。
+            装备<b>载具</b>能大幅缩短耗时:老马 ×0.75、板车 ×0.55、快马 ×0.45、快帆船 ×0.38、风翼 ×0.30。
+          </li>
+          <li>
+            <b>主城之间可穿梭</b> —— 身处主城时,可花<b>金币</b>瞬间抵达另一座主城,代价随里程递增。
+            不在主城就先步行过去。
+          </li>
+          <li>
+            <b>路上不太平</b> —— 途中会随机遇到该地区等级的怪物(可战斗夺金),
+            也会遇到形形色色的路人 NPC,点他们可听 1~5 句闲话。
+          </li>
+        </ol>
+        <div class="panel-actions">
+          <button class="btn btn-primary" type="button" data-tutorial-close>开 始 旅 程</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
   <!-- 游戏说明(操作指南) -->
   <div id="howto" class="modal" hidden>
     <div class="modal-backdrop" data-howto-close></div>
@@ -289,6 +385,36 @@
         </div>
 
         <div class="guide-group">
+          <h3 class="guide-group-title">世界地图与旅途</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="guide-key">世界地图</span>
+              <span class="guide-desc">共 15 处地区全部标注在地图上,每处都标出<b>里程</b>、<b>预计耗时</b>与敌人等级;标「剧情在此」的就是当前该去的地方</span>
+            </li>
+            <li>
+              <span class="guide-key">启程</span>
+              <span class="guide-desc">点地图或清单里的地区 → 「启程前往」,消耗行动力,并按里程消耗<b>真实时间</b>(约 1~3 分钟,最远 5 分钟)</span>
+            </li>
+            <li>
+              <span class="guide-key">载具</span>
+              <span class="guide-desc">在商店或指定地点购买并装备,可缩短旅途耗时:老马 ×0.75 / 板车 ×0.55 / 快马 ×0.45 / 快帆船 ×0.38 / 风翼 ×0.30,同时降低行动力消耗</span>
+            </li>
+            <li>
+              <span class="guide-key">穿梭</span>
+              <span class="guide-desc">身处<b>主城</b>时,可花金币瞬间抵达另一座主城,费用随里程递增</span>
+            </li>
+            <li>
+              <span class="guide-key">途中遭遇</span>
+              <span class="guide-desc">赶路途中会随机遇到该地区等级的怪物(可战斗夺金),也会遇到路人 NPC 搭话</span>
+            </li>
+            <li>
+              <span class="guide-key">随机 NPC</span>
+              <span class="guide-desc">每个地点有数位随机人物,点击「本地人物」即可交谈,每次 1~5 句闲话(共 70 位)</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="guide-group">
           <h3 class="guide-group-title">金钱与物资</h3>
           <ul class="guide-list">
             <li>
@@ -357,6 +483,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260929d"></script>
+  <script type="module" src="js/main.js?v=20260929e"></script>
 </body>
 </html>

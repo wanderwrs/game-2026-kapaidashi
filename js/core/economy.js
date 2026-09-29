@@ -116,6 +116,19 @@ export class Economy {
     return Math.max(1, base - this.equipStats().travelDiscount);
   }
 
+  /** 当前载具的旅途耗时倍率(越小越快;未装备载具 = 1) */
+  travelSpeedMul() {
+    const id = this.equipped.vehicle;
+    const mul = id ? ITEMS[id]?.speedMul : 1;
+    return typeof mul === 'number' && mul > 0 ? mul : 1;
+  }
+
+  /** 当前载具名称(未装备则返回 null) */
+  vehicleName() {
+    const id = this.equipped.vehicle;
+    return id ? ITEMS[id]?.name || id : null;
+  }
+
   // ===== 使用消耗品 =====
   /**
    * 使用物品。

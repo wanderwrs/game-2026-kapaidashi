@@ -6,7 +6,8 @@
  *   food    食品:恢复 行动力(ap)
  *   weapon  武器:装备后提升战力 / 生命
  *   outfit  服饰:装备后提升生命 / 魔力(含「皇帝的新装」这类特殊服饰)
- *   vehicle 载具:减少地图旅行消耗的行动力
+ *   vehicle 载具:减少地图旅行的行动力消耗,并加快旅途的真实耗时
+ *            speedMul 为旅途耗时倍率(越小越快,1 = 步行)
  *   misc    杂物:无效果,可捡拾、可出售换取金币
  *
  * effect(消耗品):{ kind: 'heal'|'mp'|'power'|'ap', amount }
@@ -52,10 +53,13 @@ export const ITEMS = {
     equipment: { slot: 'outfit', stats: {} },
   },
 
-  // ===== 载具(降低旅行行动力消耗) =====
-  old_horse:   { id: 'old_horse',   name: '老马',     category: 'vehicle', price: 90,  icon: '🐴', desc: '旅行行动力消耗 −1(每段至少 1)。', equipment: { slot: 'vehicle', stats: { travelDiscount: 1 } } },
-  cart:        { id: 'cart',        name: '板车',     category: 'vehicle', price: 180, icon: '🛒', desc: '旅行行动力消耗 −2。',             equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
-  wind_glider: { id: 'wind_glider', name: '风翼',     category: 'vehicle', price: 360, icon: '🪂', desc: '旅行行动力消耗 −3,行动力上限 +2。', equipment: { slot: 'vehicle', stats: { travelDiscount: 3, apMax: 2 } } },
+  // ===== 载具(降低旅行行动力消耗,并加快旅途的真实耗时) =====
+  // equipment.stats.travelDiscount:降低行动力消耗;speedMul:旅途耗时倍率(越小越快)
+  old_horse:   { id: 'old_horse',   name: '老马',     category: 'vehicle', price: 90,  icon: '🐴', desc: '旅途耗时 ×0.75,行动力消耗 −1。', speedMul: 0.75, equipment: { slot: 'vehicle', stats: { travelDiscount: 1 } } },
+  cart:        { id: 'cart',        name: '板车',     category: 'vehicle', price: 180, icon: '🛒', desc: '旅途耗时 ×0.55,行动力消耗 −2。', speedMul: 0.55, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
+  swift_horse: { id: 'swift_horse', name: '快马',     category: 'vehicle', price: 260, icon: '🐎', desc: '旅途耗时 ×0.45,行动力消耗 −2。', speedMul: 0.45, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
+  skiff:       { id: 'skiff',       name: '快帆船',   category: 'vehicle', price: 320, icon: '⛵', desc: '旅途耗时 ×0.38,行动力消耗 −2。', speedMul: 0.38, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
+  wind_glider: { id: 'wind_glider', name: '风翼',     category: 'vehicle', price: 360, icon: '🪂', desc: '旅途耗时 ×0.30,行动力消耗 −3,行动力上限 +2。', speedMul: 0.30, equipment: { slot: 'vehicle', stats: { travelDiscount: 3, apMax: 2 } } },
 
   // ===== 杂物(可捡拾 / 可出售) =====
   herbs:       { id: 'herbs',       name: '草药',     category: 'misc', price: 10, icon: '🌿', desc: '寻常草药,可卖给商人。' },
@@ -74,14 +78,14 @@ export function sellPrice(itemId) {
 /** 商店库存:按地区主题配置(买价 = ITEMS.price) */
 export const SHOP_STOCK = {
   village: ['hp_small', 'bread', 'traveler_cloak', 'iron_sword', 'old_horse'],
-  forest:  ['hp_small', 'dried_meat', 'mp_small', 'iron_sword'],
-  mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'steel_blade'],
-  city:    ['hp_large', 'mp_large', 'power_elixir', 'noble_robe', 'steel_blade', 'emperor_new_clothes'],
-  port:    ['hp_small', 'dried_meat', 'mp_large', 'noble_robe', 'cart'],
-  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'wind_glider'],
-  ruins:   ['hp_small', 'dried_meat', 'leather_armor', 'bone_charm'],
-  cliff:   ['hp_small', 'mp_small', 'iron_sword'],
-  camp:    ['hp_small', 'bread', 'iron_sword'],
+  forest:  ['hp_small', 'dried_meat', 'mp_small', 'iron_sword', 'swift_horse'],
+  mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'steel_blade', 'cart'],
+  city:    ['hp_large', 'mp_large', 'power_elixir', 'noble_robe', 'steel_blade', 'swift_horse', 'emperor_new_clothes'],
+  port:    ['hp_small', 'dried_meat', 'mp_large', 'noble_robe', 'cart', 'skiff'],
+  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'swift_horse', 'wind_glider'],
+  ruins:   ['hp_small', 'dried_meat', 'leather_armor', 'bone_charm', 'cart'],
+  cliff:   ['hp_small', 'mp_small', 'iron_sword', 'swift_horse'],
+  camp:    ['hp_small', 'bread', 'iron_sword', 'old_horse'],
 };
 
 /** 可捡拾杂物池:战斗胜利后有小概率获得 */
