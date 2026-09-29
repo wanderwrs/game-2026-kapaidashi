@@ -27,6 +27,8 @@
         </div>
       </div>
       <div class="topbar-right">
+        <button id="btn-howto" class="icon-btn" type="button" data-howto title="游戏说明" aria-label="游戏说明">?</button>
+        <button id="btn-music" class="music-toggle is-on" type="button" aria-pressed="true" title="背景音乐:开">♪</button>
         <span class="meta-label">回合</span>
         <code id="turn-display" class="meta-value">0</code>
         <span class="meta-label">层数</span>
@@ -41,12 +43,19 @@
         <p class="menu-eyebrow">中世纪 · 宗教 · 龙族 · 飞行与远洋</p>
         <h1 class="menu-title">龙脊少年</h1>
         <p class="menu-sub">守约</p>
-        <p class="menu-blurb">
-          家园焚于龙焰,幼弟被掳作「火种」。你握起父亲的旧剑——剑名「守约」。<br />
-          这一路,你将在剑、星图、风翼、盐风与信仰之间,决定你想成为谁。
-        </p>
+        <div class="menu-synopsis">
+          <h2 class="synopsis-title">故 事 梗 概</h2>
+          <p>
+            黑龙焚村的那一夜,你失去了家,也失去了幼弟——他被掳走,要做唤醒巨龙的「火种」。
+            你握起父亲留下的旧剑,它的名字叫「守约」。从此,你踏上一条穿越剑塔、王城、渔港与云端浮岛的
+            漫漫长路;在剑术、星图、风翼、盐风与信仰之间,一步步决定——你想成为谁。
+          </p>
+        </div>
+
+        <div id="chapter-select" class="chapter-select"></div>
+
         <div class="menu-actions">
-          <button id="btn-new-run" class="btn btn-primary">启 程</button>
+          <button id="btn-howto-menu" class="btn btn-ghost" type="button" data-howto>游戏说明</button>
           <button id="btn-seed-run" class="btn btn-ghost">指定种子</button>
         </div>
         <p class="menu-hint">文字冒险 + 卡牌对战 · 6 职业 / 15 章 / 4 结局</p>
@@ -149,6 +158,90 @@
         <p id="result-desc" class="result-desc"></p>
         <div id="result-stats" class="result-stats"></div>
         <button id="btn-restart" class="btn btn-primary">再 来 一 局</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 游戏说明(操作指南) -->
+  <div id="howto" class="modal" hidden>
+    <div class="modal-backdrop" data-howto-close></div>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="howto-title">
+      <header class="modal-head">
+        <h2 id="howto-title" class="modal-title">游 戏 说 明</h2>
+        <button class="modal-close" type="button" data-howto-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <div class="guide-group">
+          <h3 class="guide-group-title">剧情推进</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="guide-key">点击文本</span><span class="guide-sep">/</span><kbd>空格</kbd><span class="guide-sep">/</span><kbd>回车</kbd>
+              <span class="guide-desc">推进剧情；文字正在渐显时点击可立即显示全部</span>
+            </li>
+            <li>
+              <kbd>1</kbd><span class="guide-sep">~</span><kbd>9</kbd><span class="guide-sep">或点击选项</span>
+              <span class="guide-desc">做出抉择(选项会在段落读完后浮现)</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="guide-group">
+          <h3 class="guide-group-title">卡牌对战</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="guide-key">点击手牌</span>
+              <span class="guide-desc">打出卡牌,消耗能量;能量不足的牌会变暗</span>
+            </li>
+            <li>
+              <span class="guide-key">结束回合</span><span class="guide-sep">/</span><kbd>空格</kbd><span class="guide-sep">/</span><kbd>回车</kbd>
+              <span class="guide-desc">结束本回合,进入敌方的行动</span>
+            </li>
+            <li>
+              <span class="guide-key">敌人意图</span>
+              <span class="guide-desc"><b class="g-atk">⚔ 攻击</b> · <b class="g-def">🛡 防御</b> · <b class="g-buf">✦ 强化</b></span>
+            </li>
+            <li>
+              <span class="guide-key">状态效果</span>
+              <span class="guide-desc">易伤 / 虚弱 / 脆弱 为减益,力量 为增益</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="guide-group">
+          <h3 class="guide-group-title">章节与进度</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="guide-key">两大章</span>
+              <span class="guide-desc">主菜单可查看「第一大章 · 家园破碎」与「第二大章 · 踏上旅程」</span>
+            </li>
+            <li>
+              <span class="guide-key">解锁规则</span>
+              <span class="guide-desc">通关第一大章后,第二大章才会解锁——不能跳章</span>
+            </li>
+            <li>
+              <span class="guide-key">指定种子</span>
+              <span class="guide-desc">输入数字或文字,可复现同一局的随机结果</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="guide-group">
+          <h3 class="guide-group-title">界面</h3>
+          <ul class="guide-list">
+            <li>
+              <span class="guide-key">像素侧栏</span>
+              <span class="guide-desc">左侧为人物状态与服饰,右侧为所处环境</span>
+            </li>
+            <li>
+              <span class="guide-key">背景音乐</span>
+              <span class="guide-desc">顶栏 <b class="g-music">♪</b> 可开关音乐</span>
+            </li>
+            <li>
+              <span class="guide-key">结局</span>
+              <span class="guide-desc">共 4 种结局,由旅途中的关键抉择决定</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </section>
   </div>

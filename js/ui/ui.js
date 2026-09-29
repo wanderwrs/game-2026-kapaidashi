@@ -55,6 +55,7 @@ export class UI {
     this._paraEls = [];           // 段落 DOM 列表
     this._paraIndex = 0;          // 下一段待显示索引
     this._choicesReady = false;   // 选项是否已浮现
+    this._howtoOpen = false;      // 游戏说明弹窗是否打开
     this._lastEnemyHp = null;    // 用于计算伤害飘字
     this._lastPlayerHp = null;
     this._cache();
@@ -92,6 +93,9 @@ export class UI {
         result: $('view-result'),
       },
       careerGrid: $('career-grid'),
+      chapterSelect: $('chapter-select'),
+      btnMusic: $('btn-music'),
+      howto: $('howto'),
       narrativeStats: $('narrative-stats'),
       narrativeVitals: $('narrative-vitals'),
       narrativeText: $('narrative-text'),
@@ -123,9 +127,16 @@ export class UI {
   }
 
   _bindStaticButtons() {
-    document.getElementById('btn-new-run').addEventListener('click', () => this.bus.emit('ui:new-run'));
     document.getElementById('btn-seed-run').addEventListener('click', () => this.bus.emit('ui:seed-run'));
     document.getElementById('btn-restart').addEventListener('click', () => this.bus.emit('ui:restart'));
+    document.getElementById('btn-music').addEventListener('click', () => this.bus.emit('ui:toggle-music'));
+    // 游戏说明:任意 [data-howto] 按钮打开,[data-howto-close] 关闭
+    document.querySelectorAll('[data-howto]').forEach((b) => {
+      b.addEventListener('click', () => this.openHowto());
+    });
+    document.querySelectorAll('[data-howto-close]').forEach((b) => {
+      b.addEventListener('click', () => this.closeHowto());
+    });
     this.el.btnEndTurn.addEventListener('click', () => this.bus.emit('ui:end-turn'));
     this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
     // 点击剧情文本区域:正在打字则跳过,否则推进
@@ -148,6 +159,12 @@ export class UI {
       // 忽略输入框内按键
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      // 游戏说明弹窗打开时,仅响应 Esc 关闭,屏蔽其余游戏操作
+      if (this._howtoOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.closeHowto(); }
+        return;
+      }
 
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
@@ -247,6 +264,62 @@ export class UI {
     this.el.chapterTitle.textContent = chapter?.title || '—';
     const pct = idx >= 0 ? Math.round(((idx + 1) / total) * 100) : 0;
     this.el.progressFill.style.width = `${pct}%`;
+  }
+
+  // ===== 主菜单:两大章入口 =====
+  /** 渲染主菜单的大章卡片(含通关 / 锁定状态);锁定卡片点击给出提示 */
+  renderChapterSelect(entries) {
+    const box = this.el.chapterSelect;
+    if (!box) return;
+    box.innerHTML = '';
+    (entries || []).forEach((e) => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = `chapter-entry${e.locked ? ' is-locked' : ''}${e.cleared ? ' is-cleared' : ''}`;
+      const state = e.locked ? '🔒 未解锁' : (e.cleared ? '✓ 已通关' : '▶ 可挑战');
+      card.innerHTML = `
+        <div class="chapter-entry-head">
+          <span class="chapter-entry-badge">${e.badge}</span>
+          <span class="chapter-entry-state">${state}</span>
+        </div>
+        <div class="chapter-entry-title">${this._escapeHtml(e.title)}</div>
+        <div class="chapter-entry-sub">${this._escapeHtml(e.sub)}</div>
+        ${e.locked ? '<div class="chapter-entry-lock">通关「第一大章 · 家园破碎」后解锁</div>' : ''}
+      `;
+      card.addEventListener('click', () => {
+        if (e.locked) {
+          card.classList.remove('shake');
+          void card.offsetWidth;
+          card.classList.add('shake');
+          this.showToast('先通关「第一大章 · 家园破碎」,才能踏上新的旅程');
+          return;
+        }
+        this.bus.emit('ui:start-chapter', e.id);
+      });
+      box.appendChild(card);
+    });
+  }
+
+  /** 背景音乐按钮状态 */
+  setMusicState(on) {
+    const btn = this.el.btnMusic;
+    if (!btn) return;
+    btn.classList.toggle('is-on', !!on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.title = on ? '背景音乐:开' : '背景音乐:关';
+  }
+
+  // ===== 游戏说明(操作指南) =====
+  openHowto() {
+    if (!this.el.howto) return;
+    this.el.howto.hidden = false;
+    this._howtoOpen = true;
+  }
+
+  closeHowto() {
+    if (!this.el.howto) return;
+    this.el.howto.hidden = true;
+    this._howtoOpen = false;
   }
 
   // ===== 职业选择视图(扩展用) =====
@@ -782,19 +855,25 @@ export class UI {
     this.el.resultStats.innerHTML = stats + flags;
   }
 
-  /** 职业解锁提示 toast */
-  _showCareerUnlockToast(ids) {
-    const list = Array.isArray(ids) ? ids : [ids];
-    const names = list.map((id) => CAREER_MAP[id]?.name || id).join('、');
-    if (!names) return;
+  /** 顶部提示 toast(2 秒后淡出) */
+  showToast(text) {
+    if (!text) return;
     const toast = document.createElement('div');
     toast.className = 'career-toast';
-    toast.textContent = `✦ 已解锁职业:${names}(可在休息节点切换)`;
+    toast.textContent = text;
     this.root.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add('is-visible'));
     setTimeout(() => {
       toast.classList.remove('is-visible');
       setTimeout(() => toast.remove(), 400);
     }, 3400);
+  }
+
+  /** 职业解锁提示 toast */
+  _showCareerUnlockToast(ids) {
+    const list = Array.isArray(ids) ? ids : [ids];
+    const names = list.map((id) => CAREER_MAP[id]?.name || id).join('、');
+    if (!names) return;
+    this.showToast(`✦ 已解锁职业:${names}(可在休息节点切换)`);
   }
 }

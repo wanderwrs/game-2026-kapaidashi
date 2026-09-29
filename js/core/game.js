@@ -8,6 +8,7 @@
 
 import { RNG, seedFromString } from './rng.js';
 import { EventBus } from './eventbus.js';
+import { AudioEngine } from './audio.js';
 import { Player } from '../combat/entity.js';
 import { Deck } from '../card/deck.js';
 import { Battle } from '../combat/battle.js';
@@ -15,6 +16,22 @@ import { CARDS } from '../data/data.js';
 import { NarrativeEngine, ENDINGS } from '../narrative/engine.js';
 import { CHAPTERS } from '../narrative/chapters/index.js';
 import { UI } from '../ui/ui.js';
+
+const PROGRESS_KEY = 'longji.progress.v1';
+
+/** 读取本机通关进度(记录哪些大章已通关) */
+function loadProgress() {
+  try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {}; } catch { return {}; }
+}
+
+/** 将某大章标记为已通关,返回更新后的进度 */
+function markChapterCleared(id) {
+  const p = loadProgress();
+  p.cleared = p.cleared || {};
+  p.cleared[id] = true;
+  try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch { /* 忽略存储异常 */ }
+  return p;
+}
 
 export const GameState = Object.freeze({
   MENU: 'menu',
@@ -39,12 +56,23 @@ export class Game {
     this.engine = null;
     this.currentBattle = null;
     this._currentRewards = null;
+    this._runStartChapter = null;   // 本局起始大章(用于通关判定)
+    this.audio = new AudioEngine();
+    this.audio.arm();
+    this.progress = loadProgress();
     this._bindUI();
+    // 主菜单:标识两大章 + 通关解锁状态
+    this.ui.renderChapterSelect(this._chapterEntries());
+    this.ui.setMusicState(this.audio.enabled);
     this.transition(GameState.MENU);
   }
 
-  /** 开始新一局:生成种子 → 直接进入第一章剧情(初始职业剑术在 n06 自动 assign) */
-  startNewRun(seedInput) {
+  /**
+   * 开始新一局。
+   * @param {string|number} [seedInput] 指定种子
+   * @param {string} [startChapter] 起始章节(默认第一大章 ch01)
+   */
+  startNewRun(seedInput, startChapter = 'ch01') {
     const seed = seedInput
       ? (typeof seedInput === 'number' ? seedInput >>> 0 : seedFromString(String(seedInput)))
       : (Date.now() & 0xffffffff) >>> 0;
@@ -59,9 +87,48 @@ export class Game {
     this.engine.player = this.player;
     this.ui.bindEngine(this.engine);
     this.ui.updateSeed(this.rng.seed);
-    // 直接进入第一章;初始职业(剑术)在剧情推进到 n06(赫尔墨引路)时自动锁定
-    this.engine.enterChapter('ch01');
+    this._runStartChapter = startChapter;
+    // 直接进入非第一章时,预分配默认职业(剑术)并建立牌组;
+    // 进入第一章时,初始职业由剧情推进到 n06(赫尔墨引路)自动锁定。
+    if (startChapter !== 'ch01') this.engine.assignCareer('swordsman');
+    this.engine.enterChapter(startChapter);
+    this.audio.start();
     this.transition(GameState.NARRATIVE);
+  }
+
+  /** 主菜单两大章条目(含通关 / 解锁状态) */
+  _chapterEntries() {
+    const cleared = this.progress?.cleared || {};
+    return [
+      {
+        id: 'ch01',
+        badge: '第一大章',
+        title: '家园破碎',
+        sub: '第一章 · 主线 + 4 条支线 · 约 35 万字',
+        locked: false,
+        cleared: !!cleared.ch01,
+      },
+      {
+        id: 'ch02',
+        badge: '第二大章',
+        title: '踏上旅程',
+        sub: '第二章 · 主线 + 2 条支线 · 约 11 万字',
+        locked: !cleared.ch01,
+        cleared: !!cleared.ch02,
+      },
+    ];
+  }
+
+  /** 检测本局是否离开了起始大章;若是,则记录该大章通关 */
+  _checkChapterClear(snap) {
+    const start = this._runStartChapter;
+    if (!snap?.chapter || !start) return;
+    if (snap.chapter === start) return;
+    if (this.progress?.cleared?.[start]) return;
+    this.progress = markChapterCleared(start);
+    this.ui.renderChapterSelect(this._chapterEntries());
+    const name = start === 'ch01' ? '第一大章「家园破碎」' : '第二大章「踏上旅程」';
+    this.ui.showToast(`✦ ${name} 已通关 —— 新的旅程已解锁`);
   }
 
   transition(next) {
@@ -146,7 +213,11 @@ export class Game {
   }
 
   _bindUI() {
-    this.bus.on('ui:new-run', () => this.startNewRun());
+    this.bus.on('ui:start-chapter', (id) => this.startNewRun(undefined, id));
+    this.bus.on('ui:toggle-music', () => {
+      const on = this.audio.toggle();
+      this.ui.setMusicState(on);
+    });
     this.bus.on('ui:seed-run', () => {
       const input = window.prompt('输入种子(数字或字符串):', '');
       if (input !== null) this.startNewRun(input);
@@ -171,6 +242,8 @@ export class Game {
     this.bus.on('ui:skip-reward', () => this._resolveAfterBattle('victory'));
 
     this.bus.on('narrative:refresh', (snap) => {
+      // 离开起始大章 → 记录通关,解锁下一大章
+      this._checkChapterClear(snap);
       // 若节点是 ending,直接转 VICTORY 触发结局展示
       if (snap.node?.kind === 'ending' && this.state === GameState.NARRATIVE) {
         this.transition(GameState.VICTORY);
