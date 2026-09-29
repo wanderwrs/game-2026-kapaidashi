@@ -11,26 +11,27 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929h';
-import { EventBus } from './eventbus.js?v=20260929h';
-import { AudioEngine } from './audio.js?v=20260929h';
-import { Player } from '../combat/entity.js?v=20260929h';
-import { Deck } from '../card/deck.js?v=20260929h';
-import { Battle } from '../combat/battle.js?v=20260929h';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929h';
-import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929h';
-import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js?v=20260929h';
+import { RNG, seedFromString } from './rng.js?v=20260929i';
+import { EventBus } from './eventbus.js?v=20260929i';
+import { AudioEngine } from './audio.js?v=20260929i';
+import { Player } from '../combat/entity.js?v=20260929i';
+import { Deck } from '../card/deck.js?v=20260929i';
+import { Battle } from '../combat/battle.js?v=20260929i';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929i';
+import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929i';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929i';
+import { jobsFor } from '../data/jobs.js?v=20260929i';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
-} from '../data/world.js?v=20260929h';
-import { NPCS } from '../data/npcs.js?v=20260929h';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929h';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929h';
-import { Economy } from './economy.js?v=20260929h';
-import { Travel } from './travel.js?v=20260929h';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929h';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929h';
-import { UI } from '../ui/ui.js?v=20260929h';
+} from '../data/world.js?v=20260929i';
+import { NPCS } from '../data/npcs.js?v=20260929i';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929i';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929i';
+import { Economy } from './economy.js?v=20260929i';
+import { Travel } from './travel.js?v=20260929i';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929i';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929i';
+import { UI } from '../ui/ui.js?v=20260929i';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -709,22 +710,47 @@ export class Game {
     this._bagRefresh();
   }
 
-  // ===== 打工 =====
+  // ===== 打工(小游戏) =====
+  /** 该地点的打工列表 */
+  _jobsHere() {
+    return jobsFor(this._currentTheme());
+  }
+
   _openJobs() {
-    const theme = this._currentTheme();
-    this.ui.renderJobs({ theme, jobs: JOBS[theme] || JOBS.village, economy: this.economy });
+    this.ui.renderJobs({ theme: this._currentTheme(), jobs: this._jobsHere(), economy: this.economy });
     this._syncUi();
     this.transition(GameState.JOB);
   }
 
-  _doJob(id) {
-    const theme = this._currentTheme();
-    const job = (JOBS[theme] || JOBS.village).find((j) => j.id === id);
-    if (!job) return;
-    if (!this.economy.spendAp(job.ap)) { this.ui.showToast('行动力不足,先休息一下'); return; }
-    this.economy.gold += job.gold;
-    this.ui.showToast(`「${job.name}」,赚得 ${job.gold} 金币`);
-    this.ui.renderJobs({ theme, jobs: JOBS[theme] || JOBS.village, economy: this.economy });
+  /** 选好难度,进入小游戏 */
+  _challengeJob(jobId, tierIndex) {
+    const job = this._jobsHere().find((j) => j.id === jobId);
+    const tier = job?.tiers?.[tierIndex];
+    if (!job || !tier) return;
+    if (this.economy.ap < tier.ap) { this.ui.showToast('行动力不足,先休息一下'); return; }
+    this.ui.openMinigame(job, tier, tierIndex);
+  }
+
+  /** 小游戏结束:达标才消耗行动力并发放金币(未达标不扣,可重来) */
+  _finishJob({ jobId, tierIndex, success }) {
+    const job = this._jobsHere().find((j) => j.id === jobId);
+    const tier = job?.tiers?.[tierIndex];
+    if (!job || !tier) return;
+    if (success) {
+      if (!this.economy.spendAp(tier.ap)) { this.ui.showToast('行动力不足,奖励未发放'); return; }
+      this.economy.gold += tier.gold;
+      this.ui.showToast(`「${job.name}」达标,赚得 ${tier.gold} 金币`);
+    } else {
+      this.ui.showToast(`「${job.name}」未达标,再试一次`);
+    }
+    this.ui.renderJobs({ theme: this._currentTheme(), jobs: this._jobsHere(), economy: this.economy });
+    this._syncUi();
+  }
+
+  /** 关闭小游戏弹窗,刷新列表 */
+  _closeMinigame() {
+    this.ui.closeMinigame();
+    this.ui.renderJobs({ theme: this._currentTheme(), jobs: this._jobsHere(), economy: this.economy });
     this._syncUi();
   }
 
@@ -1027,7 +1053,9 @@ export class Game {
     this.bus.on('ui:bag-equip', (id) => this._equipItem(id));
     this.bus.on('ui:bag-unequip', (slot) => this._unequipItem(slot));
     this.bus.on('ui:bag-drop', (id) => this._dropItem(id));
-    this.bus.on('ui:job-work', (id) => this._doJob(id));
+    this.bus.on('ui:job-challenge', (p) => this._challengeJob(p.jobId, p.tierIndex));
+    this.bus.on('ui:job-finish', (r) => this._finishJob(r));
+    this.bus.on('ui:minigame-close', () => this._closeMinigame());
 
     this.bus.on('battle:end', (result) => this.onBattleEnd(result));
     this.bus.on('narrative:battle', (payload) => this._startNarrativeBattle(payload));

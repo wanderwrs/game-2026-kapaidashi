@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260929h" />
+  <link rel="stylesheet" href="css/style.css?v=20260929i" />
 </head>
 <body>
   <div id="app" class="app">
@@ -201,7 +201,7 @@
         <h2 class="view-title">打 工</h2>
         <div id="job-res" class="map-res"></div>
       </div>
-      <p class="view-sub">消耗行动力,换取金币</p>
+      <p class="view-sub">玩一局小游戏,达标即有金币 —— 挑的难度越高,赚得越多</p>
       <div id="job-list" class="job-list"></div>
       <div class="panel-actions">
         <button id="btn-job-back" class="btn btn-ghost">返 回 地 图</button>
@@ -313,6 +313,34 @@
       </div>
       <div class="panel-actions">
         <button class="btn btn-ghost" type="button" data-intel-close>关 闭</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 打工小游戏:拾取 / 躲避 / 跑酷 -->
+  <div id="minigame" class="modal" hidden>
+    <div class="modal-backdrop" data-mg-close></div>
+    <section class="modal-panel mg-panel" role="dialog" aria-modal="true" aria-labelledby="mg-title">
+      <header class="modal-head">
+        <h2 id="mg-title" class="modal-title">打 工</h2>
+        <button class="modal-close" type="button" data-mg-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body mg-body">
+        <p id="mg-sub" class="mg-sub">—</p>
+        <div class="mg-hud">
+          <span id="mg-goal" class="mg-goal">—</span>
+          <span id="mg-time" class="mg-time"></span>
+          <span id="mg-lives" class="mg-lives">❤❤❤</span>
+        </div>
+        <div class="mg-stage">
+          <canvas id="mg-canvas" class="mg-canvas" width="720" height="405"></canvas>
+          <div id="mg-overlay" class="mg-overlay"></div>
+        </div>
+        <div class="panel-actions">
+          <button id="btn-mg-start" class="btn btn-primary" type="button">开 始</button>
+          <button id="btn-mg-retry" class="btn btn-primary" type="button" hidden>再 来 一 次</button>
+          <button id="btn-mg-quit" class="btn btn-ghost" type="button" data-mg-close>退 出</button>
+        </div>
       </div>
     </section>
   </div>
@@ -488,7 +516,7 @@
             </li>
             <li>
               <span class="guide-key">打工</span>
-              <span class="guide-desc">在部分地点用行动力换取金币</span>
+              <span class="guide-desc">在部分地点玩一局小游戏(拾取 / 躲避 / 跑酷),达标才消耗行动力并发放金币;三档难度,金币越多越难</span>
             </li>
           </ul>
         </div>
@@ -536,6 +564,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260929h"></script>
+  <script type="module" src="js/main.js?v=20260929i"></script>
 </body>
 </html>

@@ -10,13 +10,15 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929h';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929h';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929h';
-import { cardMpCost } from '../data/data.js?v=20260929h';
-import { ENDINGS } from '../narrative/engine.js?v=20260929h';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929h';
-import { SceneView } from './scene.js?v=20260929h';
+import { GameState } from '../core/game.js?v=20260929i';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929i';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929i';
+import { cardMpCost } from '../data/data.js?v=20260929i';
+import { ENDINGS } from '../narrative/engine.js?v=20260929i';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929i';
+import { SceneView } from './scene.js?v=20260929i';
+import { Minigame } from '../minigame/minigame.js?v=20260929i';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929i';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -63,6 +65,11 @@ export class UI {
     this._chestOpen = false;      // 宝箱弹窗是否打开
     this._intelOpen = false;      // 情报面板是否打开
     this._chestId = null;         // 当前宝箱 id
+    this._mgOpen = false;         // 打工小游戏是否打开
+    this._mg = null;              // 当前小游戏实例
+    this._mgJob = null;           // 当前打工项
+    this._mgTier = null;          // 当前难度档
+    this._mgTierIndex = -1;       // 当前难度档下标
     this._worldSelected = null;   // 世界地图上选中的地区 id
     this._worldState = null;      // 最近一次世界地图数据
     this._lastEnemyHp = null;    // 用于计算伤害飘字
@@ -168,6 +175,17 @@ export class UI {
       intelList: $('intel-list'),
       intelNote: $('intel-note'),
       btnMapIntel: $('btn-map-intel'),
+      // 打工小游戏
+      minigame: $('minigame'),
+      mgTitle: $('mg-title'),
+      mgSub: $('mg-sub'),
+      mgGoal: $('mg-goal'),
+      mgTime: $('mg-time'),
+      mgLives: $('mg-lives'),
+      mgCanvas: $('mg-canvas'),
+      mgOverlay: $('mg-overlay'),
+      btnMgStart: $('btn-mg-start'),
+      btnMgRetry: $('btn-mg-retry'),
       shopRes: $('shop-res'),
       shopList: $('shop-list'),
       btnShopBack: $('btn-shop-back'),
@@ -242,6 +260,12 @@ export class UI {
       });
     }
     if (this.el.btnMapIntel) this.el.btnMapIntel.addEventListener('click', () => this.bus.emit('ui:map-intel'));
+    // 打工小游戏:开始 / 重来 / 退出
+    document.querySelectorAll('[data-mg-close]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:minigame-close'));
+    });
+    if (this.el.btnMgStart) this.el.btnMgStart.addEventListener('click', () => this._startMinigame());
+    if (this.el.btnMgRetry) this.el.btnMgRetry.addEventListener('click', () => this._startMinigame());
     if (this.el.btnEndTurn) this.el.btnEndTurn.addEventListener('click', () => this.bus.emit('ui:end-turn'));
     if (this.el.btnSkipReward) this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
     // 地图 / 市场 / 背包 / 打工
@@ -293,6 +317,11 @@ export class UI {
           e.preventDefault();
           this.bus.emit(this._chestOpen ? 'ui:chest-close' : 'ui:intel-close');
         }
+        return;
+      }
+      // 小游戏自行处理方向键 / 跳跃键,这里仅响应 Esc 退出
+      if (this._mgOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.bus.emit('ui:minigame-close'); }
         return;
       }
 
@@ -1282,31 +1311,141 @@ export class UI {
     }
   }
 
-  // ===== 打工 =====
+  // ===== 打工(小游戏) =====
+  /** 列出该地的活儿与三档难度;选一档进入小游戏 */
   renderJobs({ jobs, economy }) {
     const box = this.el.jobList;
     if (!box) return;
     box.innerHTML = '';
     (jobs || []).forEach((j) => {
-      const ok = economy.ap >= j.ap;
-      const row = document.createElement('div');
-      row.className = 'item-row';
-      row.innerHTML = `
-        <div class="item-icon">🛠️</div>
-        <div class="item-body">
-          <div class="item-name">${this._escapeHtml(j.name)}</div>
-          <div class="item-desc">${this._escapeHtml(j.desc || '')}</div>
+      const card = document.createElement('div');
+      card.className = 'job-card';
+      card.innerHTML = `
+        <div class="job-head">
+          <span class="job-icon">${this._escapeHtml(j.hero || '🛠️')}</span>
+          <div class="job-title">
+            <div class="job-name">${this._escapeHtml(j.name)}</div>
+            <div class="job-desc">${this._escapeHtml(j.desc || '')}</div>
+          </div>
+          <span class="job-mode">${MODE_LABELS[j.game] || ''}</span>
         </div>
-        <div class="item-actions">
-          <span class="item-price${ok ? '' : ' is-poor'}">⚡ ${j.ap} → 🪙 ${j.gold}</span>
-          <button class="btn btn-primary btn-sm" data-work="${j.id}" ${ok ? '' : 'disabled'}>开工</button>
-        </div>
+        <div class="job-tiers"></div>
       `;
-      const btn = row.querySelector('[data-work]');
-      if (btn && ok) btn.addEventListener('click', () => this.bus.emit('ui:job-work', j.id));
-      box.appendChild(row);
+      const tiers = card.querySelector('.job-tiers');
+      (j.tiers || []).forEach((t, i) => {
+        const ok = economy.ap >= t.ap;
+        const row = document.createElement('div');
+        row.className = 'job-tier';
+        row.innerHTML = `
+          <span class="job-tier-label">${this._escapeHtml(t.label)}</span>
+          <span class="job-tier-goal">${this._escapeHtml(t.goalText || '')}</span>
+          <span class="job-tier-pay${ok ? '' : ' is-poor'}">⚡ ${t.ap} → 🪙 ${t.gold}</span>
+        `;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-primary btn-sm';
+        btn.textContent = '挑战';
+        btn.disabled = !ok;
+        if (ok) btn.addEventListener('click', () => this.bus.emit('ui:job-challenge', { jobId: j.id, tierIndex: i }));
+        row.appendChild(btn);
+        tiers.appendChild(row);
+      });
+      box.appendChild(card);
     });
     this.renderResources(economy);
+  }
+
+  // ===== 打工小游戏弹窗 =====
+  /** 打开小游戏(先显示准备画面,点「开始」再跑) */
+  openMinigame(job, tier, tierIndex) {
+    const box = this.el.minigame;
+    if (!box) return;
+    this._mgJob = job;
+    this._mgTier = tier;
+    this._mgTierIndex = tierIndex;
+    this._mgOpen = true;
+    if (this.el.mgTitle) this.el.mgTitle.textContent = job.name;
+    if (this.el.mgSub) {
+      this.el.mgSub.textContent = `${MODE_LABELS[job.game] || ''} · ${tier.label} —— 达标得 🪙${tier.gold}(耗 ⚡${tier.ap})`;
+    }
+    this._renderMgHud({ goalText: tier.goalText || '', timeText: '', lives: tier.lives ?? 3 });
+    this._setMgOverlay('ready');
+    this._showMgActions('ready');
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+  }
+
+  closeMinigame() {
+    if (this._mg) { this._mg.destroy(); this._mg = null; }
+    this._mgOpen = false;
+    this._mgJob = null;
+    this._mgTier = null;
+    this._mgTierIndex = -1;
+    const box = this.el.minigame;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._mgOpen) box.hidden = true; }, 200);
+  }
+
+  /** 开始 / 重来:重置并启动一次挑战 */
+  _startMinigame() {
+    if (!this._mgJob || !this.el.mgCanvas) return;
+    if (this._mg) { this._mg.destroy(); this._mg = null; }
+    const spec = {
+      ...this._mgTier,
+      mode: this._mgJob.game,
+      hero: this._mgJob.hero,
+      good: this._mgJob.good,
+      bad: this._mgJob.bad,
+    };
+    this._mg = new Minigame(this.el.mgCanvas, spec, {
+      onHud: (hud) => this._renderMgHud(hud),
+      onEnd: (res) => this._onMgEnd(res),
+    });
+    this._setMgOverlay('playing');
+    this._showMgActions('playing');
+    this._mg.start();
+  }
+
+  _renderMgHud({ goalText, timeText, lives }) {
+    if (this.el.mgGoal) this.el.mgGoal.textContent = goalText || '';
+    if (this.el.mgTime) this.el.mgTime.textContent = timeText || '';
+    if (this.el.mgLives) this.el.mgLives.textContent = '❤'.repeat(Math.max(0, lives)) || '—';
+  }
+
+  _onMgEnd(res) {
+    this._setMgOverlay(res.success ? 'win' : 'lose');
+    this._showMgActions('over');
+    this.bus.emit('ui:job-finish', {
+      jobId: this._mgJob?.id, tierIndex: this._mgTierIndex, success: res.success, score: res.score,
+    });
+  }
+
+  _showMgActions(phase) {
+    const start = this.el.btnMgStart;
+    const retry = this.el.btnMgRetry;
+    if (start) start.hidden = phase !== 'ready';
+    if (retry) retry.hidden = phase !== 'over';
+  }
+
+  /** 准备 / 进行 / 结果 的覆盖提示 */
+  _setMgOverlay(phase) {
+    const box = this.el.mgOverlay;
+    if (!box) return;
+    if (phase === 'playing') { box.hidden = true; return; }
+    box.hidden = false;
+    const tier = this._mgTier || {};
+    const job = this._mgJob || {};
+    if (phase === 'ready') {
+      const tip = job.game === 'parkour'
+        ? '空格 / ↑ / 点击画面 起跳'
+        : '← → 或 A D 左右移动,也可用鼠标·手指拖动';
+      box.innerHTML = `<b>准备开始</b><span>${this._escapeHtml(tip)}</span><span>${this._escapeHtml(tier.goalText || '')}</span>`;
+    } else if (phase === 'win') {
+      box.innerHTML = `<b class="is-win">达标!</b><span>获得 🪙 ${tier.gold || 0} 金币</span>`;
+    } else {
+      box.innerHTML = '<b class="is-lose">未达标</b><span>再来一次试试</span>';
+    }
   }
 
   bindBattle(battle) {

@@ -1561,7 +1561,90 @@ body {
   .card { width: 100px; }
 }
 
+/* ===== 打工(小游戏) ===== */
+.job-list { display: flex; flex-direction: column; gap: var(--sp-12); }
+.job-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-12) var(--sp-16);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-card);
+}
+.job-head { display: flex; align-items: flex-start; gap: var(--sp-12); }
+.job-icon { font-size: 24px; line-height: 1.2; }
+.job-title { flex: 1; min-width: 0; }
+.job-name { font-weight: 700; letter-spacing: 1px; color: var(--text); }
+.job-desc { margin-top: 2px; font-size: 12px; line-height: 1.6; color: var(--text-muted); }
+.job-mode {
+  flex: none;
+  padding: 2px 10px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--gold-bright);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+.job-tiers { display: flex; flex-direction: column; gap: 6px; }
+.job-tier {
+  display: grid;
+  grid-template-columns: 48px 1fr auto auto;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: 6px 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+}
+.job-tier-label { font-size: 12px; letter-spacing: 1px; color: var(--gold-bright); }
+.job-tier-goal { font-size: 12px; color: var(--text-soft); }
+.job-tier-pay { font-size: 12px; color: var(--text-soft); white-space: nowrap; }
+.job-tier-pay.is-poor { color: var(--ember-bright); }
+
+/* 打工小游戏弹窗 */
+.mg-panel { width: min(780px, calc(100vw - 24px)); }
+.mg-body { gap: var(--sp-12); }
+.mg-sub { font-size: 12px; letter-spacing: 1px; color: var(--text-soft); }
+.mg-hud { display: flex; align-items: center; gap: var(--sp-16); font-size: 13px; color: var(--text); }
+.mg-goal { flex: 1; }
+.mg-time { color: var(--text-soft); }
+.mg-lives { color: var(--ember-bright); letter-spacing: 3px; }
+.mg-stage {
+  position: relative;
+  overflow: hidden;
+  background: #0b1020;
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-card);
+}
+.mg-canvas { display: block; width: 100%; height: auto; touch-action: none; }
+.mg-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-8);
+  padding: var(--sp-16);
+  text-align: center;
+  background: rgba(5, 6, 10, 0.74);
+  color: var(--text);
+}
+.mg-overlay[hidden] { display: none; }
+.mg-overlay b { font-family: var(--font-display); font-size: 20px; letter-spacing: 3px; color: var(--gold-bright); }
+.mg-overlay b.is-lose { color: var(--ember-bright); }
+.mg-overlay span { font-size: 13px; line-height: 1.7; color: var(--text-soft); }
+
 /* 降低动效偏好 */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.05ms !important; }
+}
+
+/* 窄屏:打工难度行改为换行排布 */
+@media (max-width: 560px) {
+  .job-tier { display: flex; flex-wrap: wrap; }
+  .job-tier-goal { flex: 1 1 100%; order: 3; font-size: 11px; }
+  .job-tier .btn { margin-left: auto; }
 }

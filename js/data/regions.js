@@ -136,45 +136,7 @@ export const REGIONS = {
   },
 };
 
-/** 打工:消耗行动力换取金币(同一地点可反复) */
-export const JOBS = {
-  village: [
-    { id: 'farm',  name: '帮农户收麦', ap: 2, gold: 14, desc: '弯腰割麦,汗滴进土里。' },
-    { id: 'smith', name: '铁匠铺打杂', ap: 3, gold: 24, desc: '拉风箱、递铁钳,火星烫手。' },
-  ],
-  forest: [
-    { id: 'wood',  name: '林中伐木',   ap: 2, gold: 16, desc: '斧头起落,松脂味沾满衣袖。' },
-    { id: 'herb',  name: '采集草药',   ap: 3, gold: 22, desc: '在苔痕间辨认能入药的叶子。' },
-  ],
-  mountain: [
-    { id: 'mine',  name: '矿道背矿',   ap: 3, gold: 28, desc: '背着矿石在窄道里来回。' },
-    { id: 'guide', name: '给商队引路', ap: 2, gold: 18, desc: '带商队走过结冰的隘口。' },
-  ],
-  city: [
-    { id: 'porter', name: '码头扛包',  ap: 3, gold: 26, desc: '一袋一袋,直到肩膀发麻。' },
-    { id: 'scribe', name: '替人抄书',  ap: 2, gold: 20, desc: '在灯下誊抄,手指染墨。' },
-  ],
-  port: [
-    { id: 'fish',   name: '随船打鱼',  ap: 3, gold: 30, desc: '在颠簸的甲板上收网。' },
-    { id: 'unload', name: '码头卸货',  ap: 2, gold: 17, desc: '盐渍的麻袋压弯了腰。' },
-  ],
-  sky: [
-    { id: 'wind',   name: '校风翼索具', ap: 2, gold: 20, desc: '在高处检修风翼的绳索。' },
-    { id: 'courier',name: '浮岛送信',   ap: 3, gold: 32, desc: '系紧风翼,替学院传递信件。' },
-  ],
-  ruins: [
-    { id: 'salvage', name: '废墟拾荒', ap: 2, gold: 15, desc: '在瓦砾里扒出尚能用的东西。' },
-    { id: 'clear',   name: '清理断壁', ap: 3, gold: 25, desc: '把塌下来的墙石一块块搬开。' },
-  ],
-  cliff: [
-    { id: 'climb', name: '替人攀崖采药', ap: 3, gold: 27, desc: '贴着崖壁挪动,风在耳边吼。' },
-    { id: 'rope',  name: '修补攀绳',     ap: 2, gold: 16, desc: '把磨断的绳索重新编紧。' },
-  ],
-  camp: [
-    { id: 'cook',  name: '营地烧饭', ap: 2, gold: 13, desc: '看火、翻锅,喂饱一队人。' },
-    { id: 'watch', name: '替人守夜', ap: 3, gold: 21, desc: '抱着长矛,守到天亮。' },
-  ],
-};
+/** 打工配置(含小游戏与难度档)见 data/jobs.js */
 
 /** 休息:恢复行动力(免费,但会消耗一点时间) */
 export const REST_AP_RECOVER = 6;
