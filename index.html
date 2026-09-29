@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260929f" />
+  <link rel="stylesheet" href="css/style.css?v=20260929g" />
 </head>
 <body>
   <div id="app" class="app">
@@ -268,6 +268,8 @@
         <span id="npc-tag" class="npc-dialog-tag"></span>
       </div>
       <div id="npc-lines" class="npc-lines"></div>
+      <div id="npc-topics" class="npc-topics"></div>
+      <p id="npc-hint" class="npc-hint"></p>
       <div class="panel-actions">
         <button class="btn btn-primary" type="button" data-npc-close>告 辞</button>
       </div>
@@ -299,7 +301,8 @@
           </li>
           <li>
             <b>路上不太平</b> —— 途中会随机遇到该地区等级的怪物(可战斗夺金),
-            也会遇到形形色色的路人 NPC,点他们可听 1~5 句闲话。
+            也会遇到形形色色的路人 NPC。点本地人物或路上遇到的客人,先从若干<b>话题</b>里挑一句说出去,
+            对方再以此作答(一次交谈至多 5 句)。
           </li>
         </ol>
         <div class="panel-actions">
@@ -409,7 +412,7 @@
             </li>
             <li>
               <span class="guide-key">随机 NPC</span>
-              <span class="guide-desc">每个地点有数位随机人物,点击「本地人物」即可交谈,每次 1~5 句闲话(共 70 位)</span>
+              <span class="guide-desc">每个地点有数位随机人物,点击「本地人物」即可交谈:先选一句<b>你想说的话</b>(打招呼 / 打听此地 / 问传闻 / 聊聊对方),对方再作答,一次至多 5 句(共 70 位)</span>
             </li>
           </ul>
         </div>
@@ -483,6 +486,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260929f"></script>
+  <script type="module" src="js/main.js?v=20260929g"></script>
 </body>
 </html>

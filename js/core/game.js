@@ -11,24 +11,25 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929f';
-import { EventBus } from './eventbus.js?v=20260929f';
-import { AudioEngine } from './audio.js?v=20260929f';
-import { Player } from '../combat/entity.js?v=20260929f';
-import { Deck } from '../card/deck.js?v=20260929f';
-import { Battle } from '../combat/battle.js?v=20260929f';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929f';
-import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929f';
-import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js?v=20260929f';
+import { RNG, seedFromString } from './rng.js?v=20260929g';
+import { EventBus } from './eventbus.js?v=20260929g';
+import { AudioEngine } from './audio.js?v=20260929g';
+import { Player } from '../combat/entity.js?v=20260929g';
+import { Deck } from '../card/deck.js?v=20260929g';
+import { Battle } from '../combat/battle.js?v=20260929g';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929g';
+import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929g';
+import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js?v=20260929g';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
-} from '../data/world.js?v=20260929f';
-import { NPCS } from '../data/npcs.js?v=20260929f';
-import { Economy } from './economy.js?v=20260929f';
-import { Travel } from './travel.js?v=20260929f';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929f';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929f';
-import { UI } from '../ui/ui.js?v=20260929f';
+} from '../data/world.js?v=20260929g';
+import { NPCS } from '../data/npcs.js?v=20260929g';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929g';
+import { Economy } from './economy.js?v=20260929g';
+import { Travel } from './travel.js?v=20260929g';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929g';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929g';
+import { UI } from '../ui/ui.js?v=20260929g';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -98,6 +99,7 @@ export class Game {
     this._wildBattle = false;       // 当前战斗是否为途中遭遇(而非剧情战斗)
     this._npcCache = new Map();     // `${regionId}:${stopIndex}` → 驻留 NPC 列表
     this._themeNpcCache = new Map(); // theme → 该主题的 NPC 池
+    this._npcTalk = null;           // 当前交谈状态(话题 / 对话记录)
     this._visited = new Set();      // 本局已到过的地区
     this.tutorialSeen = loadTutorialSeen();
     this.audio = new AudioEngine();
@@ -134,6 +136,7 @@ export class Game {
     this._wildBattle = false;
     this._npcCache = new Map();
     this._themeNpcCache = new Map();
+    this._npcTalk = null;
     this._visited = new Set([startChapter]);
     this.travel = new Travel({ bus: this.bus, rng: this.rng });
 
@@ -401,11 +404,11 @@ export class Game {
       return;
     }
     if (type === 'npc' && npc) {
-      this.ui.showNpcDialog(npc, this._npcLines(npc, 3), { title: '路上遇见' });
+      this._startNpcTalk(npc, 'road');
     }
   }
 
-  // ===== 随机 NPC =====
+  // ===== 随机 NPC(玩家可选话题的交谈) =====
   /** 某地驻留的随机 NPC(每局固定,缓存) */
   _npcsAt(regionId, stopIndex) {
     const key = `${regionId}:${stopIndex}`;
@@ -434,29 +437,73 @@ export class Game {
     return pool;
   }
 
-  /** 抽取该 NPC 的随机台词(1~maxLines 句,不重复) */
-  _npcLines(npc, maxLines = 5) {
+  /** 抽取该 NPC 尚未说过的一行台词(台词用尽则重置) */
+  _npcNextLine(npc, state) {
     const lines = Array.isArray(npc?.lines) ? npc.lines : [];
-    if (!lines.length) return [];
-    const want = 1 + Math.floor(this.rng.next() * Math.min(maxLines, lines.length));
-    const pool = [...lines];
-    const out = [];
-    while (out.length < want && pool.length) {
-      const i = Math.floor(this.rng.next() * pool.length);
-      out.push(pool.splice(i, 1)[0]);
-    }
-    return out;
+    if (!lines.length) return null;
+    let pool = lines.filter((l) => !state.usedLines.has(l));
+    if (!pool.length) { state.usedLines.clear(); pool = lines.slice(); }
+    const pick = pool[Math.floor(this.rng.next() * pool.length)];
+    state.usedLines.add(pick);
+    return pick;
   }
 
-  /** 点击驻留 NPC:弹出随机对话 */
+  /** 开启一段交谈:玩家先选话题,再由 NPC 作答 */
+  _startNpcTalk(npc, source = 'local') {
+    this._npcTalk = {
+      npc,
+      source,
+      transcript: [],   // [{ who: 'player'|'npc', text }]
+      usedTopics: new Set(),
+      usedLines: new Set(),
+      npcLineCount: 0,
+    };
+    this._renderNpcTalk();
+  }
+
+  /** 渲染对话框:对话记录 + 尚可选的话题 */
+  _renderNpcTalk() {
+    const st = this._npcTalk;
+    if (!st) return;
+    const topics = TALK_TOPICS
+      .filter((t) => !st.usedTopics.has(t.id) && st.npcLineCount < TALK_MAX_LINES)
+      .map((t) => ({ id: t.id, label: t.label }));
+    this.ui.showNpcDialog(st.npc, {
+      title: st.source === 'road' ? '路上遇见' : '交谈',
+      transcript: st.transcript,
+      topics,
+      hint: st.npcLineCount >= TALK_MAX_LINES ? '他看上去有些倦了,不便再多问。' : '',
+    });
+  }
+
+  /** 玩家选择了一句话题,NPC 以此作答(1~2 句) */
+  _npcChooseTopic(topicId) {
+    const st = this._npcTalk;
+    if (!st) return;
+    const topic = TALK_TOPICS.find((t) => t.id === topicId);
+    if (!topic || st.usedTopics.has(topicId)) return;
+    st.usedTopics.add(topicId);
+    st.transcript.push({ who: 'player', text: topic.ask });
+    const want = 1 + Math.floor(this.rng.next() * 2);
+    for (let i = 0; i < want && st.npcLineCount < TALK_MAX_LINES; i++) {
+      const line = this._npcNextLine(st.npc, st);
+      if (!line) break;
+      st.transcript.push({ who: 'npc', text: line });
+      st.npcLineCount++;
+    }
+    this._renderNpcTalk();
+  }
+
+  /** 点击本地人物:开启可选话题的交谈 */
   _talkNpc(npcId) {
     const npc = NPCS.find((n) => n.id === npcId);
     if (!npc) return;
-    this.ui.showNpcDialog(npc, this._npcLines(npc, 5), { title: '交谈' });
+    this._startNpcTalk(npc, 'local');
   }
 
   /** 关闭 NPC 对话;若是旅途中的路人,则继续赶路 */
   _closeNpcDialog() {
+    this._npcTalk = null;
     this.ui.closeNpcDialog();
     if (this.travel?.active && this.travel.paused) this.travel.resume();
   }
@@ -871,6 +918,7 @@ export class Game {
     this.bus.on('ui:world-depart', (id) => this._worldDepart(id));
     this.bus.on('ui:world-shuttle', (id) => this._worldShuttle(id));
     this.bus.on('ui:npc-talk', (id) => this._talkNpc(id));
+    this.bus.on('ui:npc-topic', (id) => this._npcChooseTopic(id));
     this.bus.on('ui:npc-close', () => this._closeNpcDialog());
     this.bus.on('ui:tutorial-close', () => this._closeTutorial());
     this.bus.on('travel:progress', (snap) => this.ui.renderTravel(snap));

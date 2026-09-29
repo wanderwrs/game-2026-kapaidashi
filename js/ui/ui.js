@@ -10,13 +10,13 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929f';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929f';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929f';
-import { cardMpCost } from '../data/data.js?v=20260929f';
-import { ENDINGS } from '../narrative/engine.js?v=20260929f';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929f';
-import { SceneView } from './scene.js?v=20260929f';
+import { GameState } from '../core/game.js?v=20260929g';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929g';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929g';
+import { cardMpCost } from '../data/data.js?v=20260929g';
+import { ENDINGS } from '../narrative/engine.js?v=20260929g';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929g';
+import { SceneView } from './scene.js?v=20260929g';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -149,6 +149,8 @@ export class UI {
       npcTag: $('npc-tag'),
       npcTitle: $('npc-title'),
       npcLines: $('npc-lines'),
+      npcTopics: $('npc-topics'),
+      npcHint: $('npc-hint'),
       btnNpcClose: $('btn-npc-close'),
       tutorial: $('tutorial'),
       btnTutorialClose: $('btn-tutorial-close'),
@@ -978,15 +980,34 @@ export class UI {
   }
 
   // ===== NPC 对话 =====
-  showNpcDialog(npc, lines, opts = {}) {
+  /** 渲染交谈框:对话记录(玩家/NPC 交替) + 玩家可选话题 */
+  showNpcDialog(npc, opts = {}) {
     const box = this.el.npcDialog;
     if (!box || !npc) return;
     if (this.el.npcTitle) this.el.npcTitle.textContent = opts.title || '交 谈';
     if (this.el.npcName) this.el.npcName.textContent = npc.name || '路人';
     if (this.el.npcTag) this.el.npcTag.textContent = npc.tag || '';
     if (this.el.npcLines) {
-      this.el.npcLines.innerHTML = (lines || []).map((t) => `<p class="npc-line">「${this._escapeHtml(t)}」</p>`).join('');
+      const transcript = opts.transcript || [];
+      this.el.npcLines.innerHTML = transcript.length
+        ? transcript.map((t) => (t.who === 'player'
+          ? `<p class="npc-said-player">${this._escapeHtml(t.text)}</p>`
+          : `<p class="npc-line">${this._escapeHtml(t.text)}</p>`)).join('')
+        : '<p class="npc-hint">你想说点什么?</p>';
+      this.el.npcLines.scrollTop = this.el.npcLines.scrollHeight;
     }
+    if (this.el.npcTopics) {
+      this.el.npcTopics.innerHTML = '';
+      (opts.topics || []).forEach((t) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'npc-topic';
+        b.textContent = t.label;
+        b.addEventListener('click', () => this.bus.emit('ui:npc-topic', t.id));
+        this.el.npcTopics.appendChild(b);
+      });
+    }
+    if (this.el.npcHint) this.el.npcHint.textContent = opts.hint || '';
     box.hidden = false;
     requestAnimationFrame(() => box.classList.add('is-open'));
     this._npcOpen = true;

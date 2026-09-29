@@ -12,10 +12,10 @@
  *   支线2: sq2_n01→…→sq2_exit→n08   (山脚密道)
  */
 
-import { mainNodes1 } from './ch02_main_1.js?v=20260929f';
-import { mainNodes2 } from './ch02_main_2.js?v=20260929f';
-import { sq1Nodes } from './ch02_sq1.js?v=20260929f';
-import { sq2Nodes } from './ch02_sq2.js?v=20260929f';
+import { mainNodes1 } from './ch02_main_1.js?v=20260929g';
+import { mainNodes2 } from './ch02_main_2.js?v=20260929g';
+import { sq1Nodes } from './ch02_sq1.js?v=20260929g';
+import { sq2Nodes } from './ch02_sq2.js?v=20260929g';
 
 const allNodes = [
   ...mainNodes1, ...mainNodes2,
