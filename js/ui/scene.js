@@ -300,6 +300,7 @@ const SCENE_RULES = {
     [/^n0[1-5]/, { theme: 'ruins',    name: '废弃矿镇' }],
     [/^n0[6-8]/, { theme: 'mountain', name: '废矿井口' }],
     [/^n09|^n1[0-5]/, { theme: 'ruins', name: '地下矿道' }],
+    [/^sq1_/, { theme: 'ruins', name: '老采空区' }],
   ],
   ch03: [[/^./, { theme: 'city',     name: '王城 · 书记官宅邸' }]],
   ch04: [[/^./, { theme: 'port',     name: '南方渔港' }]],

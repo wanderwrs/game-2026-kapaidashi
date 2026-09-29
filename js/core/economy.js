@@ -10,8 +10,8 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20260930a';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260930a';
+import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20260930b';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260930b';
 
 const SLOTS = ['weapon', 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
 const OUTFIT_SLOTS = ['hat', 'top', 'bottom', 'shoes'];
