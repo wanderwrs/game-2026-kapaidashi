@@ -23,7 +23,7 @@ import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js';
 import { Economy } from './economy.js';
 import { NarrativeEngine, ENDINGS } from '../narrative/engine.js';
 import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js';
-import { UI } from '../ui/ui.js';
+import { UI } from '../ui/ui.js?v=20260929c';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 

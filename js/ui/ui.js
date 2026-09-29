@@ -121,6 +121,7 @@ export class UI {
       mapStops: $('map-stops'),
       mapServices: $('map-services'),
       btnMapStory: $('btn-map-story'),
+      btnMapBag: $('btn-map-bag'),
       shopRes: $('shop-res'),
       shopList: $('shop-list'),
       btnShopBack: $('btn-shop-back'),
@@ -174,6 +175,7 @@ export class UI {
     if (this.el.btnSkipReward) this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
     // 地图 / 市场 / 背包 / 打工
     if (this.el.btnMapStory) this.el.btnMapStory.addEventListener('click', () => this.bus.emit('ui:map-story'));
+    if (this.el.btnMapBag) this.el.btnMapBag.addEventListener('click', () => this.bus.emit('ui:map-bag'));
     if (this.el.btnShopBack) this.el.btnShopBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnBagBack) this.el.btnBagBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnJobBack) this.el.btnJobBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
