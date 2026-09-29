@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260929g" />
+  <link rel="stylesheet" href="css/style.css?v=20260929h" />
 </head>
 <body>
   <div id="app" class="app">
@@ -127,6 +127,7 @@
       <div class="panel-actions">
         <button id="btn-map-story" class="btn btn-primary">开 始 剧 情</button>
         <button id="btn-map-world" class="btn btn-ghost">世 界 地 图</button>
+        <button id="btn-map-intel" class="btn btn-ghost">情 报</button>
         <button id="btn-map-bag" class="btn btn-ghost">背 包</button>
       </div>
     </section>
@@ -276,6 +277,46 @@
     </section>
   </div>
 
+  <!-- 宝箱:输入三位数密码开箱 -->
+  <div id="chest-dialog" class="modal" hidden>
+    <div class="modal-backdrop" data-chest-close></div>
+    <section class="modal-panel chest-panel" role="dialog" aria-modal="true" aria-labelledby="chest-title">
+      <header class="modal-head">
+        <h2 id="chest-title" class="modal-title">上 锁 的 宝 箱</h2>
+        <button class="modal-close" type="button" data-chest-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <p id="chest-name" class="chest-name">—</p>
+        <p id="chest-hint" class="chest-hint">—</p>
+        <div class="chest-code">
+          <label for="chest-input">三位数密码</label>
+          <input id="chest-input" class="chest-input" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="•••" />
+        </div>
+        <div class="panel-actions">
+          <button id="btn-chest-open" class="btn btn-primary" type="button">开 箱</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 情报:已知的宝箱密码与位置 -->
+  <div id="intel" class="modal" hidden>
+    <div class="modal-backdrop" data-intel-close></div>
+    <section class="modal-panel intel-panel" role="dialog" aria-modal="true" aria-labelledby="intel-title">
+      <header class="modal-head">
+        <h2 id="intel-title" class="modal-title">情 报</h2>
+        <button class="modal-close" type="button" data-intel-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <p id="intel-note" class="intel-note">—</p>
+        <div id="intel-list" class="intel-list"></div>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-ghost" type="button" data-intel-close>关 闭</button>
+      </div>
+    </section>
+  </div>
+
   <!-- 新手引导(首次进入世界地图时弹出) -->
   <div id="tutorial" class="modal" hidden>
     <div class="modal-backdrop" data-tutorial-close></div>
@@ -302,7 +343,12 @@
           <li>
             <b>路上不太平</b> —— 途中会随机遇到该地区等级的怪物(可战斗夺金),
             也会遇到形形色色的路人 NPC。点本地人物或路上遇到的客人,先从若干<b>话题</b>里挑一句说出去,
-            对方再以此作答(一次交谈至多 5 句)。
+            对方会就着这一话题作答(一次交谈至多 5 句)。
+          </li>
+          <li>
+            <b>宝箱要问密码</b> —— 后段章节的地点藏有上锁宝箱(地图上标 🔒)。
+            和本地人「问问传闻」时,有人会透露<b>宝箱密码与位置</b>;记下后点「情报」回看,
+            再到宝箱处输入三位数密码开箱。
           </li>
         </ol>
         <div class="panel-actions">
@@ -412,7 +458,11 @@
             </li>
             <li>
               <span class="guide-key">随机 NPC</span>
-              <span class="guide-desc">每个地点有数位随机人物,点击「本地人物」即可交谈:先选一句<b>你想说的话</b>(打招呼 / 打听此地 / 问传闻 / 聊聊对方),对方再作答,一次至多 5 句(共 70 位)</span>
+              <span class="guide-desc">每个地点有数位随机人物,点击「本地人物」即可交谈:先选一句<b>你想说的话</b>(打招呼 / 打听此地 / 问传闻 / 聊聊对方),对方会就着这一话题作答,一次至多 5 句(共 70 位)</span>
+            </li>
+            <li>
+              <span class="guide-key">宝箱与情报</span>
+              <span class="guide-desc">后段章节的地点藏有<b>上锁宝箱</b>(地点卡上标 🔒)。密码由部分 NPC 在「问问传闻」时透露 —— 得到后点地图上的「情报」随时回看,再到宝箱处输入三位数密码开箱,可得金币与道具</span>
             </li>
           </ul>
         </div>
@@ -486,6 +536,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260929g"></script>
+  <script type="module" src="js/main.js?v=20260929h"></script>
 </body>
 </html>

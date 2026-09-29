@@ -1373,6 +1373,49 @@ body {
 }
 .npc-topic:hover { color: var(--gold-bright); border-color: var(--gold-line); background: var(--gold-soft); }
 .npc-topics:empty { display: none; }
+.stop-chest { margin-left: 6px; font-size: 11px; opacity: 0.9; }
+.stop-chest.is-opened { opacity: 0.5; }
+
+/* ============================================================
+   宝箱(密码开箱)
+   ============================================================ */
+.chest-panel { max-width: 460px; }
+.chest-name {
+  margin: 0 0 var(--sp-4); font-family: var(--font-display); font-size: 17px;
+  letter-spacing: 2px; color: var(--gold-bright); text-align: center;
+}
+.chest-hint { margin: 0 0 var(--sp-16); font-size: 12.5px; line-height: 1.9; color: var(--text-soft); }
+.chest-code { display: flex; flex-direction: column; align-items: center; gap: var(--sp-8); }
+.chest-code label { font-size: 11px; letter-spacing: 3px; color: var(--text-muted); }
+.chest-input {
+  width: 150px; padding: 10px 0; text-align: center;
+  font-family: var(--font-mono); font-size: 26px; letter-spacing: 12px;
+  color: var(--gold-bright); background: var(--surface-muted);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  outline: none; transition: border-color 0.18s var(--ease);
+}
+.chest-input:focus { border-color: var(--gold-line); box-shadow: 0 0 0 2px var(--gold-soft); }
+.chest-input:disabled { opacity: 0.5; }
+
+/* ============================================================
+   情报(已知宝箱密码与位置)
+   ============================================================ */
+.intel-panel { max-width: 520px; }
+.intel-note { margin: 0 0 var(--sp-12); font-size: 12px; color: var(--text-muted); }
+.intel-list { display: flex; flex-direction: column; gap: var(--sp-8); max-height: 46vh; overflow-y: auto; }
+.intel-row {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface-muted); padding: var(--sp-8) var(--sp-12);
+}
+.intel-row.is-opened { opacity: 0.6; }
+.intel-head { display: flex; align-items: baseline; gap: var(--sp-8); }
+.intel-name { font-family: var(--font-display); font-size: 14px; letter-spacing: 1px; color: var(--text); }
+.intel-chapter { font-size: 11px; color: var(--text-muted); }
+.intel-state { margin-left: auto; font-size: 11px; color: var(--gold-bright); }
+.intel-row.is-opened .intel-state { color: var(--text-faint); }
+.intel-place { font-size: 12px; color: var(--text-soft); margin-top: 4px; }
+.intel-code { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px; }
+.intel-code b { color: var(--gold-bright); font-size: 14px; letter-spacing: 3px; }
 .tutorial-lead { font-family: var(--font-display); font-size: 14px; color: var(--gold-bright); margin: 0 0 var(--sp-12); }
 .tutorial-steps { margin: 0 0 var(--sp-16); padding-left: 1.4em; display: flex; flex-direction: column; gap: var(--sp-12); }
 .tutorial-steps li { font-size: 13px; line-height: 1.85; color: var(--text-soft); }

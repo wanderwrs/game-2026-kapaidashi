@@ -11,25 +11,26 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929g';
-import { EventBus } from './eventbus.js?v=20260929g';
-import { AudioEngine } from './audio.js?v=20260929g';
-import { Player } from '../combat/entity.js?v=20260929g';
-import { Deck } from '../card/deck.js?v=20260929g';
-import { Battle } from '../combat/battle.js?v=20260929g';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929g';
-import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929g';
-import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js?v=20260929g';
+import { RNG, seedFromString } from './rng.js?v=20260929h';
+import { EventBus } from './eventbus.js?v=20260929h';
+import { AudioEngine } from './audio.js?v=20260929h';
+import { Player } from '../combat/entity.js?v=20260929h';
+import { Deck } from '../card/deck.js?v=20260929h';
+import { Battle } from '../combat/battle.js?v=20260929h';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929h';
+import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929h';
+import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js?v=20260929h';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
-} from '../data/world.js?v=20260929g';
-import { NPCS } from '../data/npcs.js?v=20260929g';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929g';
-import { Economy } from './economy.js?v=20260929g';
-import { Travel } from './travel.js?v=20260929g';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929g';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929g';
-import { UI } from '../ui/ui.js?v=20260929g';
+} from '../data/world.js?v=20260929h';
+import { NPCS } from '../data/npcs.js?v=20260929h';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929h';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929h';
+import { Economy } from './economy.js?v=20260929h';
+import { Travel } from './travel.js?v=20260929h';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929h';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929h';
+import { UI } from '../ui/ui.js?v=20260929h';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -100,6 +101,8 @@ export class Game {
     this._npcCache = new Map();     // `${regionId}:${stopIndex}` → 驻留 NPC 列表
     this._themeNpcCache = new Map(); // theme → 该主题的 NPC 池
     this._npcTalk = null;           // 当前交谈状态(话题 / 对话记录)
+    this._intel = new Map();        // 已知宝箱情报 chestId → { chestId, text }
+    this._openedChests = new Set(); // 本局已开启的宝箱 id
     this._visited = new Set();      // 本局已到过的地区
     this.tutorialSeen = loadTutorialSeen();
     this.audio = new AudioEngine();
@@ -137,6 +140,8 @@ export class Game {
     this._npcCache = new Map();
     this._themeNpcCache = new Map();
     this._npcTalk = null;
+    this._intel = new Map();
+    this._openedChests = new Set();
     this._visited = new Set([startChapter]);
     this.travel = new Travel({ bus: this.bus, rng: this.rng });
 
@@ -203,6 +208,7 @@ export class Game {
     const objectiveIndex = isStoryRegion
       ? region.stops.findIndex((s) => s.node === gate.nodeId)
       : -1;
+    const chest = chestAt(this.regionId, this.stopIndex);
     return {
       regionId: this.regionId,
       region,
@@ -214,6 +220,12 @@ export class Game {
       travelCost: region.stops.map((_, i) => this.economy.travelCost(this.stopIndex, i)),
       travelSeconds: region.stops.map((_, i) => tripSeconds(stopDistance(this.stopIndex, i), this.economy.travelSpeedMul())),
       npcs: this._npcsAt(this.regionId, this.stopIndex),
+      chest: chest ? { id: chest.id, name: chest.name, opened: this._openedChests.has(chest.id), known: this._intel.has(chest.id) } : null,
+      stopChests: region.stops.map((_, i) => {
+        const c = chestAt(this.regionId, i);
+        return c ? { opened: this._openedChests.has(c.id), known: this._intel.has(c.id) } : null;
+      }),
+      intelCount: this._intel.size,
       economy: this.economy,
     };
   }
@@ -437,18 +449,18 @@ export class Game {
     return pool;
   }
 
-  /** 抽取该 NPC 尚未说过的一行台词(台词用尽则重置) */
-  _npcNextLine(npc, state) {
-    const lines = Array.isArray(npc?.lines) ? npc.lines : [];
-    if (!lines.length) return null;
-    let pool = lines.filter((l) => !state.usedLines.has(l));
-    if (!pool.length) { state.usedLines.clear(); pool = lines.slice(); }
-    const pick = pool[Math.floor(this.rng.next() * pool.length)];
-    state.usedLines.add(pick);
+  /** 从该话题的回答池里取一句尚未说过的(整个话题池用尽则允许重说) */
+  _npcAnswer(npc, topicId, state) {
+    const pool = npc?.replies?.[topicId];
+    if (!Array.isArray(pool) || !pool.length) return null;
+    const fresh = pool.filter((l) => !state.usedLines.has(l));
+    const src = fresh.length ? fresh : pool;
+    const pick = src[Math.floor(this.rng.next() * src.length)];
+    if (pick) state.usedLines.add(pick);
     return pick;
   }
 
-  /** 开启一段交谈:玩家先选话题,再由 NPC 作答 */
+  /** 开启一段交谈:玩家先选话题,再由 NPC 以此话题作答 */
   _startNpcTalk(npc, source = 'local') {
     this._npcTalk = {
       npc,
@@ -457,6 +469,7 @@ export class Game {
       usedTopics: new Set(),
       usedLines: new Set(),
       npcLineCount: 0,
+      hintGiven: false, // 宝箱情报是否已透露(每段交谈一次)
     };
     this._renderNpcTalk();
   }
@@ -476,7 +489,7 @@ export class Game {
     });
   }
 
-  /** 玩家选择了一句话题,NPC 以此作答(1~2 句) */
+  /** 玩家选择了一个话题,NPC 以此作答;问传闻时可能透露宝箱情报 */
   _npcChooseTopic(topicId) {
     const st = this._npcTalk;
     if (!st) return;
@@ -484,14 +497,33 @@ export class Game {
     if (!topic || st.usedTopics.has(topicId)) return;
     st.usedTopics.add(topicId);
     st.transcript.push({ who: 'player', text: topic.ask });
-    const want = 1 + Math.floor(this.rng.next() * 2);
-    for (let i = 0; i < want && st.npcLineCount < TALK_MAX_LINES; i++) {
-      const line = this._npcNextLine(st.npc, st);
-      if (!line) break;
-      st.transcript.push({ who: 'npc', text: line });
+
+    const answer = this._npcAnswer(st.npc, topicId, st);
+    if (answer && st.npcLineCount < TALK_MAX_LINES) {
+      st.transcript.push({ who: 'npc', text: answer });
       st.npcLineCount++;
     }
+
+    // 「问问传闻」时,掌握宝箱情报的 NPC 会额外说出一段(每段交谈一次)
+    if (topicId === 'rumor' && st.npc.hint && !st.hintGiven && st.npcLineCount < TALK_MAX_LINES) {
+      st.hintGiven = true;
+      st.transcript.push({ who: 'npc', text: st.npc.hint.text });
+      st.npcLineCount++;
+      this._learnIntel(st.npc.hint);
+    }
     this._renderNpcTalk();
+  }
+
+  /** 记下一条宝箱情报(密码 / 位置);重复获得只提示一次 */
+  _learnIntel(hint) {
+    const chest = CHEST_MAP[hint?.chest];
+    if (!chest) return;
+    const isNew = !this._intel.has(chest.id);
+    this._intel.set(chest.id, { chestId: chest.id, text: hint.text });
+    this._syncUi();
+    this.ui.showToast(isNew
+      ? `记下情报:${chest.name} —— 密码 ${chest.password}(可在「情报」查看)`
+      : '这条情报你先前已记下了');
   }
 
   /** 点击本地人物:开启可选话题的交谈 */
@@ -506,6 +538,63 @@ export class Game {
     this._npcTalk = null;
     this.ui.closeNpcDialog();
     if (this.travel?.active && this.travel.paused) this.travel.resume();
+  }
+
+  // ===== 宝箱(密码开箱) =====
+  /** 当前地点上的宝箱(没有则 null) */
+  _chestHere() {
+    return chestAt(this.regionId, this.stopIndex);
+  }
+
+  /** 打开宝箱弹窗 */
+  _openChest() {
+    const chest = this._chestHere();
+    if (!chest) { this.ui.showToast('此地没有宝箱'); return; }
+    const known = this._intel.get(chest.id);
+    this.ui.showChest(chest, {
+      opened: this._openedChests.has(chest.id),
+      hintText: known ? known.text : '',
+    });
+  }
+
+  /** 提交密码:正确则开箱发放奖励 */
+  _submitChestCode(chestId, code) {
+    const chest = CHEST_MAP[chestId];
+    if (!chest) return;
+    if (this._openedChests.has(chest.id)) { this.ui.showToast('这只箱子已经开过了'); return; }
+    if (String(code ?? '').trim() !== chest.password) {
+      this.ui.showToast('密码不对,锁纹丝不动');
+      return;
+    }
+    this._openedChests.add(chest.id);
+    const gold = chest.loot?.gold || 0;
+    this.economy.gold += gold;
+    const got = [];
+    for (const [id, qty] of Object.entries(chest.loot?.items || {})) {
+      if (this.economy.addItem(id, qty)) got.push(`${ITEMS[id]?.name || id}×${qty}`);
+    }
+    this._syncUi();
+    this.ui.closeChest();
+    this._renderMap();
+    this.ui.showToast(`宝箱开启!获得 ${gold} 金币${got.length ? ` 与 ${got.join('、')}` : ''}`);
+  }
+
+  /** 打开情报面板:列出已知的宝箱密码与位置 */
+  _openIntel() {
+    const list = CHESTS
+      .filter((c) => this._intel.has(c.id) || this._openedChests.has(c.id))
+      .map((c) => ({
+        name: c.name,
+        chapter: Number(c.chapter.slice(2)),
+        place: c.place,
+        password: c.password,
+        opened: this._openedChests.has(c.id),
+      }));
+    this.ui.showIntel(list, CHESTS.length);
+  }
+
+  _closeIntel() {
+    this.ui.closeIntel();
   }
 
   /** 在当前地点开启下一段剧情(必须身处剧情地区、且站在目标地点) */
@@ -920,6 +1009,11 @@ export class Game {
     this.bus.on('ui:npc-talk', (id) => this._talkNpc(id));
     this.bus.on('ui:npc-topic', (id) => this._npcChooseTopic(id));
     this.bus.on('ui:npc-close', () => this._closeNpcDialog());
+    this.bus.on('ui:map-chest', () => this._openChest());
+    this.bus.on('ui:chest-submit', ({ id, code }) => this._submitChestCode(id, code));
+    this.bus.on('ui:chest-close', () => this.ui.closeChest());
+    this.bus.on('ui:map-intel', () => this._openIntel());
+    this.bus.on('ui:intel-close', () => this._closeIntel());
     this.bus.on('ui:tutorial-close', () => this._closeTutorial());
     this.bus.on('travel:progress', (snap) => this.ui.renderTravel(snap));
     this.bus.on('travel:start', (snap) => this.ui.renderTravel(snap));

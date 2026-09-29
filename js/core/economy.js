@@ -7,8 +7,8 @@
  *   · 战力(power)由武器/服饰加成,开战时折算为力量,并叠加战力药剂的临时加成
  */
 
-import { ITEMS, sellPrice } from '../data/items.js?v=20260929g';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929g';
+import { ITEMS, sellPrice } from '../data/items.js?v=20260929h';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929h';
 
 const SLOTS = ['weapon', 'outfit', 'vehicle'];
 

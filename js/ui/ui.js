@@ -10,13 +10,13 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929g';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929g';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929g';
-import { cardMpCost } from '../data/data.js?v=20260929g';
-import { ENDINGS } from '../narrative/engine.js?v=20260929g';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929g';
-import { SceneView } from './scene.js?v=20260929g';
+import { GameState } from '../core/game.js?v=20260929h';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929h';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929h';
+import { cardMpCost } from '../data/data.js?v=20260929h';
+import { ENDINGS } from '../narrative/engine.js?v=20260929h';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929h';
+import { SceneView } from './scene.js?v=20260929h';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -60,6 +60,9 @@ export class UI {
     this._howtoOpen = false;      // 游戏说明弹窗是否打开
     this._npcOpen = false;        // NPC 对话弹窗是否打开
     this._tutorialOpen = false;   // 新手引导是否打开
+    this._chestOpen = false;      // 宝箱弹窗是否打开
+    this._intelOpen = false;      // 情报面板是否打开
+    this._chestId = null;         // 当前宝箱 id
     this._worldSelected = null;   // 世界地图上选中的地区 id
     this._worldState = null;      // 最近一次世界地图数据
     this._lastEnemyHp = null;    // 用于计算伤害飘字
@@ -154,6 +157,17 @@ export class UI {
       btnNpcClose: $('btn-npc-close'),
       tutorial: $('tutorial'),
       btnTutorialClose: $('btn-tutorial-close'),
+      // 宝箱 / 情报
+      chestDialog: $('chest-dialog'),
+      chestTitle: $('chest-title'),
+      chestName: $('chest-name'),
+      chestHint: $('chest-hint'),
+      chestInput: $('chest-input'),
+      btnChestOpen: $('btn-chest-open'),
+      intel: $('intel'),
+      intelList: $('intel-list'),
+      intelNote: $('intel-note'),
+      btnMapIntel: $('btn-map-intel'),
       shopRes: $('shop-res'),
       shopList: $('shop-list'),
       btnShopBack: $('btn-shop-back'),
@@ -210,6 +224,24 @@ export class UI {
     document.querySelectorAll('[data-tutorial-close]').forEach((b) => {
       b.addEventListener('click', () => this.bus.emit('ui:tutorial-close'));
     });
+    document.querySelectorAll('[data-chest-close]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:chest-close'));
+    });
+    document.querySelectorAll('[data-intel-close]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:intel-close'));
+    });
+    if (this.el.btnChestOpen) this.el.btnChestOpen.addEventListener('click', () => this._submitChest());
+    if (this.el.chestInput) {
+      this.el.chestInput.addEventListener('input', () => {
+        this.el.chestInput.value = this.el.chestInput.value.replace(/\D/g, '').slice(0, 3);
+      });
+      this.el.chestInput.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); this._submitChest(); }
+        else if (e.key === 'Escape') { e.preventDefault(); this.bus.emit('ui:chest-close'); }
+      });
+    }
+    if (this.el.btnMapIntel) this.el.btnMapIntel.addEventListener('click', () => this.bus.emit('ui:map-intel'));
     if (this.el.btnEndTurn) this.el.btnEndTurn.addEventListener('click', () => this.bus.emit('ui:end-turn'));
     if (this.el.btnSkipReward) this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
     // 地图 / 市场 / 背包 / 打工
@@ -254,6 +286,13 @@ export class UI {
       }
       if (this._npcOpen) {
         if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.bus.emit('ui:npc-close'); }
+        return;
+      }
+      if (this._chestOpen || this._intelOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          this.bus.emit(this._chestOpen ? 'ui:chest-close' : 'ui:intel-close');
+        }
         return;
       }
 
@@ -734,7 +773,7 @@ export class UI {
   renderMap(state) {
     const {
       region, chapterNum, currentIndex, objectiveIndex, travelCost, travelSeconds,
-      isStoryRegion, npcs, economy,
+      isStoryRegion, npcs, chest, stopChests, intelCount, economy,
     } = state;
     if (!region) return;
     if (this.el.mapRegionName) this.el.mapRegionName.textContent = `第${chapterNum}章 · ${region.name}`;
@@ -762,9 +801,11 @@ export class UI {
         card.className = `stop-card${here ? ' is-here' : ''}${isObj ? ' is-objective' : ''}`;
         const tag = here ? '所在' : (isObj ? '目标' : `⚡${travelCost[i]}`);
         const eta = here ? '' : `<span class="stop-eta">约 ${this._fmtDuration(travelSeconds[i])}</span>`;
+        const sc = stopChests ? stopChests[i] : null;
+        const chestMark = sc ? `<span class="stop-chest${sc.opened ? ' is-opened' : ''}">${sc.opened ? '📭' : '🔒'}</span>` : '';
         card.innerHTML = `
           <div class="stop-head">
-            <span class="stop-name">${this._escapeHtml(s.name)}</span>
+            <span class="stop-name">${this._escapeHtml(s.name)}${chestMark}</span>
             <span class="stop-tag">${tag}</span>
           </div>
           <div class="stop-meta">${s.npc ? `人物 · ${this._escapeHtml(s.npc)}` : '无人驻留'}</div>
@@ -793,6 +834,18 @@ export class UI {
       this.el.mapServices.appendChild(mk('市 场', 'ui:map-shop', !!svc.shop));
       this.el.mapServices.appendChild(mk('打 工', 'ui:map-job', !!svc.job));
       this.el.mapServices.appendChild(mk('休 息', 'ui:map-rest', !!svc.rest));
+      if (chest) {
+        const b = document.createElement('button');
+        b.className = `btn ${chest.opened ? 'btn-ghost' : 'btn-primary'}`;
+        b.textContent = chest.opened ? '宝 箱(已 开)' : '宝 箱 🔒';
+        b.disabled = chest.opened;
+        if (!chest.opened) b.addEventListener('click', () => this.bus.emit('ui:map-chest'));
+        this.el.mapServices.appendChild(b);
+      }
+    }
+
+    if (this.el.btnMapIntel) {
+      this.el.btnMapIntel.textContent = intelCount ? `情 报 ${intelCount}` : '情 报';
     }
 
     // 本地随机 NPC:点击即交谈
@@ -991,8 +1044,8 @@ export class UI {
       const transcript = opts.transcript || [];
       this.el.npcLines.innerHTML = transcript.length
         ? transcript.map((t) => (t.who === 'player'
-          ? `<p class="npc-said-player">${this._escapeHtml(t.text)}</p>`
-          : `<p class="npc-line">${this._escapeHtml(t.text)}</p>`)).join('')
+          ? `<p class="npc-said-player">「${this._escapeHtml(t.text)}」</p>`
+          : `<p class="npc-line">「${this._escapeHtml(t.text)}」</p>`)).join('')
         : '<p class="npc-hint">你想说点什么?</p>';
       this.el.npcLines.scrollTop = this.el.npcLines.scrollHeight;
     }
@@ -1036,6 +1089,87 @@ export class UI {
     if (!box) return;
     box.classList.remove('is-open');
     setTimeout(() => { if (!this._tutorialOpen) box.hidden = true; }, 200);
+  }
+
+  // ===== 宝箱(密码开箱) =====
+  /** 打开宝箱弹窗。info: { opened, hintText } */
+  showChest(chest, info = {}) {
+    const box = this.el.chestDialog;
+    if (!box || !chest) return;
+    this._chestId = chest.id;
+    if (this.el.chestTitle) this.el.chestTitle.textContent = info.opened ? '宝 箱 · 已 开 启' : '上 锁 的 宝 箱';
+    if (this.el.chestName) this.el.chestName.textContent = chest.name;
+    if (this.el.chestHint) {
+      this.el.chestHint.textContent = info.opened
+        ? '箱盖敞着,里面已经空了。'
+        : (info.hintText
+          ? `你记得的线索:${info.hintText}`
+          : '锁面上刻着三个数字的凹槽。你还不知道密码 —— 找本地人「问问传闻」试试。');
+    }
+    if (this.el.chestInput) {
+      this.el.chestInput.value = '';
+      this.el.chestInput.disabled = !!info.opened;
+    }
+    if (this.el.btnChestOpen) this.el.btnChestOpen.disabled = !!info.opened;
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._chestOpen = true;
+    if (!info.opened && this.el.chestInput) setTimeout(() => this.el.chestInput.focus(), 120);
+  }
+
+  closeChest() {
+    const box = this.el.chestDialog;
+    this._chestOpen = false;
+    this._chestId = null;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._chestOpen) box.hidden = true; }, 200);
+  }
+
+  /** 提交输入框中的密码 */
+  _submitChest() {
+    const code = this.el.chestInput ? this.el.chestInput.value : '';
+    this.bus.emit('ui:chest-submit', { id: this._chestId, code });
+  }
+
+  // ===== 情报(已知的宝箱密码与位置) =====
+  /** list: [{ name, chapter, place, password, opened }], total: 全部宝箱数 */
+  showIntel(list, total = 0) {
+    const box = this.el.intel;
+    if (!box) return;
+    if (this.el.intelNote) {
+      this.el.intelNote.textContent = list.length
+        ? `已记下 ${list.length} / ${total} 条线索。凭密码可在对应地点开启宝箱。`
+        : '你还没有任何线索。遇见本地人时选「问问传闻」,或许有人知道些什么。';
+    }
+    if (this.el.intelList) {
+      this.el.intelList.innerHTML = '';
+      list.forEach((it) => {
+        const row = document.createElement('div');
+        row.className = `intel-row${it.opened ? ' is-opened' : ''}`;
+        row.innerHTML = `
+          <div class="intel-head">
+            <span class="intel-name">${this._escapeHtml(it.name)}</span>
+            <span class="intel-chapter">第${it.chapter}章</span>
+            <span class="intel-state">${it.opened ? '已开启' : '未开启'}</span>
+          </div>
+          <div class="intel-place">位置:${this._escapeHtml(it.place)}</div>
+          <div class="intel-code">密码:<b>${this._escapeHtml(it.password)}</b></div>
+        `;
+        this.el.intelList.appendChild(row);
+      });
+    }
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._intelOpen = true;
+  }
+
+  closeIntel() {
+    const box = this.el.intel;
+    this._intelOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._intelOpen) box.hidden = true; }, 200);
   }
 
   // ===== 市场 =====
