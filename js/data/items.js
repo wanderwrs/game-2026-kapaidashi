@@ -43,15 +43,48 @@ export const ITEMS = {
   steel_blade: { id: 'steel_blade', name: '精钢长剑', category: 'weapon', price: 160, icon: '⚔️', desc: '战力 +4,生命 +6。', equipment: { slot: 'weapon', stats: { atkPower: 4, maxHp: 6 } } },
   dragon_fang: { id: 'dragon_fang', name: '龙牙短刃', category: 'weapon', price: 320, icon: '🐉', desc: '战力 +7,生命 +10。', equipment: { slot: 'weapon', stats: { atkPower: 7, maxHp: 10 } } },
 
-  // ===== 服饰 =====
-  traveler_cloak:{ id: 'traveler_cloak', name: '旅人斗篷', category: 'outfit', price: 40,  icon: '🧥', desc: '生命 +5,魔力 +1。',   equipment: { slot: 'outfit', stats: { maxHp: 5, maxMp: 1 } } },
-  leather_armor: { id: 'leather_armor',  name: '皮甲',     category: 'outfit', price: 120, icon: '🥋', desc: '生命 +14。',          equipment: { slot: 'outfit', stats: { maxHp: 14 } } },
-  noble_robe:    { id: 'noble_robe',     name: '贵族长袍', category: 'outfit', price: 140, icon: '👘', desc: '魔力 +2,生命 +4。',   equipment: { slot: 'outfit', stats: { maxMp: 2, maxHp: 4 } } },
-  emperor_new_clothes: {
-    id: 'emperor_new_clothes', name: '皇帝的新装', category: 'outfit', price: 999, icon: '✨',
-    desc: '传说中只有智者才能看见的华服。穿上它……你什么也没穿上。',
-    equipment: { slot: 'outfit', stats: {} },
-  },
+  // ===== 服饰(可自由搭配:帽子 / 衣服 / 裤子 / 鞋子 四个部位各一件) =====
+  // equipment.slot: hat 帽子 / top 衣服 / bottom 裤子 / shoes 鞋子
+  // look:  像素人物的外观配色与样式(见 ui/scene.js);hide: true 表示穿上后该部位「看不见」
+  // 特殊增益(可叠加):shopDiscount 商店折扣 / goldBonus 金币收益 / restBonus 休息多回行动力
+  //                   travelDiscount 旅行行动力折扣 / apMax 行动力上限
+
+  // ---- 帽子 ----
+  straw_hat:    { id: 'straw_hat',    name: '草帽',   category: 'outfit', price: 30,  icon: '👒', desc: '生命 +2。廉价的遮阳物,村口人手一顶。', equipment: { slot: 'hat', stats: { maxHp: 2 } }, look: { hat: '#c9b06a', hatHi: '#e3d18f', style: 'straw' } },
+  leather_cap:  { id: 'leather_cap',  name: '皮帽',   category: 'outfit', price: 70,  icon: '🧢', desc: '生命 +4。硬邦邦的熟皮,挡得住树枝。', equipment: { slot: 'hat', stats: { maxHp: 4 } }, look: { hat: '#5a3f2a', hatHi: '#7c5a3c', style: 'cap' } },
+  feather_cap:  { id: 'feather_cap',  name: '羽饰帽', category: 'outfit', price: 120, icon: '🎩', desc: '生命 +3,魔力 +1。插一根野雉尾羽,看着精神。', equipment: { slot: 'hat', stats: { maxHp: 3, maxMp: 1 } }, look: { hat: '#3d4a63', hatHi: '#5b6c8c', style: 'feather' } },
+  scholar_hood: { id: 'scholar_hood', name: '学者兜帽', category: 'outfit', price: 150, icon: '🧣', desc: '魔力 +2。兜帽压得极低,连眼睛都藏在阴影里。', equipment: { slot: 'hat', stats: { maxMp: 2 } }, look: { hat: '#453a6b', hatHi: '#5b4d8c', style: 'hood' } },
+  iron_helm:    { id: 'iron_helm',    name: '铁盔',   category: 'outfit', price: 160, icon: '⛑️', desc: '生命 +10,战力 +1。沉是沉了些,顶得住一刀。', equipment: { slot: 'hat', stats: { maxHp: 10, atkPower: 1 } }, look: { hat: '#8d949e', hatHi: '#c2c9d2', style: 'helm' } },
+  crown:        { id: 'crown',        name: '王冠',   category: 'outfit', price: 520, icon: '👑', desc: '魔力 +3,生命 +6。特殊:商店购物 9 折。', equipment: { slot: 'hat', stats: { maxMp: 3, maxHp: 6, shopDiscount: 0.1 } }, look: { hat: '#c9a227', hatHi: '#e8cd6e', style: 'crown' } },
+  emperor_new_hat: { id: 'emperor_new_hat', name: '皇帝的新帽', category: 'outfit', price: 999, icon: '✨', desc: '戴上后头顶空空,只有风。', equipment: { slot: 'hat', stats: {} }, hide: true, look: { style: 'none' } },
+
+  // ---- 衣服 ----
+  hemp_shirt:    { id: 'hemp_shirt',    name: '麻布短褂', category: 'outfit', price: 25,  icon: '👕', desc: '生命 +3。洗得发白,但干净。', equipment: { slot: 'top', stats: { maxHp: 3 } }, look: { cloth: '#8a7f63', cloth2: '#a2987a', trim: '#6d6450' } },
+  traveler_cloak:{ id: 'traveler_cloak', name: '旅人斗篷', category: 'outfit', price: 40,  icon: '🧥', desc: '生命 +5,魔力 +1。风里雨里都跟着你。', equipment: { slot: 'top', stats: { maxHp: 5, maxMp: 1 } }, look: { cloth: '#4a5a4a', cloth2: '#5f7360', trim: '#c9a227' } },
+  leather_armor: { id: 'leather_armor',  name: '皮甲',     category: 'outfit', price: 120, icon: '🥋', desc: '生命 +14。护住胸口,也护住一口气。', equipment: { slot: 'top', stats: { maxHp: 14 } }, look: { cloth: '#5a3f2a', cloth2: '#7a5637', trim: '#3f2c1d' } },
+  noble_robe:    { id: 'noble_robe',     name: '贵族长袍', category: 'outfit', price: 140, icon: '👘', desc: '魔力 +2,生命 +4。料子好得不像赶路人穿的。', equipment: { slot: 'top', stats: { maxMp: 2, maxHp: 4 } }, look: { cloth: '#4b3a63', cloth2: '#6a5590', trim: '#c9a227' } },
+  scholar_robe:  { id: 'scholar_robe',   name: '学者长袍', category: 'outfit', price: 200, icon: '🥼', desc: '魔力 +3。袖口宽大,藏得下书也藏得下刀。', equipment: { slot: 'top', stats: { maxMp: 3 } }, look: { cloth: '#3a3f6b', cloth2: '#525a94', trim: '#6fc0e8' } },
+  pilgrim_mantle:{ id: 'pilgrim_mantle', name: '朝圣斗篷', category: 'outfit', price: 240, icon: '🧎', desc: '生命 +5。特殊:休息时多恢复 3 点行动力。', equipment: { slot: 'top', stats: { maxHp: 5, restBonus: 3 } }, look: { cloth: '#6b6349', cloth2: '#8b8260', trim: '#d9d2c0' } },
+  merchant_vest: { id: 'merchant_vest',  name: '商人马甲', category: 'outfit', price: 300, icon: '🦺', desc: '生命 +4。特殊:金币收益 +20%。', equipment: { slot: 'top', stats: { maxHp: 4, goldBonus: 0.2 } }, look: { cloth: '#7a4a2a', cloth2: '#9c6739', trim: '#e8cd6e' } },
+  wind_coat:     { id: 'wind_coat',      name: '风衣',     category: 'outfit', price: 260, icon: '🧥', desc: '生命 +6,旅行行动力消耗 −1。', equipment: { slot: 'top', stats: { maxHp: 6, travelDiscount: 1 } }, look: { cloth: '#355364', cloth2: '#4a7288', trim: '#8fb6c9' } },
+  dragon_scale_mail: { id: 'dragon_scale_mail', name: '龙鳞甲', category: 'outfit', price: 600, icon: '🛡️', desc: '生命 +22,战力 +2。鳞片扣在身上,像有一层皮。', equipment: { slot: 'top', stats: { maxHp: 22, atkPower: 2 } }, look: { cloth: '#2f5a4a', cloth2: '#3f7a62', trim: '#c9a227' } },
+  emperor_new_clothes: { id: 'emperor_new_clothes', name: '皇帝的新衣', category: 'outfit', price: 999, icon: '✨', desc: '传说中只有智者才能看见的华服。穿上它……上身什么也没有。', equipment: { slot: 'top', stats: {} }, hide: true, look: { style: 'none' } },
+
+  // ---- 裤子 ----
+  patched_pants: { id: 'patched_pants', name: '补丁布裤', category: 'outfit', price: 20,  icon: '👖', desc: '生命 +2。补了七次,还舍不得扔。', equipment: { slot: 'bottom', stats: { maxHp: 2 } }, look: { pants: '#4a4136' } },
+  leather_pants: { id: 'leather_pants', name: '皮裤',     category: 'outfit', price: 90,  icon: '👖', desc: '生命 +5。骑马赶路不容易磨破。', equipment: { slot: 'bottom', stats: { maxHp: 5 } }, look: { pants: '#5a3f2a' } },
+  sailor_trousers:{ id: 'sailor_trousers', name: '水手裤', category: 'outfit', price: 110, icon: '👖', desc: '生命 +4,旅行行动力消耗 −1。裤脚总带着盐渍。', equipment: { slot: 'bottom', stats: { maxHp: 4, travelDiscount: 1 } }, look: { pants: '#2c4a5a' } },
+  silk_pants:    { id: 'silk_pants',    name: '绸裤',     category: 'outfit', price: 130, icon: '👖', desc: '魔力 +2。走起路来没有声音。', equipment: { slot: 'bottom', stats: { maxMp: 2 } }, look: { pants: '#5a4a6b' } },
+  iron_greaves:  { id: 'iron_greaves',  name: '铁护腿',   category: 'outfit', price: 180, icon: '🦿', desc: '生命 +8,战力 +1。沉得抬腿都费劲。', equipment: { slot: 'bottom', stats: { maxHp: 8, atkPower: 1 } }, look: { pants: '#79818c' } },
+  emperor_new_pants: { id: 'emperor_new_pants', name: '皇帝的新裤', category: 'outfit', price: 999, icon: '✨', desc: '穿上后膝下生风,凉飕飕的。', equipment: { slot: 'bottom', stats: {} }, hide: true, look: { style: 'none' } },
+
+  // ---- 鞋子 ----
+  cloth_shoes:   { id: 'cloth_shoes',   name: '布鞋',     category: 'outfit', price: 15,  icon: '👟', desc: '生命 +1。走十里就该换一双。', equipment: { slot: 'shoes', stats: { maxHp: 1 } }, look: { boot: '#3b342a' } },
+  leather_boots: { id: 'leather_boots', name: '皮靴',     category: 'outfit', price: 80,  icon: '🥾', desc: '生命 +4。踩进泥里也不怕。', equipment: { slot: 'shoes', stats: { maxHp: 4 } }, look: { boot: '#4a3423' } },
+  dancer_shoes:  { id: 'dancer_shoes',  name: '舞鞋',     category: 'outfit', price: 140, icon: '🩰', desc: '魔力 +2。轻得几乎感觉不到脚。', equipment: { slot: 'shoes', stats: { maxMp: 2 } }, look: { boot: '#8a5a63' } },
+  iron_boots:    { id: 'iron_boots',    name: '铁靴',     category: 'outfit', price: 170, icon: '🥾', desc: '生命 +9。每一步都砸出响。', equipment: { slot: 'shoes', stats: { maxHp: 9 } }, look: { boot: '#8d949e' } },
+  swift_boots:   { id: 'swift_boots',   name: '疾行靴',   category: 'outfit', price: 220, icon: '👢', desc: '旅行行动力消耗 −2。鞋底薄,脚感却轻。', equipment: { slot: 'shoes', stats: { travelDiscount: 2 } }, look: { boot: '#2f4a5a' } },
+  emperor_new_boots: { id: 'emperor_new_boots', name: '皇帝的新靴', category: 'outfit', price: 999, icon: '✨', desc: '踩着虚无赶路,石子硌得生疼。', equipment: { slot: 'shoes', stats: {} }, hide: true, look: { style: 'none' } },
 
   // ===== 载具(降低旅行行动力消耗,并加快旅途的真实耗时) =====
   // equipment.stats.travelDiscount:降低行动力消耗;speedMul:旅途耗时倍率(越小越快)
@@ -80,17 +113,17 @@ export function sellPrice(itemId) {
   return it.sell ?? Math.floor((it.price || 0) * 0.5);
 }
 
-/** 商店库存:按地区主题配置(买价 = ITEMS.price) */
+/** 商店库存:按地区主题配置(买价 = ITEMS.price,可受服饰折扣影响) */
 export const SHOP_STOCK = {
-  village: ['hp_small', 'bread', 'traveler_cloak', 'iron_sword', 'old_horse'],
-  forest:  ['hp_small', 'dried_meat', 'mp_small', 'iron_sword', 'swift_horse'],
-  mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'steel_blade', 'cart', 'snow_leopard'],
-  city:    ['hp_large', 'mp_large', 'power_elixir', 'noble_robe', 'steel_blade', 'swift_horse', 'airship', 'emperor_new_clothes'],
-  port:    ['hp_small', 'dried_meat', 'mp_large', 'noble_robe', 'cart', 'skiff', 'steamship'],
-  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'swift_horse', 'wind_glider', 'airship'],
-  ruins:   ['hp_small', 'dried_meat', 'leather_armor', 'bone_charm', 'cart'],
-  cliff:   ['hp_small', 'mp_small', 'iron_sword', 'swift_horse'],
-  camp:    ['hp_small', 'bread', 'iron_sword', 'old_horse'],
+  village: ['hp_small', 'bread', 'hemp_shirt', 'patched_pants', 'cloth_shoes', 'straw_hat', 'old_horse'],
+  forest:  ['hp_small', 'dried_meat', 'mp_small', 'leather_cap', 'leather_boots', 'iron_sword', 'swift_horse'],
+  mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'iron_helm', 'iron_greaves', 'iron_boots', 'steel_blade', 'dragon_scale_mail', 'cart', 'snow_leopard'],
+  city:    ['hp_large', 'mp_large', 'power_elixir', 'noble_robe', 'silk_pants', 'feather_cap', 'dancer_shoes', 'crown', 'merchant_vest', 'steel_blade', 'swift_horse', 'airship', 'emperor_new_clothes', 'emperor_new_pants', 'emperor_new_hat', 'emperor_new_boots'],
+  port:    ['hp_small', 'dried_meat', 'mp_large', 'noble_robe', 'sailor_trousers', 'swift_boots', 'wind_coat', 'cart', 'skiff', 'steamship'],
+  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'scholar_robe', 'scholar_hood', 'feather_cap', 'swift_horse', 'wind_glider', 'airship'],
+  ruins:   ['hp_small', 'dried_meat', 'leather_pants', 'pilgrim_mantle', 'bone_charm', 'cart'],
+  cliff:   ['hp_small', 'mp_small', 'iron_sword', 'swift_boots', 'wind_coat', 'swift_horse'],
+  camp:    ['hp_small', 'bread', 'patched_pants', 'straw_hat', 'iron_sword', 'old_horse'],
 };
 
 /** 可捡拾杂物池:战斗胜利后有小概率获得 */

@@ -1139,7 +1139,7 @@ body {
 }
 
 /* ============================================================
-   地区地图 / 市场 / 背包 / 打工
+   地区地图 / 商店 / 背包 / 打工
    ============================================================ */
 .view-map, .view-shop, .view-bag, .view-job { gap: var(--sp-12); overflow-y: auto; padding-right: var(--sp-4); }
 
@@ -1448,7 +1448,7 @@ body {
   .wm-label { font-size: 9px; }
 }
 
-/* 物品列表(市场 / 背包 / 打工共用) */
+/* 物品列表(商店 / 背包 / 打工共用) */
 .shop-list, .bag-list, .job-list { display: flex; flex-direction: column; gap: var(--sp-8); }
 .item-row {
   display: flex; align-items: center; gap: var(--sp-12);
@@ -1467,6 +1467,7 @@ body {
 .item-actions { display: flex; align-items: center; gap: var(--sp-8); flex-shrink: 0; }
 .item-price { font-family: var(--font-mono); font-size: 12px; color: var(--text-soft); white-space: nowrap; }
 .item-price.is-poor { color: var(--danger); }
+.item-was { font-size: 11px; color: var(--text-faint); margin-left: 2px; }
 .btn-sm { padding: 4px 12px; font-size: 12px; letter-spacing: 1px; }
 .shop-section-title {
   font-family: var(--font-display); font-size: 12px; letter-spacing: 3px; color: var(--gold);

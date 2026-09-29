@@ -10,17 +10,17 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929k';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929k';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929k';
-import { cardMpCost } from '../data/data.js?v=20260929k';
-import { ENDINGS } from '../narrative/engine.js?v=20260929k';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929k';
-import { SceneView } from './scene.js?v=20260929k';
-import { Minigame } from '../minigame/minigame.js?v=20260929k';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929k';
-import { TERRAIN_CN } from '../data/world.js?v=20260929k';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929k';
+import { GameState } from '../core/game.js?v=20260929l';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929l';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929l';
+import { cardMpCost } from '../data/data.js?v=20260929l';
+import { ENDINGS } from '../narrative/engine.js?v=20260929l';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929l';
+import { SceneView } from './scene.js?v=20260929l';
+import { Minigame } from '../minigame/minigame.js?v=20260929l';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929l';
+import { TERRAIN_CN } from '../data/world.js?v=20260929l';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929l';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -132,7 +132,7 @@ export class UI {
       sceneCharStatus: $('scene-char-status'),
       sceneEnvName: $('scene-env-name'),
       sceneEnvDesc: $('scene-env-desc'),
-      // 地区地图 / 市场 / 背包 / 打工
+      // 地区地图 / 商店 / 背包 / 打工
       mapRegionName: $('map-region-name'),
       mapRes: $('map-res'),
       mapHint: $('map-hint'),
@@ -271,7 +271,7 @@ export class UI {
     if (this.el.btnMgRetry) this.el.btnMgRetry.addEventListener('click', () => this._startMinigame());
     if (this.el.btnEndTurn) this.el.btnEndTurn.addEventListener('click', () => this.bus.emit('ui:end-turn'));
     if (this.el.btnSkipReward) this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
-    // 地图 / 市场 / 背包 / 打工
+    // 地图 / 商店 / 背包 / 打工
     if (this.el.btnMapStory) this.el.btnMapStory.addEventListener('click', () => this.bus.emit('ui:map-story'));
     if (this.el.btnMapBag) this.el.btnMapBag.addEventListener('click', () => this.bus.emit('ui:map-bag'));
     if (this.el.btnMapWorld) this.el.btnMapWorld.addEventListener('click', () => this.bus.emit('ui:map-world'));
@@ -581,6 +581,7 @@ export class UI {
       career: snap.career,
       player: this.engine?.player,
       flags: snap.flags,
+      appearance: this.economy ? this.economy.appearance() : null,
     });
   }
 
@@ -863,7 +864,7 @@ export class UI {
         if (ok) b.addEventListener('click', () => this.bus.emit(ev));
         return b;
       };
-      this.el.mapServices.appendChild(mk('市 场', 'ui:map-shop', !!svc.shop));
+      this.el.mapServices.appendChild(mk('商 店', 'ui:map-shop', !!svc.shop));
       this.el.mapServices.appendChild(mk('打 工', 'ui:map-job', !!svc.job));
       this.el.mapServices.appendChild(mk('休 息', 'ui:map-rest', !!svc.rest));
       if (chest) {
@@ -928,7 +929,7 @@ export class UI {
 
   _serviceTags(services = {}) {
     const tags = [];
-    if (services.shop) tags.push('<span class="svc">市场</span>');
+    if (services.shop) tags.push('<span class="svc">商店</span>');
     if (services.job) tags.push('<span class="svc">打工</span>');
     if (services.rest) tags.push('<span class="svc">休息</span>');
     return tags.join('') || '<span class="svc is-off">无</span>';
@@ -1238,16 +1239,27 @@ export class UI {
     setTimeout(() => { if (!this._intelOpen) box.hidden = true; }, 200);
   }
 
-  // ===== 市场 =====
+  // ===== 商店 =====
   renderShop({ stock, economy }) {
     const box = this.el.shopList;
     if (!box) return;
     box.innerHTML = '';
+    const disc = economy.shopDiscount ? economy.shopDiscount() : 0;
+    if (disc > 0) {
+      const note = document.createElement('div');
+      note.className = 'shop-section-title';
+      note.textContent = `服饰折扣生效:全场 ${Math.round(disc * 100)}% off`;
+      box.appendChild(note);
+    }
     (stock || []).forEach((id) => {
       const it = ITEMS[id];
       if (!it) return;
-      const afford = economy.gold >= it.price;
-      box.appendChild(this._shopRow(it, afford, `🪙 ${it.price}`, '买入', 'data-buy', () => this.bus.emit('ui:shop-buy', id)));
+      const price = economy.itemPrice ? economy.itemPrice(id) : it.price;
+      const afford = economy.gold >= price;
+      const priceTxt = disc > 0 && price < it.price
+        ? `🪙 ${price} <s class="item-was">${it.price}</s>`
+        : `🪙 ${price}`;
+      box.appendChild(this._shopRow(it, afford, priceTxt, '买入', 'data-buy', () => this.bus.emit('ui:shop-buy', id)));
     });
 
     const sellables = [...economy.bag.entries()].filter(([id]) => !economy.isEquipped(id));
@@ -1292,7 +1304,7 @@ export class UI {
 
   // ===== 背包 =====
   renderBag({ economy, player }) {
-    const SLOT_CN = { weapon: '武器', outfit: '服饰', vehicle: '载具' };
+    const SLOT_CN = { weapon: '武器', hat: '帽子', top: '衣服', bottom: '裤子', shoes: '鞋子', vehicle: '载具' };
     if (this.el.bagEquipped) {
       this.el.bagEquipped.innerHTML = Object.entries(SLOT_CN).map(([slot, label]) => {
         const id = economy.equipped[slot];

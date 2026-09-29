@@ -34,18 +34,70 @@ const OUTFITS = {
 };
 const OUTFIT_DEFAULT = { cloth: '#464b56', cloth2: '#5b616e', trim: '#c9a227', accessory: 'none', outfit: '粗布行装 · 旧布鞋' };
 
+/** 绘制帽子(由服饰决定);hideHat / 无帽子时不着帽 */
+function drawHat(P, a) {
+  const style = a && a.hatStyle;
+  if (!style || a.hideHat) return;
+  const c = a.hat || '#5a3f2a';
+  const hi = a.hatHi || c;
+  switch (style) {
+    case 'straw':   // 宽檐草帽
+      P(1, 3, 14, 1, c); P(3, 4, 10, 1, hi);
+      P(4, 0, 8, 3, c); P(4, 2, 8, 1, hi);
+      break;
+    case 'cap':     // 皮帽
+      P(3, 1, 10, 3, c); P(3, 3, 10, 1, hi);
+      break;
+    case 'feather': // 羽饰帽
+      P(3, 1, 10, 3, c); P(3, 3, 10, 1, hi);
+      P(11, 0, 1, 3, hi); P(11, 0, 1, 1, '#e8cd6e');
+      break;
+    case 'hood':    // 学者兜帽(包住两鬓)
+      P(2, 0, 12, 3, c); P(2, 3, 1, 5, c); P(13, 3, 1, 5, c);
+      P(4, 1, 8, 1, hi);
+      break;
+    case 'helm':    // 铁盔
+      P(3, 0, 10, 4, c); P(3, 4, 10, 1, c);
+      P(4, 1, 3, 1, '#e6ebf0'); P(7, 3, 2, 3, hi);
+      break;
+    case 'crown':   // 王冠
+      P(3, 3, 10, 2, c);
+      P(3, 1, 1, 2, c); P(6, 1, 1, 2, c); P(9, 1, 1, 2, c); P(12, 1, 1, 2, c);
+      P(6, 3, 1, 1, hi); P(9, 3, 1, 1, hi);
+      break;
+    default:
+      P(3, 1, 10, 3, c); P(3, 3, 10, 1, hi);
+  }
+}
+
 /* ============================================================
    人物像素图(16 × 20 逻辑像素)
    ============================================================ */
 const CHAR_W = 16;
 const CHAR_H = 20;
 
-function drawCharacter(ctx, scale, careerId, hpRatio, flags) {
+function drawCharacter(ctx, scale, careerId, hpRatio, flags, look) {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.clearRect(0, 0, CHAR_W, CHAR_H);
   ctx.imageSmoothingEnabled = false;
 
-  const o = OUTFITS[careerId] || OUTFIT_DEFAULT;
+  const base = OUTFITS[careerId] || OUTFIT_DEFAULT;
+  const a = look || {};
+  // 职业默认配色 → 被已装备服饰覆盖
+  const o = {
+    cloth: a.cloth || base.cloth,
+    cloth2: a.cloth2 || base.cloth2,
+    trim: a.trim || base.trim,
+    accessory: base.accessory,
+  };
+  const bareTop = !!a.hideTop;
+  const bareBottom = !!a.hideBottom;
+  const bareFeet = !!a.hideShoes;
+  const cloth = bareTop ? SKIN : o.cloth;
+  const cloth2 = bareTop ? SKIN_SHADE : o.cloth2;
+  const trim = bareTop ? SKIN : o.trim;
+  const pantsCol = bareBottom ? SKIN : (a.pants || PANTS);
+  const bootCol = bareFeet ? SKIN : (a.boot || BOOT);
   const P = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
   const acc = o.accessory;
 
@@ -80,22 +132,27 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags) {
   P(7, 6, 2, 1, MOUTH);            // 口
   P(7, 8, 2, 1, SKIN_SHADE);       // 颈
 
+  // ---- 头部服饰(帽子;hideHat 时不着帽,露出头发) ----
+  drawHat(P, a);
+
   // ---- 身体 ----
-  P(3, 9, 10, 6, o.cloth);         // 主袍
-  P(6, 10, 4, 5, o.cloth2);        // 内襟
-  P(3, 9, 10, 1, o.trim);          // 领口滚边
-  P(2, 10, 2, 3, o.cloth);         // 左臂
-  P(12, 10, 2, 3, o.cloth);        // 右臂
+  P(3, 9, 10, 6, cloth);           // 主袍
+  P(6, 10, 4, 5, cloth2);          // 内襟
+  P(3, 9, 10, 1, trim);            // 领口滚边
+  P(2, 10, 2, 3, cloth);           // 左臂
+  P(12, 10, 2, 3, cloth);          // 右臂
   P(2, 13, 2, 1, SKIN);            // 左手
   P(12, 13, 2, 1, SKIN);           // 右手
-  P(3, 15, 10, 1, LEATHER);        // 腰带
-  P(7, 15, 2, 1, o.trim);          // 带扣
+  if (!bareTop) {                  // 赤裸上身时无腰带
+    P(3, 15, 10, 1, LEATHER);      // 腰带
+    P(7, 15, 2, 1, trim);          // 带扣
+  }
 
   // ---- 下装 ----
-  P(5, 16, 2, 3, PANTS);
-  P(9, 16, 2, 3, PANTS);
-  P(4, 19, 3, 1, BOOT);
-  P(9, 19, 3, 1, BOOT);
+  P(5, 16, 2, 3, pantsCol);
+  P(9, 16, 2, 3, pantsCol);
+  P(4, 19, 3, 1, bootCol);
+  P(9, 19, 3, 1, bootCol);
 
   // ---- 胸前配件 ----
   if (acc === 'anchor') { P(7, 11, 2, 1, METAL_DARK); P(7, 12, 1, 1, METAL_DARK); }
@@ -344,16 +401,16 @@ export class SceneView {
     if (this._envCtx) this._envCtx.imageSmoothingEnabled = false;
   }
 
-  render({ chapterId, nodeId, career, player, flags }) {
+  render({ chapterId, nodeId, career, player, flags, appearance }) {
     if (!this._charCtx || !this._envCtx) return;
     const flagSet = new Set(flags || []);
     const hpRatio = player && player.maxHp ? Math.max(0, Math.min(1, player.hp / player.maxHp)) : 1;
 
     // ---- 人物 ----
-    drawCharacter(this._charCtx, 6, career && career.id, hpRatio, flagSet);
+    drawCharacter(this._charCtx, 6, career && career.id, hpRatio, flagSet, appearance);
     const o = OUTFITS[career && career.id] || OUTFIT_DEFAULT;
     if (this.els.charName) this.els.charName.textContent = career ? career.name : '无名少年';
-    if (this.els.charOutfit) this.els.charOutfit.textContent = o.outfit;
+    if (this.els.charOutfit) this.els.charOutfit.textContent = (appearance && appearance.label) || o.outfit;
 
     if (this.els.charStatus) {
       const chips = [];

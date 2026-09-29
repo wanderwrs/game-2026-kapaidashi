@@ -2,7 +2,7 @@
  * Game — 顶层游戏状态机与运行控制器。
  *
  * 流程:菜单 → (地区)地图 → 抵达地点/找到 NPC → 剧情(文字抉择) → 战斗 → 战利品 → …
- *       途中可在市场买卖、背包装备、打工赚钱、休息恢复行动力。
+ *       途中可在商店买卖、背包装备、打工赚钱、休息恢复行动力。
  *
  * 说明:
  *   · 初始职业(剑术)由第一章 n06 的 effects.assign_career 自动锁定;
@@ -11,28 +11,28 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929k';
-import { EventBus } from './eventbus.js?v=20260929k';
-import { AudioEngine } from './audio.js?v=20260929k';
-import { Player } from '../combat/entity.js?v=20260929k';
-import { Deck } from '../card/deck.js?v=20260929k';
-import { Battle } from '../combat/battle.js?v=20260929k';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929k';
-import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929k';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929k';
-import { jobsFor } from '../data/jobs.js?v=20260929k';
+import { RNG, seedFromString } from './rng.js?v=20260929l';
+import { EventBus } from './eventbus.js?v=20260929l';
+import { AudioEngine } from './audio.js?v=20260929l';
+import { Player } from '../combat/entity.js?v=20260929l';
+import { Deck } from '../card/deck.js?v=20260929l';
+import { Battle } from '../combat/battle.js?v=20260929l';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929l';
+import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929l';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929l';
+import { jobsFor } from '../data/jobs.js?v=20260929l';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929k';
-import { NPCS } from '../data/npcs.js?v=20260929k';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929k';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929k';
-import { Economy } from './economy.js?v=20260929k';
-import { Travel } from './travel.js?v=20260929k';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929k';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929k';
-import { UI } from '../ui/ui.js?v=20260929k';
+} from '../data/world.js?v=20260929l';
+import { NPCS } from '../data/npcs.js?v=20260929l';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929l';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929l';
+import { Economy } from './economy.js?v=20260929l';
+import { Travel } from './travel.js?v=20260929l';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929l';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929l';
+import { UI } from '../ui/ui.js?v=20260929l';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -645,8 +645,7 @@ export class Game {
       return;
     }
     this._openedChests.add(chest.id);
-    const gold = chest.loot?.gold || 0;
-    this.economy.gold += gold;
+    const gold = this._grantGold(chest.loot?.gold || 0);
     const got = [];
     for (const [id, qty] of Object.entries(chest.loot?.items || {})) {
       if (this.economy.addItem(id, qty)) got.push(`${ITEMS[id]?.name || id}×${qty}`);
@@ -707,8 +706,10 @@ export class Game {
   }
 
   _rest() {
-    const got = this.economy.addAp(REST_AP_RECOVER);
-    this.ui.showToast(got > 0 ? `休息片刻,恢复 ${got} 点行动力` : '行动力已满');
+    const bonus = this.economy.restBonus ? this.economy.restBonus() : 0;
+    const got = this.economy.addAp(REST_AP_RECOVER + bonus);
+    const extra = bonus > 0 && got > 0 ? `(服饰加成 +${bonus})` : '';
+    this.ui.showToast(got > 0 ? `休息片刻,恢复 ${got} 点行动力${extra}` : '行动力已满');
     this._renderMap();
   }
 
@@ -718,7 +719,7 @@ export class Game {
     return region.stops[this.stopIndex]?.theme || region.theme || 'village';
   }
 
-  // ===== 市场 =====
+  // ===== 商店 =====
   _openShop() {
     const theme = this._currentTheme();
     this.ui.renderShop({ theme, stock: SHOP_STOCK[theme] || SHOP_STOCK.village, economy: this.economy });
@@ -727,10 +728,20 @@ export class Game {
   }
 
   _buy(id) {
-    if (!ITEMS[id]) return;
-    if (this.economy.buy(id)) this.ui.showToast(`购入「${ITEMS[id].name}」`);
+    const it = ITEMS[id];
+    if (!it) return;
+    const price = this.economy.itemPrice(id);
+    if (this.economy.buy(id)) this.ui.showToast(`购入「${it.name}」(花费 ${price} 金币)`);
     else this.ui.showToast('金币不足');
     this._openShopRefresh();
+  }
+
+  /** 发放金币(自动叠加服饰「金币收益」加成),返回实际到手数 */
+  _grantGold(base) {
+    const bonus = this.economy.goldBonus ? this.economy.goldBonus() : 0;
+    const gain = Math.round((base || 0) * (1 + bonus));
+    this.economy.gold += gain;
+    return gain;
   }
 
   _sell(id) {
@@ -815,8 +826,8 @@ export class Game {
     if (!job || !tier) return;
     if (success) {
       if (!this.economy.spendAp(tier.ap)) { this.ui.showToast('行动力不足,奖励未发放'); return; }
-      this.economy.gold += tier.gold;
-      this.ui.showToast(`「${job.name}」达标,赚得 ${tier.gold} 金币`);
+      const gold = this._grantGold(tier.gold);
+      this.ui.showToast(`「${job.name}」达标,赚得 ${gold} 金币`);
     } else {
       this.ui.showToast(`「${job.name}」未达标,再试一次`);
     }
@@ -925,8 +936,7 @@ export class Game {
     this.currentBattle = null;
     if (result === 'victory') {
       const ch = this._chapterNum();
-      const gold = 5 + Math.floor(this.rng.next() * 5) + ch;
-      this.economy.gold += gold;
+      const gold = this._grantGold(5 + Math.floor(this.rng.next() * 5) + ch);
       let loot = null;
       if (this.rng.next() < 0.35) {
         loot = LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
@@ -963,8 +973,7 @@ export class Game {
   /** 胜利奖励:金币 + 概率掉落杂物 */
   _grantBattleRewards() {
     const ch = this._chapterNum();
-    const gold = 8 + Math.floor(this.rng.next() * 6) + ch * 2;
-    this.economy.gold += gold;
+    const gold = this._grantGold(8 + Math.floor(this.rng.next() * 6) + ch * 2);
     let loot = null;
     if (this.rng.next() < 0.5) {
       loot = LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
@@ -1123,7 +1132,7 @@ export class Game {
     this.bus.on('travel:event', (payload) => this._onTravelEvent(payload));
     this.bus.on('travel:arrive', () => this._onTravelArrive());
 
-    // 市场 / 背包 / 打工
+    // 商店 / 背包 / 打工
     this.bus.on('ui:shop-buy', (id) => this._buy(id));
     this.bus.on('ui:shop-sell', (id) => this._sell(id));
     this.bus.on('ui:bag-use', (id) => this._useItem(id));

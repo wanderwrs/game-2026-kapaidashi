@@ -5,12 +5,16 @@
  *   · 行动力(AP)用于地图旅行与打工,属于战斗外资源
  *   · 魔力(MP)、生命(HP)属于玩家实体(Player),由药品恢复
  *   · 战力(power)由武器/服饰加成,开战时折算为力量,并叠加战力药剂的临时加成
+ *
+ * 装备槽位(共 6 个):weapon 武器 / hat 帽子 / top 衣服 / bottom 裤子 / shoes 鞋子 / vehicle 载具
+ * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice } from '../data/items.js?v=20260929k';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929k';
+import { ITEMS, sellPrice } from '../data/items.js?v=20260929l';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929l';
 
-const SLOTS = ['weapon', 'outfit', 'vehicle'];
+const SLOTS = ['weapon', 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
+const OUTFIT_SLOTS = ['hat', 'top', 'bottom', 'shoes'];
 
 export class Economy {
   constructor({ gold = 40, apMax = 10 } = {}) {
@@ -18,7 +22,7 @@ export class Economy {
     this.apMax = apMax;
     this.ap = apMax;
     this.bag = new Map();            // itemId -> qty
-    this.equipped = { weapon: null, outfit: null, vehicle: null };
+    this.equipped = { weapon: null, hat: null, top: null, bottom: null, shoes: null, vehicle: null };
     this.pendingPower = 0;           // 战力药剂:下一场战斗生效
   }
 
@@ -50,12 +54,13 @@ export class Economy {
     return true;
   }
 
-  /** 从商店购买一件 */
+  /** 从商店购买一件(实际价格受服饰折扣影响) */
   buy(id) {
     const it = ITEMS[id];
     if (!it) return false;
-    if (this.gold < it.price) return false;
-    this.gold -= it.price;
+    const price = this.itemPrice(id);
+    if (this.gold < price) return false;
+    this.gold -= price;
     this.addItem(id, 1);
     return true;
   }
@@ -84,7 +89,7 @@ export class Economy {
 
   /** 汇总装备加成 */
   equipStats() {
-    const total = { atkPower: 0, maxHp: 0, maxMp: 0, apMax: 0, travelDiscount: 0 };
+    const total = { atkPower: 0, maxHp: 0, maxMp: 0, apMax: 0, travelDiscount: 0, shopDiscount: 0, goldBonus: 0, restBonus: 0 };
     for (const slot of SLOTS) {
       const id = this.equipped[slot];
       const st = id && ITEMS[id]?.equipment?.stats;
@@ -92,6 +97,59 @@ export class Economy {
       for (const k of Object.keys(total)) total[k] += st[k] || 0;
     }
     return total;
+  }
+
+  // ===== 服饰增益 =====
+  /** 商店折扣比例(0~0.5) */
+  shopDiscount() { return Math.min(0.5, this.equipStats().shopDiscount); }
+
+  /** 金币收益倍率加成(0~1,叠加后封顶 100%) */
+  goldBonus() { return Math.min(1, this.equipStats().goldBonus); }
+
+  /** 休息时额外恢复的行动力 */
+  restBonus() { return this.equipStats().restBonus; }
+
+  /** 商店实际售价(应用折扣,至少 1) */
+  itemPrice(id) {
+    const it = ITEMS[id];
+    if (!it) return 0;
+    return Math.max(1, Math.round((it.price || 0) * (1 - this.shopDiscount())));
+  }
+
+  /**
+   * 当前人物外观(供 ui/scene.js 绘制像素小人)。
+   * 返回的字段优先于职业默认配色;hide* 为 true 表示该部位被「皇帝的新衣」隐藏。
+   */
+  appearance() {
+    const a = {
+      cloth: null, cloth2: null, trim: null, pants: null, boot: null,
+      hat: null, hatHi: null, hatStyle: null,
+      hideTop: false, hideBottom: false, hideShoes: false, hideHat: false,
+      label: null,
+    };
+    const top = ITEMS[this.equipped.top];
+    if (top) {
+      if (top.hide) a.hideTop = true;
+      else if (top.look) { a.cloth = top.look.cloth ?? null; a.cloth2 = top.look.cloth2 ?? null; a.trim = top.look.trim ?? null; }
+    }
+    const bottom = ITEMS[this.equipped.bottom];
+    if (bottom) {
+      if (bottom.hide) a.hideBottom = true;
+      else if (bottom.look?.pants) a.pants = bottom.look.pants;
+    }
+    const shoes = ITEMS[this.equipped.shoes];
+    if (shoes) {
+      if (shoes.hide) a.hideShoes = true;
+      else if (shoes.look?.boot) a.boot = shoes.look.boot;
+    }
+    const hat = ITEMS[this.equipped.hat];
+    if (hat) {
+      if (hat.hide) a.hideHat = true;
+      else if (hat.look) { a.hat = hat.look.hat ?? null; a.hatHi = hat.look.hatHi ?? null; a.hatStyle = hat.look.style ?? null; }
+    }
+    const names = OUTFIT_SLOTS.map((s) => ITEMS[this.equipped[s]]?.name).filter(Boolean);
+    a.label = names.length ? names.join(' · ') : null;
+    return a;
   }
 
   // ===== 行动力 =====
