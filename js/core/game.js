@@ -11,30 +11,30 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929q';
-import { EventBus } from './eventbus.js?v=20260929q';
-import { AudioEngine } from './audio.js?v=20260929q';
-import { Player } from '../combat/entity.js?v=20260929q';
-import { Deck } from '../card/deck.js?v=20260929q';
-import { Battle } from '../combat/battle.js?v=20260929q';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929q';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929q';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929q';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929q';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929q';
-import { jobsFor } from '../data/jobs.js?v=20260929q';
+import { RNG, seedFromString } from './rng.js?v=20260929r';
+import { EventBus } from './eventbus.js?v=20260929r';
+import { AudioEngine } from './audio.js?v=20260929r';
+import { Player } from '../combat/entity.js?v=20260929r';
+import { Deck } from '../card/deck.js?v=20260929r';
+import { Battle } from '../combat/battle.js?v=20260929r';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929r';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929r';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929r';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929r';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929r';
+import { jobsFor } from '../data/jobs.js?v=20260929r';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929q';
-import { NPCS } from '../data/npcs.js?v=20260929q';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929q';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929q';
-import { Economy } from './economy.js?v=20260929q';
-import { Travel } from './travel.js?v=20260929q';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929q';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929q';
-import { UI } from '../ui/ui.js?v=20260929q';
+} from '../data/world.js?v=20260929r';
+import { NPCS } from '../data/npcs.js?v=20260929r';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929r';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929r';
+import { Economy } from './economy.js?v=20260929r';
+import { Travel } from './travel.js?v=20260929r';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929r';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929r';
+import { UI } from '../ui/ui.js?v=20260929r';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';

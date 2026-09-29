@@ -4,7 +4,7 @@
  * 暴露到 window.__game 便于控制台调试与种子复现。
  */
 
-import { Game } from './core/game.js?v=20260929q';
+import { Game } from './core/game.js?v=20260929r';
 
 const app = document.getElementById('app');
 const game = new Game(app);
