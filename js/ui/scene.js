@@ -28,6 +28,8 @@ const OUTLINE = '#16110d';
 /** 眼睛高光 / 白 */
 const EYE_WHITE = '#efe9dc';
 const HAIR_SHADE = '#2a1d17';
+/** 腮红(小男孩的红润脸颊) */
+const BLUSH = '#e6a184';
 
 /** 颜色明暗调整:amt>0 变亮,amt<0 变暗;用于给平面色块加体积感 */
 function shade(hex, amt) {
@@ -96,7 +98,8 @@ function drawHat(P, a) {
 
 /* ============================================================
    人物像素图(24 × 32 逻辑像素)
-   站立正面像:轮廓描边 + 左侧受光 / 右侧入影,面部含眉、眼、鼻、口
+   站立正面像 —— 一个小男孩:圆头大眼、窄肩短腿、圆润脸颊
+   轮廓描边 + 左侧受光 / 右侧入影;保留全部服饰与配件挂点
    ============================================================ */
 const CHAR_W = 24;
 const CHAR_H = 32;
@@ -136,13 +139,19 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look) {
 
   const P = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
 
-  // ---- 轮廓底(略大于身体,露出 1px 描边) ----
-  P(6, 0, 12, 12, OUTLINE);      // 头
-  P(4, 12, 16, 10, OUTLINE);     // 肩胸
-  P(2, 13, 4, 10, OUTLINE);      // 左臂
-  P(18, 13, 4, 10, OUTLINE);     // 右臂
-  P(5, 21, 6, 11, OUTLINE);      // 左腿
-  P(13, 21, 6, 11, OUTLINE);     // 右腿
+  // ---- 轮廓底(小男孩:圆头 + 窄肩 + 短腿) ----
+  P(6, 0, 12, 1, OUTLINE);       // 头顶
+  P(5, 1, 14, 12, OUTLINE);      // 头(圆润,占全身近半)
+  P(6, 13, 12, 1, OUTLINE);      // 下颌
+  P(10, 13, 4, 2, OUTLINE);      // 颈
+  P(7, 14, 10, 7, OUTLINE);      // 躯干(窄肩小身板)
+  P(4, 15, 4, 8, OUTLINE);       // 左臂
+  P(16, 15, 4, 8, OUTLINE);      // 右臂
+  P(7, 20, 10, 3, OUTLINE);      // 胯
+  P(7, 23, 5, 5, OUTLINE);       // 左腿
+  P(12, 23, 5, 5, OUTLINE);      // 右腿
+  P(6, 27, 6, 5, OUTLINE);       // 左靴
+  P(12, 27, 6, 5, OUTLINE);      // 右靴
 
   // ---- 身后配件(先画,被身体遮挡一部分) ----
   if (acc === 'wings') {
@@ -150,84 +159,87 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look) {
     P(19, 11, 5, 8, '#8fb6c9'); P(20, 12, 3, 5, '#b9d7e6'); P(20, 17, 4, 2, '#6f96a8');
   }
   if (acc === 'sword') {
-    P(21, 6, 2, 16, METAL); P(21, 6, 1, 16, '#e6ebf0');    // 剑身
-    P(20, 21, 4, 1, LEATHER);                              // 护手
-    P(21, 22, 2, 4, LEATHER);                              // 握柄
-    P(21, 26, 2, 1, trim);                                 // 剑首
+    P(20, 8, 2, 14, METAL); P(20, 8, 1, 14, '#e6ebf0');    // 剑身
+    P(19, 21, 4, 1, LEATHER);                              // 护手
+    P(20, 22, 2, 4, LEATHER);                              // 握柄
+    P(20, 26, 2, 1, trim);                                 // 剑首
   }
   if (acc === 'spear') {
-    P(21, 3, 2, 25, LEATHER); P(21, 3, 1, 25, '#7d5b3c');
-    P(21, 0, 2, 3, METAL); P(21, 0, 1, 3, '#e6ebf0');
+    P(20, 4, 2, 23, LEATHER); P(20, 4, 1, 23, '#7d5b3c');
+    P(20, 1, 2, 3, METAL); P(20, 1, 1, 3, '#e6ebf0');
   }
   if (acc === 'staff') {
-    P(2, 9, 2, 18, '#6b4a30'); P(2, 9, 1, 18, '#835c3c');
-    P(0, 6, 4, 3, trim); P(1, 5, 2, 1, trimHi); P(1, 6, 1, 1, '#fff0b8');
+    P(2, 10, 2, 17, '#6b4a30'); P(2, 10, 1, 17, '#835c3c');
+    P(0, 7, 4, 3, trim); P(1, 6, 2, 1, trimHi); P(1, 7, 1, 1, '#fff0b8');
   }
 
-  // ---- 头 ----
-  P(7, 1, 10, 4, HAIR);                 // 发顶
-  P(8, 1, 6, 1, HAIR_HI);               // 顶部高光
-  P(7, 4, 1, 5, HAIR);                  // 左鬓
-  P(16, 4, 1, 5, HAIR_SHADE);           // 右鬓(入影)
-  P(8, 4, 8, 7, SKIN);                  // 脸(y4~10)
-  P(8, 4, 8, 1, skinHi);                // 额头受光
-  P(15, 5, 1, 5, skinLo);               // 右颊入影
-  P(9, 10, 6, 1, SKIN_SHADE);           // 下颌阴影
-  P(9, 5, 3, 1, HAIR); P(13, 5, 3, 1, HAIR);            // 眉
-  P(9, 6, 1, 1, EYE_WHITE); P(10, 6, 1, 1, EYE);        // 左眼(高光 + 瞳)
-  P(13, 6, 1, 1, EYE_WHITE); P(14, 6, 1, 1, EYE);       // 右眼
-  P(11, 7, 2, 1, SKIN_SHADE); P(11, 8, 1, 1, skinLo);   // 鼻
-  P(10, 8, 4, 1, MOUTH);                                // 口
-  P(10, 11, 4, 2, SKIN); P(10, 11, 4, 1, SKIN_SHADE);   // 颈(y11~12)
+  // ---- 脸(圆润饱满) ----
+  P(7, 5, 10, 8, SKIN);                 // 脸(y5~12)
+  P(8, 6, 5, 1, skinHi);                // 额头受光
+  P(16, 5, 1, 7, skinLo);               // 右颊入影
+  P(9, 12, 6, 1, SKIN_SHADE);           // 下颌阴影
+  P(4, 8, 1, 3, SKIN_SHADE); P(19, 8, 1, 3, SKIN_SHADE);          // 耳
+  P(8, 7, 2, 1, HAIR); P(14, 7, 2, 1, HAIR);                      // 眉
+  P(8, 8, 2, 2, EYE); P(8, 8, 1, 1, EYE_WHITE);                   // 左眼(大眼 + 高光)
+  P(14, 8, 2, 2, EYE); P(14, 8, 1, 1, EYE_WHITE);                 // 右眼
+  P(11, 10, 2, 1, SKIN_SHADE);                                    // 鼻
+  P(11, 11, 2, 1, MOUTH);                                         // 口
+  P(7, 10, 2, 1, BLUSH); P(15, 10, 2, 1, BLUSH);                  // 腮红
+  P(10, 13, 4, 2, SKIN); P(10, 13, 4, 1, SKIN_SHADE);             // 颈(y13~14)
+
+  // ---- 头发(短发蓬松,压在脸上,留额前碎发) ----
+  P(6, 1, 12, 4, HAIR);                 // 发顶(y1~4)
+  P(8, 1, 4, 1, HAIR_HI);               // 顶部高光
+  P(6, 5, 1, 6, HAIR);                  // 左鬓
+  P(17, 5, 1, 6, HAIR_SHADE);           // 右鬓(入影)
+  P(7, 5, 4, 1, HAIR); P(13, 5, 4, 1, HAIR);   // 额前碎发(中间留缝)
 
   // ---- 头部服饰(帽子;hideHat 时不着帽,露出头发) ----
   drawHat(P, a);
 
-  // ---- 躯干 ----
-  P(5, 13, 14, 2, cloth);               // 肩(y13~14)
-  P(6, 15, 12, 5, cloth);               // 胸腹(y15~19)
-  P(5, 13, 2, 2, clothHi); P(6, 15, 2, 5, clothHi);     // 左受光
-  P(17, 13, 2, 2, clothLo); P(16, 15, 2, 5, clothLo);   // 右入影
-  P(10, 15, 4, 5, cloth2);                              // 内襟
-  P(10, 15, 1, 5, cloth2Hi); P(13, 15, 1, 5, cloth2Lo);
-  P(6, 13, 12, 1, trim);                                // 领口滚边
-  P(11, 14, 2, 1, cloth2); P(10, 13, 4, 1, trimHi);     // V 领
+  // ---- 躯干(窄肩小身板) ----
+  P(8, 14, 8, 6, cloth);               // 肩胸(y14~19)
+  P(8, 14, 1, 6, clothHi); P(15, 14, 1, 6, clothLo);   // 左受光 / 右入影
+  P(10, 16, 4, 4, cloth2);                              // 内襟(y16~19)
+  P(10, 16, 1, 4, cloth2Hi); P(13, 16, 1, 4, cloth2Lo);
+  P(8, 14, 8, 1, trim);                                // 领口滚边
+  P(11, 15, 2, 1, cloth2); P(10, 14, 4, 1, trimHi);     // V 领
 
-  // ---- 双臂 ----
-  P(3, 14, 3, 7, cloth); P(3, 14, 1, 7, clothHi); P(5, 14, 1, 7, clothLo);
-  P(18, 14, 3, 7, cloth); P(20, 14, 1, 7, clothLo); P(18, 14, 1, 7, shade(cloth, -0.12));
-  P(3, 21, 3, 2, SKIN); P(3, 22, 3, 1, SKIN_SHADE);      // 左手
-  P(18, 21, 3, 2, SKIN); P(18, 22, 3, 1, SKIN_SHADE);    // 右手
+  // ---- 双臂(短而细) ----
+  P(5, 15, 2, 6, cloth); P(5, 15, 1, 6, clothHi); P(6, 15, 1, 6, clothLo);
+  P(17, 15, 2, 6, cloth); P(18, 15, 1, 6, clothLo); P(17, 15, 1, 6, shade(cloth, -0.12));
+  P(5, 21, 2, 2, SKIN); P(5, 22, 2, 1, SKIN_SHADE);      // 左手
+  P(17, 21, 2, 2, SKIN); P(17, 22, 2, 1, SKIN_SHADE);    // 右手
 
   // ---- 腰带 ----
   if (!bareTop) {
-    P(6, 20, 12, 1, LEATHER);
-    P(6, 20, 4, 1, shade(LEATHER, 0.2));
+    P(8, 20, 8, 1, LEATHER);
+    P(8, 20, 3, 1, shade(LEATHER, 0.2));
     P(11, 20, 2, 1, trim);
   }
 
-  // ---- 下装 ----
-  P(6, 21, 12, 2, pantsCol);                            // 胯
-  P(6, 22, 12, 1, pantsLo);
-  P(7, 23, 4, 6, pantsCol); P(7, 23, 1, 6, pantsHi); P(10, 23, 1, 6, pantsLo);   // 左腿
-  P(13, 23, 4, 6, pantsCol); P(16, 23, 1, 6, pantsLo);                          // 右腿
-  P(6, 29, 5, 3, bootCol); P(7, 29, 3, 1, bootHi); P(6, 31, 5, 1, bootLo);      // 左靴
-  P(12, 29, 5, 3, bootCol); P(13, 29, 3, 1, bootHi); P(12, 31, 5, 1, bootLo);   // 右靴
+  // ---- 下装(短腿小靴) ----
+  P(8, 21, 8, 2, pantsCol);                            // 胯
+  P(8, 22, 8, 1, pantsLo);
+  P(8, 23, 3, 5, pantsCol); P(8, 23, 1, 5, pantsHi); P(10, 23, 1, 5, pantsLo);   // 左腿
+  P(13, 23, 3, 5, pantsCol); P(15, 23, 1, 5, pantsLo);                          // 右腿
+  P(7, 28, 4, 4, bootCol); P(7, 28, 4, 1, bootHi); P(7, 31, 4, 1, bootLo);      // 左靴
+  P(13, 28, 4, 4, bootCol); P(13, 28, 4, 1, bootHi); P(13, 31, 4, 1, bootLo);   // 右靴
 
   // ---- 胸前配件 ----
   if (acc === 'anchor') { P(11, 16, 2, 1, METAL); P(11, 17, 2, 2, METAL_DARK); P(10, 19, 4, 1, METAL_DARK); }
-  if (acc === 'censer') { P(18, 20, 4, 1, METAL_DARK); P(20, 21, 3, 3, trim); P(20, 24, 3, 1, METAL_DARK); }
-  if (acc === 'none' && flags.has('got_horse')) { P(5, 17, 14, 1, LEATHER); }
+  if (acc === 'censer') { P(17, 20, 4, 1, METAL_DARK); P(18, 21, 3, 3, trim); P(18, 24, 3, 1, METAL_DARK); }
+  if (acc === 'none' && flags.has('got_horse')) { P(8, 17, 8, 1, LEATHER); }
 
   // ---- 伤势叠层 ----
   if (hpRatio < 0.5) {
-    P(3, 15, 3, 3, BANDAGE);                       // 左臂绷带
-    P(15, 6, 1, 1, BLOOD);                         // 脸颊擦伤
+    P(5, 16, 2, 3, BANDAGE);                       // 左臂绷带
+    P(15, 7, 1, 1, BLOOD);                         // 脸颊擦伤
   }
   if (hpRatio < 0.25) {
-    P(7, 17, 3, 2, BLOOD);                         // 袍上血渍
-    P(16, 18, 2, 1, BLOOD);
-    P(8, 25, 2, 1, BLOOD);
+    P(9, 17, 2, 2, BLOOD);                         // 袍上血渍
+    P(14, 18, 2, 1, BLOOD);
+    P(8, 25, 1, 1, BLOOD);
   }
 }
 
