@@ -11,24 +11,24 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js';
-import { EventBus } from './eventbus.js';
-import { AudioEngine } from './audio.js';
-import { Player } from '../combat/entity.js';
-import { Deck } from '../card/deck.js';
-import { Battle } from '../combat/battle.js';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js';
-import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js';
-import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js';
+import { RNG, seedFromString } from './rng.js?v=20260929f';
+import { EventBus } from './eventbus.js?v=20260929f';
+import { AudioEngine } from './audio.js?v=20260929f';
+import { Player } from '../combat/entity.js?v=20260929f';
+import { Deck } from '../card/deck.js?v=20260929f';
+import { Battle } from '../combat/battle.js?v=20260929f';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929f';
+import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929f';
+import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js?v=20260929f';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
-} from '../data/world.js';
-import { NPCS } from '../data/npcs.js';
-import { Economy } from './economy.js?v=20260929e';
-import { Travel } from './travel.js?v=20260929e';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js';
-import { UI } from '../ui/ui.js?v=20260929e';
+} from '../data/world.js?v=20260929f';
+import { NPCS } from '../data/npcs.js?v=20260929f';
+import { Economy } from './economy.js?v=20260929f';
+import { Travel } from './travel.js?v=20260929f';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929f';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929f';
+import { UI } from '../ui/ui.js?v=20260929f';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';

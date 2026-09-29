@@ -10,13 +10,13 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929e';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js';
-import { cardMpCost } from '../data/data.js';
-import { ENDINGS } from '../narrative/engine.js';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js';
-import { SceneView } from './scene.js';
+import { GameState } from '../core/game.js?v=20260929f';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929f';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929f';
+import { cardMpCost } from '../data/data.js?v=20260929f';
+import { ENDINGS } from '../narrative/engine.js?v=20260929f';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929f';
+import { SceneView } from './scene.js?v=20260929f';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
