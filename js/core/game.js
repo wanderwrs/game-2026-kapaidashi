@@ -11,30 +11,30 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929p';
-import { EventBus } from './eventbus.js?v=20260929p';
-import { AudioEngine } from './audio.js?v=20260929p';
-import { Player } from '../combat/entity.js?v=20260929p';
-import { Deck } from '../card/deck.js?v=20260929p';
-import { Battle } from '../combat/battle.js?v=20260929p';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929p';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929p';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929p';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929p';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929p';
-import { jobsFor } from '../data/jobs.js?v=20260929p';
+import { RNG, seedFromString } from './rng.js?v=20260929q';
+import { EventBus } from './eventbus.js?v=20260929q';
+import { AudioEngine } from './audio.js?v=20260929q';
+import { Player } from '../combat/entity.js?v=20260929q';
+import { Deck } from '../card/deck.js?v=20260929q';
+import { Battle } from '../combat/battle.js?v=20260929q';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929q';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929q';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929q';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929q';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929q';
+import { jobsFor } from '../data/jobs.js?v=20260929q';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929p';
-import { NPCS } from '../data/npcs.js?v=20260929p';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929p';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929p';
-import { Economy } from './economy.js?v=20260929p';
-import { Travel } from './travel.js?v=20260929p';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929p';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929p';
-import { UI } from '../ui/ui.js?v=20260929p';
+} from '../data/world.js?v=20260929q';
+import { NPCS } from '../data/npcs.js?v=20260929q';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929q';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929q';
+import { Economy } from './economy.js?v=20260929q';
+import { Travel } from './travel.js?v=20260929q';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929q';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929q';
+import { UI } from '../ui/ui.js?v=20260929q';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -47,6 +47,12 @@ const REST_SECONDS = 300;
 const REST_HASTE_MUL = 0.25;
 /** 用了「疾风饮」后旅途耗时的倍率 */
 const TRAVEL_HASTE_MUL = 0.5;
+/** 「皇帝的新衣」全套的风险:野外遭遇倍率 / 等级加成;主城罚款概率 / 比例 / 下限 */
+const EMPEROR_WILD_ENCOUNTER_MUL = 3;
+const EMPEROR_WILD_LEVEL_BONUS = 3;
+const EMPEROR_FINE_CHANCE = 0.55;
+const EMPEROR_FINE_RATE = 0.25;
+const EMPEROR_FINE_MIN = 120;
 
 /** 教程是否已看过 */
 function loadTutorialSeen() {
@@ -408,7 +414,9 @@ export class Game {
     this._syncUi();
     this.transition(GameState.MAP);
     this._renderMap();
-    this.ui.showToast(`穿梭至「${REGIONS[regionId]?.name}」,花费 ${gold} 金币`);
+    const name = REGIONS[regionId]?.name;
+    const fine = this._maybeFine();
+    this.ui.showToast(fine ? `穿梭至「${name}」,花费 ${gold} 金币 —— ${fine}` : `穿梭至「${name}」,花费 ${gold} 金币`);
   }
 
   /** 地区内短途移动:同样按真实时间行进 */
@@ -448,18 +456,22 @@ export class Game {
     // 疾风饮:把这一段旅途的耗时减半
     const haste = this.economy.consumeTravelHaste();
     const baseSec = tripSeconds(trip.dist, this.economy.travelSpeedMul());
+    // 「皇帝的新衣」全套:野路上会被高阶怪物盯上(城内踱步不算野外)
+    const wild = this._emperorSet() && (trip.kind === 'region' || !this._isCity(this.regionId));
     this.travel.start({
       fromLabel: trip.fromLabel,
       toLabel: trip.toLabel,
       dist: trip.dist,
       seconds: Math.max(1, Math.round(baseSec * (haste ? TRAVEL_HASTE_MUL : 1))),
-      level: trip.level,
+      level: trip.level + (wild ? EMPEROR_WILD_LEVEL_BONUS : 0),
       poolKey: trip.poolKey,
+      encounterMul: wild ? EMPEROR_WILD_ENCOUNTER_MUL : 1,
       vehicle: this.economy.vehicleName(),
       terrain: regionTerrain(trip.regionId),
       npcPool: this._npcsForTheme(trip.theme),
     });
     if (haste) this.travel.pushLog('疾风饮下肚,脚下的路缩了一半。');
+    if (wild) this.travel.pushLog('你衣不蔽体地走在旷野上 —— 远处的高阶怪物似乎嗅到了你。');
     this.transition(GameState.TRAVEL);
   }
 
@@ -488,7 +500,10 @@ export class Game {
     this.transition(GameState.MAP);
     this._renderMap();
     const region = REGIONS[this.regionId];
-    this.ui.showToast(`抵达「${region?.stops[this.stopIndex]?.name || region?.name}」`);
+    const place = region?.stops[this.stopIndex]?.name || region?.name;
+    // 主城落地时,「皇帝的新衣」全套可能被巡卫逮住罚款
+    const fine = this._maybeFine();
+    this.ui.showToast(fine ? `抵达「${place}」 —— ${fine}` : `抵达「${place}」`);
   }
 
   /** 途中事件(怪物 / 路人 NPC / 休息小奖励) */
@@ -503,6 +518,32 @@ export class Game {
       return;
     }
     if (type === 'reward') this._onRestReward();
+  }
+
+  // ===== 「皇帝的新衣」全套的风险(主城罚款 / 野外招怪) =====
+  /** 某地区是否为主城(有巡卫、可穿梭) */
+  _isCity(regionId) {
+    return !!WORLD[regionId]?.city;
+  }
+
+  /** 是否全身身着「皇帝的新衣」四件套 */
+  _emperorSet() {
+    return !!this.economy && this.economy.emperorSet();
+  }
+
+  /**
+   * 主城当场罚款:返回提示文本(未触发或被罚 0 则返回 null);不负责弹提示。
+   * 罚款 = 当前金币 × EMPEROR_FINE_RATE,不低于 EMPEROR_FINE_MIN,且不超过身上金币。
+   */
+  _maybeFine() {
+    if (!this._emperorSet() || !this._isCity(this.regionId)) return null;
+    if (this.rng.next() >= EMPEROR_FINE_CHANCE) return null;
+    const gold = this.economy.gold;
+    const fine = Math.min(gold, Math.max(EMPEROR_FINE_MIN, Math.round(gold * EMPEROR_FINE_RATE)));
+    if (fine <= 0) return null;
+    this.economy.gold -= fine;
+    this._syncUi();
+    return `巡卫当街拦下衣衫不整的你,罚银 ${fine} 金币`;
   }
 
   // ===== 随机 NPC(玩家可选话题的交谈) =====
@@ -1099,10 +1140,21 @@ export class Game {
   }
 
   _equipItem(id) {
+    const wasSet = this._emperorSet();
     if (!this.economy.equip(id)) { this.ui.showToast('无法装备'); return; }
     this._syncPlayerStats();
-    this.ui.showToast(`装备「${ITEMS[id].name}」`);
     this._bagRefresh();
+    // 刚凑齐「皇帝的新衣」全套:当场给出风险反馈
+    if (!wasSet && this._emperorSet()) {
+      if (this._isCity(this.regionId)) {
+        const fine = this._maybeFine();
+        this.ui.showToast(fine ? `穿戴齐「皇帝的新衣」 —— ${fine}` : '穿戴齐「皇帝的新衣」 —— 主城的巡卫盯着你,这次侥幸没被逮住');
+      } else {
+        this.ui.showToast('穿戴齐「皇帝的新衣」 —— 荒野里的高阶怪物会循味找来');
+      }
+      return;
+    }
+    this.ui.showToast(`装备「${ITEMS[id].name}」`);
   }
 
   _unequipItem(slot) {

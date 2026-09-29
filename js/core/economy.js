@@ -10,8 +10,8 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20260929p';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929p';
+import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20260929q';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929q';
 
 const SLOTS = ['weapon', 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
 const OUTFIT_SLOTS = ['hat', 'top', 'bottom', 'shoes'];
@@ -220,6 +220,14 @@ export class Economy {
     const names = OUTFIT_SLOTS.map((s) => ITEMS[this.equipped[s]]?.name).filter(Boolean);
     a.label = names.length ? names.join(' · ') : null;
     return a;
+  }
+
+  /** 是否全身身着「皇帝的新衣」四件套(四个部位都是 hide 物品,穿上看不见) */
+  emperorSet() {
+    return OUTFIT_SLOTS.every((slot) => {
+      const id = this.equipped[slot];
+      return !!id && ITEMS[id]?.hide === true;
+    });
   }
 
   // ===== 行动力 =====

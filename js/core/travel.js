@@ -45,6 +45,7 @@ export class Travel {
    *   level       怪物等级(= 地区章节序号)
    *   poolKey     随机遭遇所用敌人池
    *   npcPool     途中可遇到的路人 NPC 列表
+   *   encounterMul 怪物遭遇次数倍率(默认 1;>1 时至少遭遇一次,用于「招怪」效果)
    *   mode        'travel'(默认) | 'rest'
    *   events      直接给定的事件表 [{ type, at(0~1), npc?, log? }];给了就不再按里程生成
    */
@@ -71,9 +72,12 @@ export class Travel {
     if (dist <= 0) return [];
     const events = [];
 
-    // 怪物遭遇:期望每 ENCOUNTER_PER_LI 里一次
+    // 怪物遭遇:期望每 ENCOUNTER_PER_LI 里一次;encounterMul 可整体放大(如「皇帝的新衣」招怪)
+    const mul = Math.max(0, Number(opts.encounterMul) || 1);
     let count = Math.floor(dist / ENCOUNTER_PER_LI);
     if (this.rng.next() < (dist % ENCOUNTER_PER_LI) / ENCOUNTER_PER_LI) count += 1;
+    count = Math.round(count * mul);
+    if (mul > 1 && count < 1) count = 1;   // 招怪时,再短的野路也至少撞上一回
     for (let i = 0; i < count; i++) {
       const at = (i + 1) / (count + 1) * (0.55 + this.rng.next() * 0.7);
       events.push({ type: 'encounter', at: Math.min(0.92, Math.max(0.08, at)) });
