@@ -1,16 +1,18 @@
 /**
  * travel.js — 「旅途」实时计时控制器。
  *
- * 一次旅途(地区之间或地区内地点之间)会在真实时间里推进:
- *   · 总耗时由里程与载具倍率算出(见 data/world.js)
- *   · 期间按里程概率触发「途中遭遇」(怪物 / 路人 NPC)
- *   · 遭遇时暂停计时,交给上层处理,处理完调用 resume() 继续
+ * 两类计时流程共用同一套控制器与界面:
+ *   · 旅途 mode:'travel' —— 地区之间或地区内地点之间,总耗时由里程与载具倍率算出
+ *   · 休息 mode:'rest'   —— 固定 5 分钟,事件由上层用 opts.events 直接给定
+ * 期间按进度触发事件:
+ *   · encounter / npc 之类会「暂停计时」,交给上层处理,处理完调用 resume() 继续
+ *   · reward 之类不暂停,发完继续走
  *
  * 事件:
  *   travel:start    { snapshot }
  *   travel:progress { snapshot }  每 TICK_MS 一次
- *   travel:event    { type:'encounter'|'npc', payload, snapshot }  遭遇(已自动暂停)
- *   travel:arrive   { snapshot }  抵达终点
+ *   travel:event    { type, payload, snapshot }  事件(encounter/npc 已自动暂停)
+ *   travel:arrive   { snapshot }  抵达终点(休息即休整结束)
  */
 
 const TICK_MS = 250;
@@ -43,6 +45,8 @@ export class Travel {
    *   level       怪物等级(= 地区章节序号)
    *   poolKey     随机遭遇所用敌人池
    *   npcPool     途中可遇到的路人 NPC 列表
+   *   mode        'travel'(默认) | 'rest'
+   *   events      直接给定的事件表 [{ type, at(0~1), npc?, log? }];给了就不再按里程生成
    */
   start(opts) {
     this.stop();
@@ -53,7 +57,9 @@ export class Travel {
     this.active = true;
     this.log = [];
     this._fired = new Set();
-    this._events = this._buildEvents(opts);
+    this._events = Array.isArray(opts.events) && opts.events.length
+      ? [...opts.events].sort((a, b) => a.at - b.at)
+      : this._buildEvents(opts);
     this.bus.emit('travel:start', this.snapshot());
     this._emitProgress();
     this._timer = setInterval(() => this._tick(), TICK_MS);
@@ -87,14 +93,17 @@ export class Travel {
     this.elapsed += TICK_MS;
     const pct = this.total > 0 ? this.elapsed / this.total : 1;
 
-    // 触发遭遇
+    // 触发事件(一次 tick 至多一个)
     for (let i = 0; i < this._events.length; i++) {
       if (this._fired.has(i)) continue;
       const ev = this._events[i];
       if (pct >= ev.at) {
         this._fired.add(i);
-        this.paused = true;
-        this._pushLog(ev.type === 'encounter' ? `前方有动静 —— ${this.info?.fromLabel ?? ''}到${this.info?.toLabel ?? ''}的路上,有人拦路。` : '路边有人朝你搭话。');
+        const pauses = ev.type === 'encounter' || ev.type === 'npc';
+        if (pauses) this.paused = true;
+        if (ev.log) this._pushLog(ev.log);
+        else if (ev.type === 'encounter') this._pushLog(`前方有动静 —— ${this.info?.fromLabel ?? ''}到${this.info?.toLabel ?? ''}的路上,有人拦路。`);
+        else if (ev.type === 'npc') this._pushLog('路边有人朝你搭话。');
         this._emitProgress();
         this.bus.emit('travel:event', { type: ev.type, npc: ev.npc, snapshot: this.snapshot() });
         return;
@@ -117,6 +126,13 @@ export class Travel {
   resume() {
     if (!this.active) return;
     this.paused = false;
+    this._emitProgress();
+  }
+
+  /** 追加一条行进日志(供上层在事件后补记) */
+  pushLog(text) {
+    if (!this.active) return;
+    this._pushLog(text);
     this._emitProgress();
   }
 
@@ -167,6 +183,7 @@ export class Travel {
     return {
       active: this.active,
       paused: this.paused,
+      mode: this.info?.mode || 'travel',
       fromLabel: this.info?.fromLabel ?? '',
       toLabel: this.info?.toLabel ?? '',
       dist: this.info?.dist ?? 0,

@@ -11,33 +11,35 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929l';
-import { EventBus } from './eventbus.js?v=20260929l';
-import { AudioEngine } from './audio.js?v=20260929l';
-import { Player } from '../combat/entity.js?v=20260929l';
-import { Deck } from '../card/deck.js?v=20260929l';
-import { Battle } from '../combat/battle.js?v=20260929l';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929l';
-import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929l';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929l';
-import { jobsFor } from '../data/jobs.js?v=20260929l';
+import { RNG, seedFromString } from './rng.js?v=20260929m';
+import { EventBus } from './eventbus.js?v=20260929m';
+import { AudioEngine } from './audio.js?v=20260929m';
+import { Player } from '../combat/entity.js?v=20260929m';
+import { Deck } from '../card/deck.js?v=20260929m';
+import { Battle } from '../combat/battle.js?v=20260929m';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929m';
+import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929m';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929m';
+import { jobsFor } from '../data/jobs.js?v=20260929m';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929l';
-import { NPCS } from '../data/npcs.js?v=20260929l';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929l';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929l';
-import { Economy } from './economy.js?v=20260929l';
-import { Travel } from './travel.js?v=20260929l';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929l';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929l';
-import { UI } from '../ui/ui.js?v=20260929l';
+} from '../data/world.js?v=20260929m';
+import { NPCS } from '../data/npcs.js?v=20260929m';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929m';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929m';
+import { Economy } from './economy.js?v=20260929m';
+import { Travel } from './travel.js?v=20260929m';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929m';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929m';
+import { UI } from '../ui/ui.js?v=20260929m';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
 /** 途中遭遇可用的随机 NPC 上限(每次最多出现的候选数) */
 const MAX_STOP_NPCS = 3;
+/** 一次休息的真实耗时(秒);期间复用旅途界面,不可操作 */
+const REST_SECONDS = 300;
 
 /** 教程是否已看过 */
 function loadTutorialSeen() {
@@ -413,11 +415,20 @@ export class Game {
     this.transition(GameState.TRAVEL);
   }
 
-  /** 旅途结束:落到目的地点 */
+  /** 旅途结束:落到目的地点(休息则是休整完毕,原地结算行动力) */
   _onTravelArrive() {
     const trip = this._trip;
-    if (!trip) return;
     this._trip = null;
+    if (!trip) {
+      const place = this.travel.info?.fromLabel || '此地';
+      const bonus = this.economy.restBonus ? this.economy.restBonus() : 0;
+      const got = this.economy.addAp(REST_AP_RECOVER + bonus);
+      const extra = bonus > 0 && got > 0 ? `(服饰加成 +${bonus})` : '';
+      this.transition(GameState.MAP);
+      this._renderMap();
+      this.ui.showToast(got > 0 ? `在「${place}」休整完毕,恢复 ${got} 点行动力${extra}` : `在「${place}」休整完毕,行动力已满`);
+      return;
+    }
     if (trip.kind === 'region') {
       this.regionId = trip.regionId;
       this.stopIndex = 0;
@@ -432,7 +443,7 @@ export class Game {
     this.ui.showToast(`抵达「${region?.stops[this.stopIndex]?.name || region?.name}」`);
   }
 
-  /** 途中遭遇(怪物 / 路人 NPC) */
+  /** 途中事件(怪物 / 路人 NPC / 休息小奖励) */
   _onTravelEvent({ type, npc }) {
     if (type === 'encounter') {
       const level = WORLD[this.regionId]?.level ?? this._chapterNum();
@@ -441,7 +452,9 @@ export class Game {
     }
     if (type === 'npc' && npc) {
       this._startNpcTalk(npc, 'road');
+      return;
     }
+    if (type === 'reward') this._onRestReward();
   }
 
   // ===== 随机 NPC(玩家可选话题的交谈) =====
@@ -705,12 +718,68 @@ export class Game {
     this.ui.closeTutorial();
   }
 
+  /**
+   * 休息:整整 5 分钟的真实等待,期间复用「旅途」界面、无法操作。
+   * 期间可能被怪物惊扰(入战斗),也可能捡到随机小奖励;结束时才结算行动力。
+   */
   _rest() {
-    const bonus = this.economy.restBonus ? this.economy.restBonus() : 0;
-    const got = this.economy.addAp(REST_AP_RECOVER + bonus);
-    const extra = bonus > 0 && got > 0 ? `(服饰加成 +${bonus})` : '';
-    this.ui.showToast(got > 0 ? `休息片刻,恢复 ${got} 点行动力${extra}` : '行动力已满');
-    this._renderMap();
+    if (this.travel.active) return;
+    const region = REGIONS[this.regionId];
+    const place = region?.stops?.[this.stopIndex]?.name || region?.name || '此地';
+    this.travel.start({
+      mode: 'rest',
+      fromLabel: place,
+      toLabel: '休整',
+      dist: 0,
+      seconds: REST_SECONDS,
+      level: WORLD[this.regionId]?.level ?? this._chapterNum(),
+      poolKey: this.regionId,
+      terrain: regionTerrain(this.regionId),
+      events: this._buildRestEvents(),
+    });
+    this.transition(GameState.TRAVEL);
+  }
+
+  /** 休息期间的事件表:0~2 次怪物惊扰、1~3 次随机小奖励,错落在整段时间里 */
+  _buildRestEvents() {
+    const events = [];
+    let monsters = this.rng.next() < 0.55 ? 1 : 0;
+    if (this.rng.next() < 0.18) monsters += 1;
+    for (let i = 0; i < monsters; i++) {
+      events.push({
+        type: 'encounter',
+        at: 0.12 + this.rng.next() * 0.74,
+        log: '半梦半醒间被惊醒 —— 有东西摸了过来。',
+      });
+    }
+    const rewards = 1 + Math.floor(this.rng.next() * 3);
+    for (let i = 0; i < rewards; i++) {
+      events.push({ type: 'reward', at: 0.1 + this.rng.next() * 0.8 });
+    }
+    return events.sort((a, b) => a.at - b.at);
+  }
+
+  /** 休息途中的随机小奖励(不打断计时) */
+  _onRestReward() {
+    const roll = this.rng.next();
+    const ch = this._chapterNum();
+    let text;
+    if (roll < 0.4) {
+      const gold = this._grantGold(3 + Math.floor(this.rng.next() * 8) + ch);
+      text = `歇脚时在石缝里拾得 ${gold} 金币。`;
+    } else if (roll < 0.7) {
+      const loot = LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
+      this.economy.addItem(loot, 1);
+      text = `随手一翻,翻出了「${ITEMS[loot]?.name || loot}」。`;
+    } else if (roll < 0.9) {
+      const got = this.economy.addAp(1 + Math.floor(this.rng.next() * 2));
+      text = got > 0 ? `打了个盹,行动力恢复 ${got} 点。` : '睡得很沉,只是行动力已满。';
+    } else {
+      this.economy.addItem('hp_small', 1);
+      text = '梦见旧事,醒来手里多了「金创药」×1。';
+    }
+    this._syncUi();
+    this.travel.pushLog(text);
   }
 
   _currentTheme() {
@@ -954,20 +1023,23 @@ export class Game {
       return;
     }
 
-    // 战败:中止旅途,退回出发地
-    const fromId = this.regionId;
+    // 战败:中止当前流程(旅途退回出发地;休息则醒来留在原地)
+    const resting = this.travel?.info?.mode === 'rest';
+    const place = this.travel?.info?.fromLabel || REGIONS[this.regionId]?.stops[this.stopIndex]?.name || '此地';
     const penalty = Math.max(10, Math.floor(this.economy.gold * 0.15));
     this.economy.gold = Math.max(0, this.economy.gold - penalty);
     this.travel?.cancel();
     this._trip = null;
-    this.stopIndex = 0;
+    if (!resting) this.stopIndex = 0;
     this._syncPlayerStats();
     this.player.hp = this.player.maxHp;
     this.player.mp = this.player.maxMp;
     this._syncUi();
     this.transition(GameState.MAP);
     this._renderMap();
-    this.ui.showToast(`你倒在了路上……退回「${REGIONS[fromId]?.stops[0]?.name || '出发地'}」,损失 ${penalty} 金币`);
+    this.ui.showToast(resting
+      ? `歇脚时被撂倒……你在「${place}」醒来,损失 ${penalty} 金币`
+      : `你倒在了路上……退回「${REGIONS[this.regionId]?.stops[0]?.name || '出发地'}」,损失 ${penalty} 金币`);
   }
 
   /** 胜利奖励:金币 + 概率掉落杂物 */

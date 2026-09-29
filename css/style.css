@@ -1358,6 +1358,13 @@ body {
   font-size: 12px; color: var(--text-soft); font-family: var(--font-display);
   border-left: 2px solid var(--border-soft); padding-left: var(--sp-8); text-align: left;
 }
+/* 休息:与旅途同一界面,改用安眠的绿色调 */
+.travel-card.is-rest .travel-eyebrow { color: var(--success); }
+.travel-card.is-rest #travel-to { color: var(--success); }
+.travel-card.is-rest #travel-bar {
+  background: linear-gradient(90deg, var(--success), #8fd0a0);
+  box-shadow: 0 0 12px rgba(111, 184, 122, 0.5);
+}
 
 /* ============================================================
    NPC 对话 / 新手引导

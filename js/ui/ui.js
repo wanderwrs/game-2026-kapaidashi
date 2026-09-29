@@ -10,17 +10,17 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929l';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929l';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929l';
-import { cardMpCost } from '../data/data.js?v=20260929l';
-import { ENDINGS } from '../narrative/engine.js?v=20260929l';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929l';
-import { SceneView } from './scene.js?v=20260929l';
-import { Minigame } from '../minigame/minigame.js?v=20260929l';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929l';
-import { TERRAIN_CN } from '../data/world.js?v=20260929l';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929l';
+import { GameState } from '../core/game.js?v=20260929m';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929m';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929m';
+import { cardMpCost } from '../data/data.js?v=20260929m';
+import { ENDINGS } from '../narrative/engine.js?v=20260929m';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929m';
+import { SceneView } from './scene.js?v=20260929m';
+import { Minigame } from '../minigame/minigame.js?v=20260929m';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929m';
+import { TERRAIN_CN } from '../data/world.js?v=20260929m';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929m';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -149,6 +149,8 @@ export class UI {
       worldNote: $('world-note'),
       btnWorldBack: $('btn-world-back'),
       // 旅途
+      travelCard: $('travel-card'),
+      travelEyebrow: $('travel-eyebrow'),
       travelFrom: $('travel-from'),
       travelTo: $('travel-to'),
       travelBar: $('travel-bar'),
@@ -1080,18 +1082,25 @@ export class UI {
 
   renderTravel(snap) {
     if (!snap) return;
+    const isRest = snap.mode === 'rest';
+    if (this.el.travelCard) this.el.travelCard.classList.toggle('is-rest', isRest);
+    if (this.el.travelEyebrow) this.el.travelEyebrow.textContent = isRest ? '休 息 中' : '旅 途 中';
     if (this.el.travelFrom) this.el.travelFrom.textContent = snap.fromLabel || '—';
     if (this.el.travelTo) this.el.travelTo.textContent = snap.toLabel || '—';
     if (this.el.travelBar) this.el.travelBar.style.width = `${Math.round((snap.pct || 0) * 100)}%`;
     if (this.el.travelRemain) {
       this.el.travelRemain.textContent = snap.paused
-        ? `遭遇!已暂停 —— 还剩约 ${this._fmtDuration(snap.remainSec)}`
+        ? `${isRest ? '被惊扰!' : '遭遇!'}已暂停 —— 还剩约 ${this._fmtDuration(snap.remainSec)}`
         : `还剩约 ${this._fmtDuration(snap.remainSec)}`;
     }
     if (this.el.travelNote) {
-      const veh = snap.vehicle ? `载具:${snap.vehicle}` : '徒步';
-      const terrain = TERRAIN_CN[snap.terrain] ? `${TERRAIN_CN[snap.terrain]} · ` : '';
-      this.el.travelNote.textContent = `全程 ${snap.dist} 里 · 预计 ${this._fmtDuration(snap.totalSec)} · ${veh} · 途经 ${terrain}Lv.${snap.level} 地带`;
+      if (isRest) {
+        this.el.travelNote.textContent = `在「${snap.fromLabel}」歇脚 · 共 ${this._fmtDuration(snap.totalSec)} · 期间无法行动,或有怪物与意外之喜`;
+      } else {
+        const veh = snap.vehicle ? `载具:${snap.vehicle}` : '徒步';
+        const terrain = TERRAIN_CN[snap.terrain] ? `${TERRAIN_CN[snap.terrain]} · ` : '';
+        this.el.travelNote.textContent = `全程 ${snap.dist} 里 · 预计 ${this._fmtDuration(snap.totalSec)} · ${veh} · 途经 ${terrain}Lv.${snap.level} 地带`;
+      }
     }
     this._renderTravelTip(snap);
     if (this.el.travelLog) {
