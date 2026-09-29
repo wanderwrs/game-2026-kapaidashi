@@ -16,13 +16,13 @@
  *   支线4: sq4_n01→...→sq4_exit→n14
  */
 
-import { mainNodes1 } from './ch01_main_1.js?v=20260929r';
-import { mainNodes2 } from './ch01_main_2.js?v=20260929r';
-import { mainNodes3 } from './ch01_main_3.js?v=20260929r';
-import { sq1Nodes } from './ch01_sq1.js?v=20260929r';
-import { sq2Nodes } from './ch01_sq2.js?v=20260929r';
-import { sq3Nodes } from './ch01_sq3.js?v=20260929r';
-import { sq4Nodes } from './ch01_sq4.js?v=20260929r';
+import { mainNodes1 } from './ch01_main_1.js?v=20260929s';
+import { mainNodes2 } from './ch01_main_2.js?v=20260929s';
+import { mainNodes3 } from './ch01_main_3.js?v=20260929s';
+import { sq1Nodes } from './ch01_sq1.js?v=20260929s';
+import { sq2Nodes } from './ch01_sq2.js?v=20260929s';
+import { sq3Nodes } from './ch01_sq3.js?v=20260929s';
+import { sq4Nodes } from './ch01_sq4.js?v=20260929s';
 
 const allNodes = [
   ...mainNodes1, ...mainNodes2, ...mainNodes3,

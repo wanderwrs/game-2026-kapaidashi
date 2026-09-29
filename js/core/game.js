@@ -11,30 +11,31 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929r';
-import { EventBus } from './eventbus.js?v=20260929r';
-import { AudioEngine } from './audio.js?v=20260929r';
-import { Player } from '../combat/entity.js?v=20260929r';
-import { Deck } from '../card/deck.js?v=20260929r';
-import { Battle } from '../combat/battle.js?v=20260929r';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929r';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929r';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929r';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929r';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929r';
-import { jobsFor } from '../data/jobs.js?v=20260929r';
+import { RNG, seedFromString } from './rng.js?v=20260929s';
+import { EventBus } from './eventbus.js?v=20260929s';
+import { AudioEngine } from './audio.js?v=20260929s';
+import { Player } from '../combat/entity.js?v=20260929s';
+import { Deck } from '../card/deck.js?v=20260929s';
+import { Battle } from '../combat/battle.js?v=20260929s';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929s';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929s';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929s';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929s';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929s';
+import { jobsFor } from '../data/jobs.js?v=20260929s';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929r';
-import { NPCS } from '../data/npcs.js?v=20260929r';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929r';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929r';
-import { Economy } from './economy.js?v=20260929r';
-import { Travel } from './travel.js?v=20260929r';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929r';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929r';
-import { UI } from '../ui/ui.js?v=20260929r';
+} from '../data/world.js?v=20260929s';
+import { NPCS } from '../data/npcs.js?v=20260929s';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929s';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929s';
+import { Economy } from './economy.js?v=20260929s';
+import { Travel } from './travel.js?v=20260929s';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929s';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929s';
+import { CAREERS } from '../narrative/careers.js?v=20260929s';
+import { UI } from '../ui/ui.js?v=20260929s';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -1038,10 +1039,23 @@ export class Game {
     if (!reward) return '';
     const parts = [];
     if (reward.gold) parts.push(`${reward.gold} 金币`);
+    if (reward.allItems) parts.push(`全部道具 ×${reward.allItems}(共 ${Object.keys(ITEMS).length} 种)`);
     for (const [id, qty] of Object.entries(reward.items || {})) {
       parts.push(`${ITEMS[id]?.name || id}×${qty}`);
     }
+    if (reward.allCareers) parts.push(`全部职业(共 ${CAREERS.length} 个)`);
     return parts.join(' · ');
+  }
+
+  /** 解锁全部可切换职业,返回本次新解锁的数量 */
+  _unlockAllCareers() {
+    if (!this.engine || !this.engine.unlockedCareers) return 0;
+    const newly = [];
+    for (const c of CAREERS) {
+      if (!this.engine.unlockedCareers.has(c.id)) { this.engine.unlockedCareers.add(c.id); newly.push(c.id); }
+    }
+    if (newly.length) this.bus.emit('narrative:career-unlocked', newly);
+    return newly.length;
   }
 
   /** 发放奖励,返回实际到手的文本数组;无进行中的旅程时返回 null(不发放) */
@@ -1049,18 +1063,31 @@ export class Game {
     if (!reward || !this.economy) return null;
     const got = [];
     if (reward.gold) { this.economy.gold += reward.gold; got.push(`${reward.gold} 金币`); }
+    if (reward.allItems) {
+      let n = 0;
+      for (const id of Object.keys(ITEMS)) {
+        if (this.economy.addItem(id, reward.allItems)) n += 1;
+      }
+      got.push(`全部道具 ×${reward.allItems}(共 ${n} 种)`);
+    }
     for (const [id, qty] of Object.entries(reward.items || {})) {
       if (this.economy.addItem(id, qty)) got.push(`${ITEMS[id]?.name || id}×${qty}`);
+    }
+    if (reward.allCareers) {
+      const n = this._unlockAllCareers();
+      got.push(`全部职业(共 ${CAREERS.length} 个)${n ? '' : '(已全数解锁)'}`);
     }
     this._syncUi();
     return got;
   }
 
-  /** 邮箱当前的展示状态(信件列表 + 可领取数量) */
+  /** 邮箱当前的展示状态(信件列表 + 可领取数量;含兑换码寄来的信) */
   _mailState() {
     if (!this.mailState) this.mailState = loadMailState();
     const claimed = this.mailState.claimed || {};
-    const mails = MAILS.map((m) => ({
+    const granted = Object.values(this.mailState.granted || {});
+    const all = [...granted, ...MAILS];   // 兑换码寄来的信置顶
+    const mails = all.map((m) => ({
       id: m.id,
       no: m.no || '',
       from: m.from || '',
@@ -1084,7 +1111,8 @@ export class Game {
   }
 
   _claimMail(id) {
-    const mail = MAILS.find((m) => m.id === id);
+    const granted = (this.mailState && this.mailState.granted) || {};
+    const mail = granted[id] || MAILS.find((m) => m.id === id);
     if (!mail) return;
     if (!this.mailState) this.mailState = loadMailState();
     this.mailState.claimed = this.mailState.claimed || {};
@@ -1112,11 +1140,31 @@ export class Game {
     const hit = REDEEM_CODES.find((c) => String(c.code || '').toUpperCase() === code);
     if (!hit) { this.ui.renderRedeem({ msg: '兑换码无效,请核对后重试', kind: 'bad' }); return; }
     if (this.mailState.used[code]) { this.ui.renderRedeem({ msg: '这个兑换码已经兑换过了', kind: 'bad' }); return; }
+    const label = hit.label ? `「${hit.label}」` : '';
+
+    // 寄到邮箱:兑换当即生效,奖励需去「邮箱」点领取才入袋
+    if (hit.deliver === 'mail') {
+      const id = `grant_${code}`;
+      this.mailState.granted = this.mailState.granted || {};
+      this.mailState.granted[id] = {
+        id,
+        no: hit.no || '',
+        from: (hit.mail && hit.mail.from) || '守约 · 系统',
+        title: (hit.mail && hit.mail.title) || hit.label || '礼包',
+        body: (hit.mail && hit.mail.body) || '兑换成功,点「领取」入袋。',
+        reward: hit.reward || null,
+      };
+      this.mailState.used[code] = true;
+      saveMailState(this.mailState);
+      this._refreshMailBadge();
+      this.ui.renderRedeem({ msg: `兑换成功${label}:已寄达「邮箱」,请在邮箱点「领取」`, kind: 'ok' });
+      return;
+    }
+
     if (!this.economy) { this.ui.renderRedeem({ msg: '先开始一局旅程,再来兑换', kind: 'bad' }); return; }
     const got = this._applyReward(hit.reward) || [];
     this.mailState.used[code] = true;
     saveMailState(this.mailState);
-    const label = hit.label ? `「${hit.label}」` : '';
     this.ui.renderRedeem({ msg: `兑换成功${label}:${got.length ? got.join('、') : '（无奖励）'}`, kind: 'ok' });
   }
 
