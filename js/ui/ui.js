@@ -10,17 +10,17 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929n';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929n';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929n';
-import { cardMpCost } from '../data/data.js?v=20260929n';
-import { ENDINGS } from '../narrative/engine.js?v=20260929n';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929n';
-import { SceneView } from './scene.js?v=20260929n';
-import { Minigame } from '../minigame/minigame.js?v=20260929n';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929n';
-import { TERRAIN_CN } from '../data/world.js?v=20260929n';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929n';
+import { GameState } from '../core/game.js?v=20260929o';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929o';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929o';
+import { cardMpCost } from '../data/data.js?v=20260929o';
+import { ENDINGS } from '../narrative/engine.js?v=20260929o';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929o';
+import { SceneView } from './scene.js?v=20260929o';
+import { Minigame } from '../minigame/minigame.js?v=20260929o';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929o';
+import { TERRAIN_CN } from '../data/world.js?v=20260929o';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929o';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -66,6 +66,8 @@ export class UI {
     this._tutorialOpen = false;   // 新手引导是否打开
     this._chestOpen = false;      // 宝箱弹窗是否打开
     this._intelOpen = false;      // 情报面板是否打开
+    this._mailOpen = false;       // 邮箱弹窗是否打开
+    this._redeemOpen = false;     // 兑换码弹窗是否打开
     this._chestId = null;         // 当前宝箱 id
     this._mgOpen = false;         // 打工小游戏是否打开
     this._mg = null;              // 当前小游戏实例
@@ -185,6 +187,15 @@ export class UI {
       intelList: $('intel-list'),
       intelNote: $('intel-note'),
       btnMapIntel: $('btn-map-intel'),
+      // 右下角功能坞:邮箱 / 兑换码
+      dockMailBadge: $('dock-mail-badge'),
+      mailbox: $('mailbox'),
+      mailNote: $('mail-note'),
+      mailList: $('mail-list'),
+      redeem: $('redeem'),
+      redeemInput: $('redeem-input'),
+      redeemMsg: $('redeem-msg'),
+      btnRedeemConfirm: $('btn-redeem-confirm'),
       // 打工小游戏
       minigame: $('minigame'),
       mgTitle: $('mg-title'),
@@ -263,6 +274,23 @@ export class UI {
     document.querySelectorAll('[data-intel-close]').forEach((b) => {
       b.addEventListener('click', () => this.bus.emit('ui:intel-close'));
     });
+    // 右下角功能坞:邮箱 / 兑换码
+    on('btn-mailbox', 'click', () => this.bus.emit('ui:open-mailbox'));
+    on('btn-redeem', 'click', () => this.bus.emit('ui:open-redeem'));
+    on('btn-redeem-confirm', 'click', () => this._submitRedeem());
+    document.querySelectorAll('[data-mail-close]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:mail-close'));
+    });
+    document.querySelectorAll('[data-redeem-close]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:redeem-close'));
+    });
+    if (this.el.redeemInput) {
+      this.el.redeemInput.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); this._submitRedeem(); }
+        else if (e.key === 'Escape') { e.preventDefault(); this.bus.emit('ui:redeem-close'); }
+      });
+    }
     if (this.el.btnChestOpen) this.el.btnChestOpen.addEventListener('click', () => this._submitChest());
     if (this.el.chestInput) {
       this.el.chestInput.addEventListener('input', () => {
@@ -333,6 +361,14 @@ export class UI {
           e.preventDefault();
           this.bus.emit(this._chestOpen ? 'ui:chest-close' : 'ui:intel-close');
         }
+        return;
+      }
+      if (this._mailOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.bus.emit('ui:mail-close'); }
+        return;
+      }
+      if (this._redeemOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.bus.emit('ui:redeem-close'); }
         return;
       }
       // 小游戏自行处理方向键 / 跳跃键,这里仅响应 Esc 退出
@@ -516,6 +552,115 @@ export class UI {
     if (!this.el.howto) return;
     this.el.howto.hidden = true;
     this._howtoOpen = false;
+  }
+
+  // ===== 右下角:邮箱 / 兑换码 =====
+  /** 更新邮箱红点(待领取信件数;≤0 时隐藏) */
+  setMailBadge(n) {
+    const el = this.el.dockMailBadge;
+    if (!el) return;
+    const count = Number(n) || 0;
+    el.textContent = count > 99 ? '99+' : String(count);
+    el.hidden = count <= 0;
+  }
+
+  /** 提交兑换码输入框中的内容 */
+  _submitRedeem() {
+    const code = this.el.redeemInput ? this.el.redeemInput.value : '';
+    this.bus.emit('ui:redeem-submit', code);
+  }
+
+  /** 渲染并打开邮箱。state: { mails:[{id,no,from,title,body,rewardText,hasReward,claimed}], claimable } */
+  renderMailbox({ mails, claimable = 0 } = {}) {
+    const list = this.el.mailList;
+    if (this.el.mailNote) {
+      this.el.mailNote.textContent = (mails && mails.length)
+        ? (claimable > 0 ? `有 ${claimable} 封信的奖励待领取。` : '信件都已阅。')
+        : '邮箱还是空的。';
+    }
+    if (list) {
+      list.innerHTML = '';
+      if (!mails || !mails.length) {
+        const empty = document.createElement('p');
+        empty.className = 'mail-empty';
+        empty.textContent = '暂时没有新的信件。';
+        list.appendChild(empty);
+      } else {
+        mails.forEach((m) => list.appendChild(this._mailCardEl(m)));
+      }
+    }
+    this.openMailbox();
+  }
+
+  /** 单封邮件卡片 */
+  _mailCardEl(m) {
+    const card = document.createElement('div');
+    card.className = `mail-card${m.claimed ? ' is-claimed' : ''}`;
+    const reward = m.hasReward
+      ? `<span class="mail-reward">🎁 ${this._escapeHtml(m.rewardText)}</span>`
+      : '<span></span>';
+    const action = m.hasReward
+      ? (m.claimed
+        ? '<span class="mail-state">已领取</span>'
+        : '<button class="btn btn-primary btn-sm" type="button" data-mail-claim>领 取</button>')
+      : '<span class="mail-state">公告</span>';
+    card.innerHTML = `
+      <div class="mail-head">
+        <span class="mail-from">${this._escapeHtml(m.from)}</span>
+        ${m.no ? `<span class="mail-no">#${this._escapeHtml(m.no)}</span>` : ''}
+      </div>
+      <div class="mail-title">${this._escapeHtml(m.title)}</div>
+      <div class="mail-body">${this._escapeHtml(m.body)}</div>
+      <div class="mail-foot">${reward}${action}</div>
+    `;
+    const btn = card.querySelector('[data-mail-claim]');
+    if (btn) btn.addEventListener('click', () => this.bus.emit('ui:mail-claim', m.id));
+    return card;
+  }
+
+  openMailbox() {
+    const box = this.el.mailbox;
+    if (!box) return;
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._mailOpen = true;
+  }
+
+  closeMailbox() {
+    const box = this.el.mailbox;
+    this._mailOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._mailOpen) box.hidden = true; }, 200);
+  }
+
+  /** 渲染并打开兑换码面板。msg 为提示文案,kind ∈ '' | 'ok' | 'bad' */
+  renderRedeem({ msg = '', kind = '', reset = false } = {}) {
+    if (this.el.redeemMsg) {
+      this.el.redeemMsg.textContent = msg || '';
+      this.el.redeemMsg.classList.remove('is-ok', 'is-bad');
+      if (kind === 'ok') this.el.redeemMsg.classList.add('is-ok');
+      else if (kind === 'bad') this.el.redeemMsg.classList.add('is-bad');
+    }
+    if (reset && this.el.redeemInput) this.el.redeemInput.value = '';
+    this.openRedeem();
+  }
+
+  openRedeem() {
+    const box = this.el.redeem;
+    if (!box) return;
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._redeemOpen = true;
+    if (this.el.redeemInput) setTimeout(() => this.el.redeemInput.focus(), 120);
+  }
+
+  closeRedeem() {
+    const box = this.el.redeem;
+    this._redeemOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._redeemOpen) box.hidden = true; }, 200);
   }
 
   // ===== 职业选择视图(扩展用) =====

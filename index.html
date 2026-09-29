@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260929n" />
+  <link rel="stylesheet" href="css/style.css?v=20260929o" />
 </head>
 <body>
   <div id="app" class="app">
@@ -548,6 +548,14 @@
               <span class="guide-desc">醒神香 / 长明香把之后的休息耗时缩到四分之一;疾风饮让下一段旅途耗时减半 —— 等不起时先喝一口</span>
             </li>
             <li>
+              <span class="guide-key">邮箱 📮</span>
+              <span class="guide-desc">右下角圆形图标打开邮箱,读取来信;带奖励的信件点「领取」即可入袋</span>
+            </li>
+            <li>
+              <span class="guide-key">兑换码 🎁</span>
+              <span class="guide-desc">右下角圆形图标打开兑换码,输入礼包码换取金币 / 物品;同一台设备上每个码限兑一次</span>
+            </li>
+            <li>
               <span class="guide-key">打工</span>
               <span class="guide-desc">在部分地点玩一局小游戏(拾取 / 躲避 / 跑酷),达标才消耗行动力并发放金币;三档难度,金币越多越难</span>
             </li>
@@ -597,6 +605,57 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260929n"></script>
+  <!-- 右下角功能坞:邮箱 / 兑换码(圆形图标,右对齐) -->
+  <div id="dock" class="dock" aria-label="功能入口">
+    <button id="btn-mailbox" class="dock-btn" type="button" title="邮箱" aria-label="邮箱">
+      <span class="dock-icon" aria-hidden="true">📮</span>
+      <span id="dock-mail-badge" class="dock-badge" hidden>0</span>
+    </button>
+    <button id="btn-redeem" class="dock-btn" type="button" title="兑换码" aria-label="兑换码">
+      <span class="dock-icon" aria-hidden="true">🎁</span>
+    </button>
+  </div>
+
+  <!-- 邮箱 -->
+  <div id="mailbox" class="modal" hidden>
+    <div class="modal-backdrop" data-mail-close></div>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="mail-title">
+      <header class="modal-head">
+        <h2 id="mail-title" class="modal-title">邮 箱</h2>
+        <button class="modal-close" type="button" data-mail-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <p id="mail-note" class="mail-note">—</p>
+        <div id="mail-list" class="mail-list"></div>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-ghost" type="button" data-mail-close>关 闭</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 兑换码 -->
+  <div id="redeem" class="modal" hidden>
+    <div class="modal-backdrop" data-redeem-close></div>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="redeem-title">
+      <header class="modal-head">
+        <h2 id="redeem-title" class="modal-title">兑 换 码</h2>
+        <button class="modal-close" type="button" data-redeem-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <p class="redeem-lead">输入兑换码,领取资粮。每个兑换码在同一台设备上只能兑换一次。</p>
+        <div class="redeem-form">
+          <input id="redeem-input" class="redeem-input" type="text" autocomplete="off" spellcheck="false" placeholder="在此输入兑换码" maxlength="32" />
+          <button id="btn-redeem-confirm" class="btn btn-primary" type="button">兑 换</button>
+        </div>
+        <p id="redeem-msg" class="redeem-msg" role="status"></p>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-ghost" type="button" data-redeem-close>关 闭</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="js/main.js?v=20260929o"></script>
 </body>
 </html>

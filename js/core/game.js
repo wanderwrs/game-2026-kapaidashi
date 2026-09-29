@@ -11,32 +11,34 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929n';
-import { EventBus } from './eventbus.js?v=20260929n';
-import { AudioEngine } from './audio.js?v=20260929n';
-import { Player } from '../combat/entity.js?v=20260929n';
-import { Deck } from '../card/deck.js?v=20260929n';
-import { Battle } from '../combat/battle.js?v=20260929n';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929n';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929n';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929n';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929n';
-import { jobsFor } from '../data/jobs.js?v=20260929n';
+import { RNG, seedFromString } from './rng.js?v=20260929o';
+import { EventBus } from './eventbus.js?v=20260929o';
+import { AudioEngine } from './audio.js?v=20260929o';
+import { Player } from '../combat/entity.js?v=20260929o';
+import { Deck } from '../card/deck.js?v=20260929o';
+import { Battle } from '../combat/battle.js?v=20260929o';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929o';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260929o';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260929o';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260929o';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929o';
+import { jobsFor } from '../data/jobs.js?v=20260929o';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929n';
-import { NPCS } from '../data/npcs.js?v=20260929n';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929n';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929n';
-import { Economy } from './economy.js?v=20260929n';
-import { Travel } from './travel.js?v=20260929n';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929n';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929n';
-import { UI } from '../ui/ui.js?v=20260929n';
+} from '../data/world.js?v=20260929o';
+import { NPCS } from '../data/npcs.js?v=20260929o';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929o';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929o';
+import { Economy } from './economy.js?v=20260929o';
+import { Travel } from './travel.js?v=20260929o';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929o';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929o';
+import { UI } from '../ui/ui.js?v=20260929o';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
+const MAIL_KEY = 'longji.mail.v1';
 /** 途中遭遇可用的随机 NPC 上限(每次最多出现的候选数) */
 const MAX_STOP_NPCS = 3;
 /** 一次休息的真实耗时(秒);期间复用旅途界面,不可操作 */
@@ -68,6 +70,16 @@ function markChapterCleared(id) {
   p.cleared[id] = true;
   try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch { /* 忽略存储异常 */ }
   return p;
+}
+
+/** 读取邮箱 / 兑换码的持久状态(跨局保留:领过的信件、用过的兑换码) */
+function loadMailState() {
+  try { return JSON.parse(localStorage.getItem(MAIL_KEY)) || {}; } catch { return {}; }
+}
+
+/** 写回邮箱 / 兑换码状态 */
+function saveMailState(state) {
+  try { localStorage.setItem(MAIL_KEY, JSON.stringify(state)); } catch { /* 忽略存储异常 */ }
 }
 
 export const GameState = Object.freeze({
@@ -118,10 +130,12 @@ export class Game {
     this.audio = new AudioEngine();
     this.audio.arm();
     this.progress = loadProgress();
+    this.mailState = loadMailState();
     this._bindUI();
     // 主菜单:标识两大章 + 通关解锁状态
     this.ui.renderChapterSelect(this._chapterEntries());
     this.ui.setMusicState(this.audio.enabled);
+    this._refreshMailBadge();
     this.transition(GameState.MENU);
   }
 
@@ -977,6 +991,94 @@ export class Game {
     return { id, name: ITEMS[id]?.name || '特殊交易币', amount };
   }
 
+  // ===== 邮箱 / 兑换码(跨局保留) =====
+  /** 把奖励描述成可读文本(空奖励返回空串) */
+  _rewardText(reward) {
+    if (!reward) return '';
+    const parts = [];
+    if (reward.gold) parts.push(`${reward.gold} 金币`);
+    for (const [id, qty] of Object.entries(reward.items || {})) {
+      parts.push(`${ITEMS[id]?.name || id}×${qty}`);
+    }
+    return parts.join(' · ');
+  }
+
+  /** 发放奖励,返回实际到手的文本数组;无进行中的旅程时返回 null(不发放) */
+  _applyReward(reward) {
+    if (!reward || !this.economy) return null;
+    const got = [];
+    if (reward.gold) { this.economy.gold += reward.gold; got.push(`${reward.gold} 金币`); }
+    for (const [id, qty] of Object.entries(reward.items || {})) {
+      if (this.economy.addItem(id, qty)) got.push(`${ITEMS[id]?.name || id}×${qty}`);
+    }
+    this._syncUi();
+    return got;
+  }
+
+  /** 邮箱当前的展示状态(信件列表 + 可领取数量) */
+  _mailState() {
+    if (!this.mailState) this.mailState = loadMailState();
+    const claimed = this.mailState.claimed || {};
+    const mails = MAILS.map((m) => ({
+      id: m.id,
+      no: m.no || '',
+      from: m.from || '',
+      title: m.title || '',
+      body: m.body || '',
+      rewardText: this._rewardText(m.reward),
+      hasReward: !!m.reward,
+      claimed: !!claimed[m.id],
+    }));
+    return { mails, claimable: mails.filter((m) => m.hasReward && !m.claimed).length };
+  }
+
+  /** 刷新右下角邮箱红点(带奖励且未领取的信件数) */
+  _refreshMailBadge() {
+    const { claimable } = this._mailState();
+    this.ui.setMailBadge(claimable);
+  }
+
+  _openMailbox() {
+    this.ui.renderMailbox(this._mailState());
+  }
+
+  _claimMail(id) {
+    const mail = MAILS.find((m) => m.id === id);
+    if (!mail) return;
+    if (!this.mailState) this.mailState = loadMailState();
+    this.mailState.claimed = this.mailState.claimed || {};
+    if (this.mailState.claimed[id]) { this.ui.showToast('这封信的奖励已经领过了'); this._openMailbox(); return; }
+    if (mail.reward && !this.economy) { this.ui.showToast('先开始一局旅程,再来领奖励'); return; }
+    const got = mail.reward ? this._applyReward(mail.reward) : [];
+    this.mailState.claimed[id] = true;
+    saveMailState(this.mailState);
+    this._refreshMailBadge();
+    this.ui.showToast(got && got.length ? `领取成功:${got.join('、')}` : '已阅');
+    this._openMailbox();
+  }
+
+  _openRedeem() {
+    if (!this.mailState) this.mailState = loadMailState();
+    const used = Object.keys(this.mailState.used || {}).length;
+    this.ui.renderRedeem({ msg: used ? `本机已兑换 ${used} 个礼包码` : '', kind: '', reset: true });
+  }
+
+  _redeemCode(raw) {
+    if (!this.mailState) this.mailState = loadMailState();
+    this.mailState.used = this.mailState.used || {};
+    const code = String(raw || '').trim().toUpperCase();
+    if (!code) { this.ui.renderRedeem({ msg: '请输入兑换码', kind: 'bad' }); return; }
+    const hit = REDEEM_CODES.find((c) => String(c.code || '').toUpperCase() === code);
+    if (!hit) { this.ui.renderRedeem({ msg: '兑换码无效,请核对后重试', kind: 'bad' }); return; }
+    if (this.mailState.used[code]) { this.ui.renderRedeem({ msg: '这个兑换码已经兑换过了', kind: 'bad' }); return; }
+    if (!this.economy) { this.ui.renderRedeem({ msg: '先开始一局旅程,再来兑换', kind: 'bad' }); return; }
+    const got = this._applyReward(hit.reward) || [];
+    this.mailState.used[code] = true;
+    saveMailState(this.mailState);
+    const label = hit.label ? `「${hit.label}」` : '';
+    this.ui.renderRedeem({ msg: `兑换成功${label}:${got.length ? got.join('、') : '（无奖励）'}`, kind: 'ok' });
+  }
+
   // ===== 背包 =====
   _openBag() {
     this._syncUi();
@@ -1349,6 +1451,13 @@ export class Game {
     this.bus.on('ui:map-intel', () => this._openIntel());
     this.bus.on('ui:intel-close', () => this._closeIntel());
     this.bus.on('ui:tutorial-close', () => this._closeTutorial());
+    // 邮箱 / 兑换码(右下角圆形图标入口)
+    this.bus.on('ui:open-mailbox', () => this._openMailbox());
+    this.bus.on('ui:mail-claim', (id) => this._claimMail(id));
+    this.bus.on('ui:mail-close', () => this.ui.closeMailbox());
+    this.bus.on('ui:open-redeem', () => this._openRedeem());
+    this.bus.on('ui:redeem-submit', (code) => this._redeemCode(code));
+    this.bus.on('ui:redeem-close', () => this.ui.closeRedeem());
     this.bus.on('travel:progress', (snap) => this.ui.renderTravel(snap));
     this.bus.on('travel:start', (snap) => { this.ui.resetTravelTips(); this.ui.renderTravel(snap); });
     this.bus.on('travel:event', (payload) => this._onTravelEvent(payload));
