@@ -95,11 +95,11 @@ export const REGIONS = {
     ],
   },
   ch11: {
-    name: '大神学', theme: 'city',
+    name: '大典院', theme: 'city',
     stops: [
-      { key: 'square', name: '教堂广场', theme: 'city', npc: null, node: 'n01', hint: '混入教堂广场,观察教团的布道。', services: { shop: true, job: true, rest: true } },
-      { key: 'booth', name: '忏悔室', theme: 'city', npc: '赎罪修士', node: 'n02', hint: '借忏悔的名义,接近那位动摇的修士。', services: { rest: true } },
-      { key: 'vault', name: '藏典地下', theme: 'ruins', npc: null, node: 'n05', hint: '潜入藏典地下,取回圣典残页。', services: { job: true, rest: true } },
+      { key: 'square', name: '圣殿广场', theme: 'city', npc: null, node: 'n01', hint: '混入圣殿广场,观察教团的宣讲。', services: { shop: true, job: true, rest: true } },
+      { key: 'booth', name: '思过室', theme: 'city', npc: '赎罪典士', node: 'n02', hint: '借思过的名义,接近那位动摇的典士。', services: { rest: true } },
+      { key: 'vault', name: '藏典地下', theme: 'ruins', npc: null, node: 'n05', hint: '潜入藏典地下,取回古卷残页。', services: { job: true, rest: true } },
     ],
   },
   ch12: {

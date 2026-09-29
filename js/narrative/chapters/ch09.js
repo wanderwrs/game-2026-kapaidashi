@@ -167,7 +167,7 @@ const nodes = [
     choices: [
       { text: '「直飞圣心坛,了结大祭司。」(直取祭典)', next: 'ch14:n01', effects: { stats: { courage: 3, wild: 1 }, flags: ['direct_strike'] } },
       { text: '「先去海洋学院拉同盟。」(海洋学院)',   next: 'ch10:n01', effects: { stats: { reason: 2, mercy: 1 }, flags: ['mariner_path'] } },
-      { text: '「先去神学学院揭穿伪神。」(神学学院)',   next: 'ch11:n01', effects: { stats: { reason: 2, courage: 1 }, flags: ['expose_first'] } },
+      { text: '「先去典学院揭穿伪神。」(典学院)',   next: 'ch11:n01', effects: { stats: { reason: 2, courage: 1 }, flags: ['expose_first'] } },
       { text: '「先救被掳的乡民。」(拯救村庄)',      next: 'ch13:n01', effects: { stats: { mercy: 3, courage: 1 }, flags: ['saved_village'] } },
     ],
     effects: { unlock_career: 'aviator' },

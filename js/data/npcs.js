@@ -29,8 +29,8 @@
  * local 台词必须贴合「当前所处的场景类型」(村口 / 林间 / 山道 / 街巷 / 码头 /
  * 废墟 / 崖壁 / 营地 / 云上),不得点名具体地区名,以免出现在别处时答非所问。
  */
-import { NPCS_1 } from './npcs_1.js?v=20260929y';
-import { NPCS_2 } from './npcs_2.js?v=20260929y';
-import { NPCS_3 } from './npcs_3.js?v=20260929y';
+import { NPCS_1 } from './npcs_1.js?v=20260929z';
+import { NPCS_2 } from './npcs_2.js?v=20260929z';
+import { NPCS_3 } from './npcs_3.js?v=20260929z';
 
 export const NPCS = [...NPCS_1, ...NPCS_2, ...NPCS_3];

@@ -86,7 +86,7 @@ const nodes = [
     id: 'n04',
     kind: 'narrative',
     chapter: 12,
-    text: `无论那场遭遇如何,你终于冲到了圣心坛外围。石阶冰凉,两侧的石柱高得望不见顶,风声在柱间穿行,呜呜咽咽,像有人在低声诵经,又像谁在哭。
+    text: `无论那场遭遇如何,你终于冲到了圣心坛外围。石阶冰凉,两侧的石柱高得望不见顶,风声在柱间穿行,呜呜咽咽,像有人在低声诵典,又像谁在哭。
 
 祭坛深处传来吟唱,一层一层漫过来,裹着热浪和焦味,还夹着一丝说不清是香还是焦糊的甜。你听见了弟弟的声音——不是哭喊,而是平静的低语,不慌不忙,像是在念一段早已背熟的古老祷词。那声音太稳了,稳得让你心里发慌。
 
@@ -125,7 +125,7 @@ const nodes = [
 ——这一步,决定你下一段旅程的方向。`,
     choices: [
       { text: '「弟弟,我来救你!大祭司,受死!」(直取大祭司)', next: 'ch14:n01', effects: { stats: { courage: 3, wild: 2 }, flags: ['direct_strike'] } },
-      { text: '「先念圣典残页揭穿伪神!」(揭穿)',         next: 'ch14:n01', effects: { stats: { reason: 3, courage: 1 }, flags: ['exposed_church', 'direct_strike'] } },
+      { text: '「先念古卷残页揭穿伪神!」(揭穿)',         next: 'ch14:n01', effects: { stats: { reason: 3, courage: 1 }, flags: ['exposed_church', 'direct_strike'] } },
     ],
   },
 ];

@@ -55,7 +55,7 @@ const OUTFITS = {
   cavalier:   { cloth: '#37553c', cloth2: '#4a7150', trim: '#27ae60', accessory: 'spear',  outfit: '骑团队服 · 皮质护肩' },
   aviator:    { cloth: '#355364', cloth2: '#486d81', trim: '#6fc0e8', accessory: 'wings',  outfit: '风翼皮甲 · 护目镜' },
   mariner:    { cloth: '#2c554f', cloth2: '#3b6d64', trim: '#16a085', accessory: 'anchor', outfit: '渔家短褂 · 盐渍斗篷' },
-  theologian: { cloth: '#63552a', cloth2: '#857138', trim: '#f1c40f', accessory: 'censer', outfit: '修士袍 · 圣典残页' },
+  theologian: { cloth: '#63552a', cloth2: '#857138', trim: '#f1c40f', accessory: 'censer', outfit: '典士袍 · 古卷残页' },
 };
 const OUTFIT_DEFAULT = { cloth: '#464b56', cloth2: '#5b616e', trim: '#c9a227', accessory: 'none', outfit: '粗布行装 · 旧布鞋' };
 
@@ -284,7 +284,7 @@ const SCENE_RULES = {
     [/^n0[5-7]|^n0[89]/, { theme: 'meadow', name: '焚后的麦田' }],
     [/^n09b|^n1[0-2]/, { theme: 'forest', name: '松林' }],
     [/^n1[3-4]/, { theme: 'border',   name: '王国边境哨站' }],
-    [/^sq1_/, { theme: 'ruins',  name: '教堂废墟' }],
+    [/^sq1_/, { theme: 'ruins',  name: '圣殿废墟' }],
     [/^sq2_/, { theme: 'ruins',  name: '剑塔残址' }],
     [/^sq3_/, { theme: 'forest', name: '松林深处' }],
     [/^sq4_/, { theme: 'border', name: '边境哨站 · 夜' }],
@@ -304,7 +304,7 @@ const SCENE_RULES = {
   ch08: [[/^./, { theme: 'mountain', name: '剑塔 · 雪原' }]],
   ch09: [[/^./, { theme: 'sky',      name: '云端浮岛' }]],
   ch10: [[/^./, { theme: 'port',     name: '远洋学院' }]],
-  ch11: [[/^./, { theme: 'city',     name: '大教堂' }]],
+  ch11: [[/^./, { theme: 'city',     name: '大神殿' }]],
   ch12: [[/^./, { theme: 'forest',   name: '山道密林' }]],
   ch13: [[/^./, { theme: 'ruins',    name: '被洗劫的村庄' }]],
   ch14: [[/^./, { theme: 'mountain', name: '圣心坛 · 火柱' }]],

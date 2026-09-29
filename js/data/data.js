@@ -47,7 +47,7 @@ export const CARDS = {
   lance_thrust:{ id: 'lance_thrust',name: '骑枪冲锋', cost: 2, type: 'attack', description: '造成 12 伤害,本回合获得 4 护甲。', effects: [{ kind: 'damage', amount: 12 }, { kind: 'block', amount: 4 }],                          rarity: 'rare', career: 'cavalier' },
   sky_dance:   { id: 'sky_dance',   name: '云舞',     cost: 2, type: 'attack', description: '造成 10 伤害,抽 2 张牌。',     effects: [{ kind: 'damage', amount: 10 }, { kind: 'draw', amount: 2 }],                          rarity: 'rare', career: 'aviator' },
   maelstrom:   { id: 'maelstrom',   name: '涡旋',     cost: 3, type: 'attack', description: '造成 17 伤害,1 虚弱。',        effects: [{ kind: 'damage', amount: 17 }, { kind: 'status_enemy', name: 'weak', stacks: 1 }],       rarity: 'rare', career: 'mariner' },
-  holy_fire:   { id: 'holy_fire',   name: '圣火',     cost: 3, type: 'attack', description: '造成 15 伤害,恢复 5 HP。',     effects: [{ kind: 'damage', amount: 15 }, { kind: 'heal', amount: 5 }],                            rarity: 'rare', career: 'theologian' },
+  holy_fire:   { id: 'holy_fire',   name: '净火',     cost: 3, type: 'attack', description: '造成 15 伤害,恢复 5 HP。',     effects: [{ kind: 'damage', amount: 15 }, { kind: 'heal', amount: 5 }],                            rarity: 'rare', career: 'theologian' },
 
   // ===== 剧情奖励卡(战斗胜利后可选) =====
   dragon_slash: { id: 'dragon_slash', name: '屠龙斩',  cost: 2, type: 'attack', description: '造成 13 伤害。屠龙者印记。',    effects: [{ kind: 'damage', amount: 13 }],                                            rarity: 'rare' },
@@ -107,7 +107,7 @@ export const ENEMIES = {
     { name: '深海鱼人', hp: 36, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 7 }] },
   ],
   ch11: [
-    { name: '异端审问官', hp: 44, actions: [{ kind: 'attack', value: 11 }, { kind: 'buff', name: 'strength', stacks: 1 }, { kind: 'block', value: 6 }] },
+    { name: '教团纠察', hp: 44, actions: [{ kind: 'attack', value: 11 }, { kind: 'buff', name: 'strength', stacks: 1 }, { kind: 'block', value: 6 }] },
   ],
   ch12: [
     { name: '教团守卫', hp: 40, actions: [{ kind: 'attack', value: 10 }, { kind: 'block', value: 7 }] },
@@ -128,7 +128,7 @@ export const ENEMIES = {
 export const RELICS = [
   { id: 'burning_blood', name: '燃血',   description: '战斗胜利后回复 6 HP。',   trigger: 'on_battle_victory' },
   { id: 'anchor',        name: '锚',     description: '每回合开始获得 3 护甲。',  trigger: 'on_turn_start' },
-  { id: 'vajra',         name: '金刚杵', description: '战斗开始获得 1 力量。',    trigger: 'on_battle_start' },
+  { id: 'vajra',         name: '雷杵',   description: '战斗开始获得 1 力量。',    trigger: 'on_battle_start' },
 ];
 
 /** 卡牌魔力消耗:稀有牌统一消耗 1 点魔力,可用 mpCost 覆盖 */

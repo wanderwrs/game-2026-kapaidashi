@@ -147,7 +147,7 @@ const nodes = [
 ——这一步,决定你下一段旅程的方向。`,
     choices: [
       { text: '「直航圣心坛,了结大祭司。」(直取祭典)',     next: 'ch14:n01', effects: { stats: { courage: 3, wild: 1 }, flags: ['direct_strike'] } },
-      { text: '「先去神学学院揭穿伪神。」(神学学院)',       next: 'ch11:n01', effects: { stats: { reason: 2, courage: 1 }, flags: ['expose_first'] } },
+      { text: '「先去典学院揭穿伪神。」(典学院)',       next: 'ch11:n01', effects: { stats: { reason: 2, courage: 1 }, flags: ['expose_first'] } },
       { text: '「先去飞行学院拉同盟。」(飞行学院)',       next: 'ch09:n01', effects: { stats: { reason: 2, mercy: 1 }, flags: ['aviator_path'] } },
       { text: '「先救被掳的乡民。」(拯救村庄)',          next: 'ch13:n01', effects: { stats: { mercy: 3, courage: 1 }, flags: ['saved_village'] } },
     ],

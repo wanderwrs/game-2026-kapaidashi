@@ -60,7 +60,7 @@ export function tokenForTheme(theme) {
 export const ITEMS = {
   // ===== 药品 =====
   hp_small:    { id: 'hp_small',    name: '金创药',   category: 'potion', price: 20, icon: '🧪', desc: '恢复 15 点生命。',        effect: { kind: 'heal',  amount: 15 } },
-  hp_large:    { id: 'hp_large',    name: '白药',     category: 'potion', price: 55, icon: '⚗️', desc: '恢复 45 点生命。',        effect: { kind: 'heal',  amount: 45 } },
+  hp_large:    { id: 'hp_large',    name: '伤愈散',   category: 'potion', price: 55, icon: '⚗️', desc: '恢复 45 点生命。',        effect: { kind: 'heal',  amount: 45 } },
   mp_small:    { id: 'mp_small',    name: '凝神散',   category: 'potion', price: 25, icon: '🫧', desc: '恢复 2 点魔力。',         effect: { kind: 'mp',    amount: 2 } },
   mp_large:    { id: 'mp_large',    name: '回气丹',   category: 'potion', price: 60, icon: '🔮', desc: '恢复 5 点魔力。',         effect: { kind: 'mp',    amount: 5 } },
   power_elixir:{ id: 'power_elixir',name: '战力药剂', category: 'potion', price: 70, icon: '💪', desc: '下一场战斗战力 +3。',      effect: { kind: 'power', amount: 3 } },
@@ -127,7 +127,7 @@ export const ITEMS = {
   // ===== 绝世稀有(不会出现在普通商店,只在专属交易场所低概率上架) =====
   starfall_blade:   { id: 'starfall_blade',   name: '陨星剑',   category: 'weapon', price: 980,  icon: '🌠', rare: true, desc: '剑脊嵌着一小块落星,挥动时带着余温。战力 +18,生命 +12。', equipment: { slot: 'weapon', stats: { atkPower: 18, maxHp: 12 } } },
   void_mantle:      { id: 'void_mantle',      name: '虚无斗篷', category: 'outfit', price: 1040, icon: '🌑', rare: true, desc: '披上像被夜色收进去。生命 +34,魔力 +6。', equipment: { slot: 'top', stats: { maxHp: 34, maxMp: 6 } }, look: { cloth: '#2a2740', cloth2: '#3b3760', trim: '#9b7fe8' } },
-  prophet_circlet:  { id: 'prophet_circlet',  name: '先知之冠', category: 'outfit', price: 900,  icon: '🔯', rare: true, desc: '冠心一颗缓慢转动的星。魔力 +7,生命 +8。特殊:商店购物 8 折。', equipment: { slot: 'hat', stats: { maxMp: 7, maxHp: 8, shopDiscount: 0.2 } }, look: { hat: '#3a2f6b', hatHi: '#9b7fe8', style: 'crown' } },
+  prophet_circlet:  { id: 'prophet_circlet',  name: '先知之冠', category: 'outfit', price: 900,  icon: '👑', rare: true, desc: '冠心一颗缓慢转动的星。魔力 +7,生命 +8。特殊:商店购物 8 折。', equipment: { slot: 'hat', stats: { maxMp: 7, maxHp: 8, shopDiscount: 0.2 } }, look: { hat: '#3a2f6b', hatHi: '#9b7fe8', style: 'crown' } },
   titan_greaves:    { id: 'titan_greaves',    name: '泰坦护腿', category: 'outfit', price: 860,  icon: '🦿', rare: true, desc: '沉得像两条石柱。生命 +18,战力 +3。', equipment: { slot: 'bottom', stats: { maxHp: 18, atkPower: 3 } }, look: { pants: '#4a4a55' } },
   gale_boots:       { id: 'gale_boots',       name: '疾风长靴', category: 'outfit', price: 820,  icon: '👢', rare: true, desc: '落地无声。旅行行动力消耗 −5。', equipment: { slot: 'shoes', stats: { travelDiscount: 5 } }, look: { boot: '#20404a' } },
   sage_stone:       { id: 'sage_stone',       name: '贤者之石', category: 'misc',   price: 880,  icon: '💎', rare: true, desc: '握久了他做梦。卖给识货者可换大钱。' },
