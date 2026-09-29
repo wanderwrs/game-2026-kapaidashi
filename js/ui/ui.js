@@ -10,18 +10,18 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929w';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929w';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929w';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20260929w';
-import { cardMpCost } from '../data/data.js?v=20260929w';
-import { ENDINGS } from '../narrative/engine.js?v=20260929w';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929w';
-import { SceneView } from './scene.js?v=20260929w';
-import { Minigame } from '../minigame/minigame.js?v=20260929w';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929w';
-import { TERRAIN_CN } from '../data/world.js?v=20260929w';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929w';
+import { GameState } from '../core/game.js?v=20260929x';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929x';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929x';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20260929x';
+import { cardMpCost } from '../data/data.js?v=20260929x';
+import { ENDINGS } from '../narrative/engine.js?v=20260929x';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929x';
+import { SceneView } from './scene.js?v=20260929x';
+import { Minigame } from '../minigame/minigame.js?v=20260929x';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929x';
+import { TERRAIN_CN } from '../data/world.js?v=20260929x';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929x';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -287,6 +287,8 @@ export class UI {
     on('btn-redeem', 'click', () => this.bus.emit('ui:open-redeem'));
     on('btn-about', 'click', () => this.openAbout());
     on('btn-redeem-confirm', 'click', () => this._submitRedeem());
+    // 允许外部(如年龄门)请求打开指定文档
+    document.addEventListener('about:open', (e) => this.openAbout(e.detail && e.detail.id));
     document.querySelectorAll('[data-about-open]').forEach((b) => {
       b.addEventListener('click', () => this.openAbout());
     });
@@ -765,6 +767,8 @@ export class UI {
         b.classList.toggle('is-active', b.dataset.aboutId === doc.id);
       });
     }
+    // 广播「本篇已被查看」,供年龄门统计必读进度
+    document.dispatchEvent(new CustomEvent('about:read', { detail: { id: doc.id } }));
   }
 
   // ===== 职业选择视图(扩展用) =====

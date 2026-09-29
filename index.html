@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260929w" />
+  <link rel="stylesheet" href="css/style.css?v=20260929x" />
 </head>
 <body>
   <!-- 游戏前 · 年龄限制与内容警告门(每次打开页面都需通过;需真人验证) -->
@@ -44,6 +44,12 @@
         </label>
       </div>
 
+      <div class="agegate-reads">
+        <p class="agegate-reads-title">进入前必读(点开阅读即计入)</p>
+        <ul id="agegate-read" class="agegate-read-list"></ul>
+        <button id="agegate-about" class="agegate-link" type="button">打开必读文档</button>
+      </div>
+
       <div class="agegate-human">
         <p id="agegate-human-tip" class="agegate-human-tip">真人验证:请按住下方按钮,持续 3 秒不放。</p>
         <button id="agegate-hold" class="agegate-hold" type="button" aria-describedby="agegate-human-tip">
@@ -53,8 +59,7 @@
       </div>
 
       <button id="agegate-enter" class="btn btn-primary agegate-enter" type="button" disabled>进 入 游 戏</button>
-      <p id="agegate-foot" class="agegate-foot" role="status">请先勾选两项声明,并完成真人验证。</p>
-      <button class="agegate-link" type="button" data-about-open>进入前可先阅读:游戏介绍 · 隐私协议 · 安全声明等</button>
+      <p id="agegate-foot" class="agegate-foot" role="status">请先勾选两项声明、完成必读文档,并通过真人验证。</p>
     </div>
   </div>
 
@@ -731,6 +736,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260929w"></script>
+  <script type="module" src="js/main.js?v=20260929x"></script>
 </body>
 </html>

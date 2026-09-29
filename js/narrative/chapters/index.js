@@ -15,21 +15,21 @@
  *   killed_grandpriest / spared_priest / direct_strike / abandoned_quest
  */
 
-import { CHAPTER_01 } from './ch01.js?v=20260929w';
-import { CHAPTER_02 } from './ch02.js?v=20260929w';
-import { CHAPTER_03 } from './ch03.js?v=20260929w';
-import { CHAPTER_04 } from './ch04.js?v=20260929w';
-import { CHAPTER_05 } from './ch05.js?v=20260929w';
-import { CHAPTER_06 } from './ch06.js?v=20260929w';
-import { CHAPTER_07 } from './ch07.js?v=20260929w';
-import { CHAPTER_08 } from './ch08.js?v=20260929w';
-import { CHAPTER_09 } from './ch09.js?v=20260929w';
-import { CHAPTER_10 } from './ch10.js?v=20260929w';
-import { CHAPTER_11 } from './ch11.js?v=20260929w';
-import { CHAPTER_12 } from './ch12.js?v=20260929w';
-import { CHAPTER_13 } from './ch13.js?v=20260929w';
-import { CHAPTER_14 } from './ch14.js?v=20260929w';
-import { CHAPTER_15 } from './ch15.js?v=20260929w';
+import { CHAPTER_01 } from './ch01.js?v=20260929x';
+import { CHAPTER_02 } from './ch02.js?v=20260929x';
+import { CHAPTER_03 } from './ch03.js?v=20260929x';
+import { CHAPTER_04 } from './ch04.js?v=20260929x';
+import { CHAPTER_05 } from './ch05.js?v=20260929x';
+import { CHAPTER_06 } from './ch06.js?v=20260929x';
+import { CHAPTER_07 } from './ch07.js?v=20260929x';
+import { CHAPTER_08 } from './ch08.js?v=20260929x';
+import { CHAPTER_09 } from './ch09.js?v=20260929x';
+import { CHAPTER_10 } from './ch10.js?v=20260929x';
+import { CHAPTER_11 } from './ch11.js?v=20260929x';
+import { CHAPTER_12 } from './ch12.js?v=20260929x';
+import { CHAPTER_13 } from './ch13.js?v=20260929x';
+import { CHAPTER_14 } from './ch14.js?v=20260929x';
+import { CHAPTER_15 } from './ch15.js?v=20260929x';
 
 export const CHAPTERS = {
   ch01: CHAPTER_01,

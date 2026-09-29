@@ -2083,6 +2083,24 @@ body.is-gated #dock { pointer-events: none; }
 }
 .agegate-link:hover { color: var(--gold-bright); }
 
+/* 进入前必读清单 */
+.agegate-reads { display: flex; flex-direction: column; gap: var(--sp-8); }
+.agegate-reads-title { font-size: 12px; letter-spacing: 1px; color: var(--text-muted); }
+.agegate-read-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.agegate-read-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.agegate-read-item::before { content: "○"; font-size: 10px; color: var(--text-faint); }
+.agegate-read-item.is-done { border-color: var(--success); color: var(--success); }
+.agegate-read-item.is-done::before { content: "✓"; color: var(--success); }
+
 @media (max-width: 760px) {
   .modal-panel-wide { width: calc(100vw - 20px); height: min(88vh, 760px); max-height: min(88vh, 760px); }
   .about-body {
