@@ -41,6 +41,7 @@ export const TERRAIN_CN = { land: '陆地', plateau: '高原', sea: '海面·港
 export const WORLD = {
   ch01: { x: 16, y: 34, level: 1, city: false, terrain: 'land' },
   ch02: { x: 26, y: 24, level: 2, city: false, terrain: 'land' },
+  ch02b: { x: 36, y: 18, level: 3, city: false, terrain: 'land' },
   ch03: { x: 44, y: 34, level: 3, city: true, terrain: 'land' },
   ch04: { x: 28, y: 66, level: 4, city: true, terrain: 'sea' },
   ch05: { x: 56, y: 16, level: 5, city: false, terrain: 'plateau' },

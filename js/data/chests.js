@@ -19,6 +19,10 @@ export const CHESTS = [
     place: '山脚哨站的柴堆后', loot: { gold: 60, items: { hp_small: 2 } },
   },
   {
+    id: 'chest_ch02b', chapter: 'ch02b', stop: 2, name: '矿道的旧工具箱', password: '460',
+    place: '地下矿道塌方处的工具堆里', loot: { gold: 70, items: { hp_small: 2, dried_meat: 1 } },
+  },
+  {
     id: 'chest_ch03', chapter: 'ch03', stop: 2, name: '暗巷的旧木箱', password: '371',
     place: '王城暗巷最深的那堵墙根', loot: { gold: 90, items: { mp_small: 2 } },
   },

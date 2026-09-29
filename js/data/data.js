@@ -80,6 +80,11 @@ export const ENEMIES = {
     { name: '边境盗匪', hp: 32, actions: [{ kind: 'attack', value: 8 }, { kind: 'attack', value: 11 }] },
     { name: '教团斥候', hp: 28, actions: [{ kind: 'attack', value: 7 }, { kind: 'block', value: 5 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
   ],
+  ch02b: [
+    { name: '矿镇野狗', hp: 24, actions: [{ kind: 'attack', value: 6 }, { kind: 'attack', value: 7 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+    { name: '矿道掘虫', hp: 30, actions: [{ kind: 'attack', value: 8 }, { kind: 'block', value: 5 }] },
+    { name: '井下巨钳', hp: 36, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 7 }, { kind: 'block', value: 6 }] },
+  ],
   ch03: [
     { name: '王城刺客', hp: 40, actions: [{ kind: 'attack', value: 10 }, { kind: 'attack', value: 6 }, { kind: 'attack', value: 12 }] },
   ],

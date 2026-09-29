@@ -30,6 +30,14 @@ export const REGIONS = {
       { key: 'pass', name: '山脚哨站', theme: 'mountain', npc: '同路人·林', node: 'n07', hint: '翻过山脊,在山脚哨站寻访那名出逃的少年。', services: { rest: true } },
     ],
   },
+  ch02b: {
+    name: '废弃矿镇', theme: 'ruins',
+    stops: [
+      { key: 'gate', name: '矿镇栅门', theme: 'ruins', npc: null, node: 'n01', hint: '绕到废弃矿镇,从镇口的栅门摸进去。', services: { shop: true, job: true, rest: true } },
+      { key: 'shaft', name: '废矿井口', theme: 'mountain', npc: '守矿人', node: 'n06', hint: '到废矿井口,寻访那位还守着绞车的老矿工。', services: { rest: true } },
+      { key: 'tunnel', name: '地下矿道', theme: 'ruins', npc: null, node: 'n11', hint: '钻进地下矿道,从山脊北口出去。', services: { job: true, rest: true } },
+    ],
+  },
   ch03: {
     name: '王城', theme: 'city',
     stops: [

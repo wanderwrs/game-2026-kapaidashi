@@ -296,6 +296,11 @@ const SCENE_RULES = {
     [/^sq1_/, { theme: 'cliff', name: '崖下 · 雨夜' }],
     [/^sq2_/, { theme: 'mountain', name: '山脚哨站旁' }],
   ],
+  ch02b: [
+    [/^n0[1-5]/, { theme: 'ruins',    name: '废弃矿镇' }],
+    [/^n0[6-8]/, { theme: 'mountain', name: '废矿井口' }],
+    [/^n09|^n1[0-5]/, { theme: 'ruins', name: '地下矿道' }],
+  ],
   ch03: [[/^./, { theme: 'city',     name: '王城 · 书记官宅邸' }]],
   ch04: [[/^./, { theme: 'port',     name: '南方渔港' }]],
   ch05: [[/^./, { theme: 'mountain', name: '圣心坛 · 雪岭' }]],
@@ -313,6 +318,7 @@ const SCENE_RULES = {
 const CHAPTER_DEFAULT = {
   ch01: { theme: 'meadow', name: '家园 · 边境村落' },
   ch02: { theme: 'road',   name: '王国北道' },
+  ch02b: { theme: 'ruins', name: '废弃矿镇' },
 };
 
 function resolveScene(chapterId, nodeId) {
