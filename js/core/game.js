@@ -11,28 +11,28 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929j';
-import { EventBus } from './eventbus.js?v=20260929j';
-import { AudioEngine } from './audio.js?v=20260929j';
-import { Player } from '../combat/entity.js?v=20260929j';
-import { Deck } from '../card/deck.js?v=20260929j';
-import { Battle } from '../combat/battle.js?v=20260929j';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929j';
-import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929j';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929j';
-import { jobsFor } from '../data/jobs.js?v=20260929j';
+import { RNG, seedFromString } from './rng.js?v=20260929k';
+import { EventBus } from './eventbus.js?v=20260929k';
+import { AudioEngine } from './audio.js?v=20260929k';
+import { Player } from '../combat/entity.js?v=20260929k';
+import { Deck } from '../card/deck.js?v=20260929k';
+import { Battle } from '../combat/battle.js?v=20260929k';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929k';
+import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929k';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929k';
+import { jobsFor } from '../data/jobs.js?v=20260929k';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260929j';
-import { NPCS } from '../data/npcs.js?v=20260929j';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929j';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929j';
-import { Economy } from './economy.js?v=20260929j';
-import { Travel } from './travel.js?v=20260929j';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929j';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929j';
-import { UI } from '../ui/ui.js?v=20260929j';
+} from '../data/world.js?v=20260929k';
+import { NPCS } from '../data/npcs.js?v=20260929k';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929k';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929k';
+import { Economy } from './economy.js?v=20260929k';
+import { Travel } from './travel.js?v=20260929k';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929k';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929k';
+import { UI } from '../ui/ui.js?v=20260929k';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -473,9 +473,63 @@ export class Game {
     return pool;
   }
 
+  /**
+   * 剧情进度(取「到过的最远章节」,只增不减)。
+   * NPC 的 evolve 以此为门槛:剧情推进后,问法与回答都会变。
+   */
+  _storyStage() {
+    let max = this._chapterNum();
+    for (const id of this._visited) {
+      const n = CHAPTER_ORDER.indexOf(id) + 1;
+      if (n > max) max = n;
+    }
+    return max;
+  }
+
+  /** 该 NPC 此刻已生效的「变化」列表(按 from 依次累积) */
+  _npcStages(npc) {
+    const stage = this._storyStage();
+    return (npc?.evolve || []).filter((s) => (s.from ?? 1) <= stage);
+  }
+
+  /** 该 NPC 此刻可选的话题(剧情推进后可改写 label 与 ask) */
+  _npcTopics(npc) {
+    const topics = TALK_TOPICS.map((t) => ({ ...t }));
+    for (const s of this._npcStages(npc)) {
+      if (!s.topics) continue;
+      for (const [id, patch] of Object.entries(s.topics)) {
+        const t = topics.find((x) => x.id === id);
+        if (t) Object.assign(t, patch);
+      }
+    }
+    return topics;
+  }
+
+  /**
+   * 该 NPC 此刻某话题的回答池。
+   * 「打听此地」优先取与当前场景类型匹配的 localTheme 专属台词,
+   * 再被剧情推进后的 evolve 覆盖;其余话题直接用 replies / evolve。
+   */
+  _npcReplyPool(npc, topicId) {
+    let pool = npc?.replies?.[topicId];
+    if (topicId === 'local') {
+      const theme = this._currentTheme();
+      const themed = npc?.localTheme?.[theme];
+      if (Array.isArray(themed) && themed.length) pool = themed;
+      for (const s of this._npcStages(npc)) {
+        const t2 = s.localTheme?.[theme];
+        if (Array.isArray(t2) && t2.length) pool = t2;
+      }
+    }
+    for (const s of this._npcStages(npc)) {
+      if (Array.isArray(s.replies?.[topicId])) pool = s.replies[topicId];
+    }
+    return pool;
+  }
+
   /** 从该话题的回答池里取一句尚未说过的(整个话题池用尽则允许重说) */
   _npcAnswer(npc, topicId, state) {
-    const pool = npc?.replies?.[topicId];
+    const pool = this._npcReplyPool(npc, topicId);
     if (!Array.isArray(pool) || !pool.length) return null;
     const fresh = pool.filter((l) => !state.usedLines.has(l));
     const src = fresh.length ? fresh : pool;
@@ -502,7 +556,7 @@ export class Game {
   _renderNpcTalk() {
     const st = this._npcTalk;
     if (!st) return;
-    const topics = TALK_TOPICS
+    const topics = this._npcTopics(st.npc)
       .filter((t) => !st.usedTopics.has(t.id) && st.npcLineCount < TALK_MAX_LINES)
       .map((t) => ({ id: t.id, label: t.label }));
     this.ui.showNpcDialog(st.npc, {
@@ -517,7 +571,7 @@ export class Game {
   _npcChooseTopic(topicId) {
     const st = this._npcTalk;
     if (!st) return;
-    const topic = TALK_TOPICS.find((t) => t.id === topicId);
+    const topic = this._npcTopics(st.npc).find((t) => t.id === topicId);
     if (!topic || st.usedTopics.has(topicId)) return;
     st.usedTopics.add(topicId);
     st.transcript.push({ who: 'player', text: topic.ask });
