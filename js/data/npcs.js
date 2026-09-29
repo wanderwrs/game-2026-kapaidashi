@@ -15,8 +15,8 @@
  *
  * 台词文本不含引号,引号由 UI 统一添加。
  */
-import { NPCS_1 } from './npcs_1.js?v=20260929i';
-import { NPCS_2 } from './npcs_2.js?v=20260929i';
-import { NPCS_3 } from './npcs_3.js?v=20260929i';
+import { NPCS_1 } from './npcs_1.js?v=20260929j';
+import { NPCS_2 } from './npcs_2.js?v=20260929j';
+import { NPCS_3 } from './npcs_3.js?v=20260929j';
 
 export const NPCS = [...NPCS_1, ...NPCS_2, ...NPCS_3];

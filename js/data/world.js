@@ -26,28 +26,40 @@ export const BASE_DISTANCE = 40;
 export const DISTANCE_SCALE = 0.75;
 
 /**
+ * 地形:载具只能在允许的地形上通行(徒步不受限)。
+ *   land 陆地 / plateau 高原 / sea 海面·港口 / sky 浮空
+ */
+export const TERRAIN_CN = { land: '陆地', plateau: '高原', sea: '海面·港口', sky: '浮空' };
+
+/**
  * 世界地图布局。
  *   x / y  为 0~100 的百分比坐标(左上为原点)
  *   city   是否「主城」——主城之间可花金币「穿梭」(瞬达)
  *   level  该地区的怪物等级(= 章节序号),用于途中随机遭遇的难度
+ *   terrain 该地区的地形,决定哪些载具可以抵达(见 items.js 载具的 terrain)
  */
 export const WORLD = {
-  ch01: { x: 16, y: 34, level: 1, city: false },
-  ch02: { x: 26, y: 24, level: 2, city: false },
-  ch03: { x: 44, y: 34, level: 3, city: true },
-  ch04: { x: 28, y: 66, level: 4, city: true },
-  ch05: { x: 56, y: 16, level: 5, city: false },
-  ch06: { x: 48, y: 50, level: 6, city: false },
-  ch07: { x: 62, y: 42, level: 7, city: false },
-  ch08: { x: 74, y: 30, level: 8, city: false },
-  ch09: { x: 86, y: 14, level: 9, city: true },
-  ch10: { x: 18, y: 84, level: 10, city: true },
-  ch11: { x: 58, y: 64, level: 11, city: true },
-  ch12: { x: 68, y: 72, level: 12, city: false },
-  ch13: { x: 76, y: 58, level: 13, city: false },
-  ch14: { x: 54, y: 10, level: 14, city: false },
-  ch15: { x: 46, y: 37, level: 15, city: true },
+  ch01: { x: 16, y: 34, level: 1, city: false, terrain: 'land' },
+  ch02: { x: 26, y: 24, level: 2, city: false, terrain: 'land' },
+  ch03: { x: 44, y: 34, level: 3, city: true, terrain: 'land' },
+  ch04: { x: 28, y: 66, level: 4, city: true, terrain: 'sea' },
+  ch05: { x: 56, y: 16, level: 5, city: false, terrain: 'plateau' },
+  ch06: { x: 48, y: 50, level: 6, city: false, terrain: 'land' },
+  ch07: { x: 62, y: 42, level: 7, city: false, terrain: 'land' },
+  ch08: { x: 74, y: 30, level: 8, city: false, terrain: 'plateau' },
+  ch09: { x: 86, y: 14, level: 9, city: true, terrain: 'sky' },
+  ch10: { x: 18, y: 84, level: 10, city: true, terrain: 'sea' },
+  ch11: { x: 58, y: 64, level: 11, city: true, terrain: 'land' },
+  ch12: { x: 68, y: 72, level: 12, city: false, terrain: 'land' },
+  ch13: { x: 76, y: 58, level: 13, city: false, terrain: 'land' },
+  ch14: { x: 54, y: 10, level: 14, city: false, terrain: 'plateau' },
+  ch15: { x: 46, y: 37, level: 15, city: true, terrain: 'land' },
 };
+
+/** 某地区的地形 */
+export function regionTerrain(id) {
+  return WORLD[id]?.terrain || 'land';
+}
 
 /** 主城顺序(穿梭只发生在主城之间) */
 export const CITY_ORDER = Object.keys(WORLD).filter((id) => WORLD[id].city);

@@ -10,15 +10,17 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929i';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929i';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929i';
-import { cardMpCost } from '../data/data.js?v=20260929i';
-import { ENDINGS } from '../narrative/engine.js?v=20260929i';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929i';
-import { SceneView } from './scene.js?v=20260929i';
-import { Minigame } from '../minigame/minigame.js?v=20260929i';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929i';
+import { GameState } from '../core/game.js?v=20260929j';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929j';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929j';
+import { cardMpCost } from '../data/data.js?v=20260929j';
+import { ENDINGS } from '../narrative/engine.js?v=20260929j';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929j';
+import { SceneView } from './scene.js?v=20260929j';
+import { Minigame } from '../minigame/minigame.js?v=20260929j';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929j';
+import { TERRAIN_CN } from '../data/world.js?v=20260929j';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929j';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -152,6 +154,7 @@ export class UI {
       travelBar: $('travel-bar'),
       travelRemain: $('travel-remain'),
       travelNote: $('travel-note'),
+      travelTip: $('travel-tip'),
       travelLog: $('travel-log'),
       // NPC 对话 / 教程
       npcDialog: $('npc-dialog'),
@@ -952,11 +955,12 @@ export class UI {
           r.story ? 'is-story' : '',
           r.city ? 'is-city' : '',
           r.visited ? 'is-visited' : '',
+          !r.current && r.reachable === false ? 'is-unreachable' : '',
           this._worldSelected === r.id ? 'is-selected' : '',
         ].filter(Boolean).join(' ');
         b.style.left = `${r.x}%`;
         b.style.top = `${r.y}%`;
-        b.title = `${r.name} · ${r.dist} 里`;
+        b.title = `${r.name} · ${r.terrainLabel} · ${r.dist} 里`;
         b.innerHTML = `
           <span class="wm-dot"></span>
           <span class="wm-label">${this._escapeHtml(r.name)}</span>
@@ -981,10 +985,10 @@ export class UI {
       [...regions].sort((a, b) => a.dist - b.dist).forEach((r) => {
         const row = document.createElement('button');
         row.type = 'button';
-        row.className = `world-row${r.current ? ' is-current' : ''}${r.story ? ' is-story' : ''}`;
+        row.className = `world-row${r.current ? ' is-current' : ''}${r.story ? ' is-story' : ''}${!r.current && r.reachable === false ? ' is-unreachable' : ''}`;
         row.innerHTML = `
           <span class="wr-name">${this._escapeHtml(r.name)}</span>
-          <span class="wr-meta">${r.city ? '<b class="wr-city">主城</b>' : ''}<span class="wr-lv">Lv.${r.level} · ${r.levelLabel}</span></span>
+          <span class="wr-meta">${r.city ? '<b class="wr-city">主城</b>' : ''}<span class="wr-terrain">${this._escapeHtml(r.terrainLabel)}</span><span class="wr-lv">Lv.${r.level} · ${r.levelLabel}</span></span>
           <span class="wr-dist">${r.current ? '所在地' : `${r.dist} 里 · 约 ${this._fmtDuration(r.seconds)}`}</span>
         `;
         row.addEventListener('click', () => {
@@ -997,7 +1001,9 @@ export class UI {
     }
 
     if (this.el.worldNote) {
-      const veh = state.vehicle ? `当前载具:${state.vehicle}(旅途耗时 ×${state.speedMul})` : '当前徒步(可在商店或指定地点购买载具提速)';
+      const veh = state.vehicle
+        ? `当前载具:${state.vehicle}(×${state.speedMul},限 ${(state.vehicleTerrain || []).join('、') || '—'})`
+        : '当前徒步:不限地形,可在商店购买载具提速';
       this.el.worldNote.textContent = `${veh} · 全部 ${regions.length} 处地区已标注`;
     }
     this.renderResources(economy);
@@ -1019,19 +1025,23 @@ export class UI {
         </div>
       </div>
       <dl class="wp-stats">
+        <div><dt>地形</dt><dd>${this._escapeHtml(sel.terrainLabel)}</dd></div>
         <div><dt>里程</dt><dd>${here ? '—' : `${sel.dist} 里`}</dd></div>
         <div><dt>预计耗时</dt><dd>${here ? '—' : this._fmtDuration(sel.seconds)}</dd></div>
         <div><dt>行动力</dt><dd>${here ? '—' : `⚡ ${sel.ap}`}</dd></div>
-        <div><dt>途中遭遇</dt><dd>Lv.${sel.level} 敌人</dd></div>
       </dl>
       <p class="wp-note">
-        ${here ? '你正在此地。可前往「地区地图」查看本地 3 个地点。'
-          : (canShuttle ? `主城之间可「穿梭」:花费 🪙 ${sel.shuttleGold} 立即抵达。`
-            : (sel.city && !cur?.city ? '你所在处不是主城,无法穿梭 —— 先步行抵达任意主城。'
-              : '此地不是主城,只能步行前往(或购买载具提速)。'))}
+        ${!state.canUseVehicleHere
+          ? `当前载具「${this._escapeHtml(state.vehicle || '')}」在${this._escapeHtml(state.currentTerrain)}无法使用 —— 请在背包卸下载具,徒步不限地形。`
+          : (here ? '你正在此地。可前往「地区地图」查看本地 3 个地点。'
+            : (!sel.reachable
+              ? `当前载具「${this._escapeHtml(state.vehicle || '')}」到不了${this._escapeHtml(sel.terrainLabel)} —— 先卸下载具${canShuttle ? `,或花 🪙 ${sel.shuttleGold} 穿梭` : ',或换一辆适用的'}。`
+              : (canShuttle ? `主城之间可「穿梭」:花费 🪙 ${sel.shuttleGold} 立即抵达。`
+                : (sel.city && !cur?.city ? '你所在处不是主城,无法穿梭 —— 先步行抵达任意主城。'
+                  : '此地不是主城,只能步行前往(或购买载具提速)。'))))}
       </p>
       <div class="wp-actions">
-        <button class="btn btn-primary" data-act="depart" ${here ? 'disabled' : ''}>启 程 前 往</button>
+        <button class="btn btn-primary" data-act="depart" ${here || (state.canUseVehicleHere && !sel.reachable) ? 'disabled' : ''}>启 程 前 往</button>
         <button class="btn btn-ghost" data-act="shuttle" ${canShuttle ? '' : 'disabled'}>穿 梭 🪙${sel.shuttleGold}</button>
         <button class="btn btn-ghost" data-act="local" ${here ? '' : 'disabled'}>地 区 地 图</button>
       </div>
@@ -1042,6 +1052,31 @@ export class UI {
   }
 
   // ===== 旅途(实时行进) =====
+  /** 每段旅途开始时叫一次:把提示洗牌,从头轮换 */
+  resetTravelTips() {
+    this._tips = [...TRAVEL_TIPS];
+    for (let i = this._tips.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this._tips[i], this._tips[j]] = [this._tips[j], this._tips[i]];
+    }
+    this._tipIndex = -1;
+  }
+
+  /** 按已行进的时间轮换提示(每 TIP_INTERVAL_SEC 秒一条) */
+  _renderTravelTip(snap) {
+    if (!this.el.travelTip) return;
+    if (!this._tips || !this._tips.length) { this.el.travelTip.textContent = ''; return; }
+    const elapsed = Math.max(0, (snap.totalSec || 0) - (snap.remainSec || 0));
+    const idx = Math.floor(elapsed / TIP_INTERVAL_SEC);
+    if (idx !== this._tipIndex) {
+      this._tipIndex = idx;
+      this.el.travelTip.textContent = this._tips[idx % this._tips.length];
+      this.el.travelTip.classList.remove('is-fresh');
+      void this.el.travelTip.offsetWidth;
+      this.el.travelTip.classList.add('is-fresh');
+    }
+  }
+
   renderTravel(snap) {
     if (!snap) return;
     if (this.el.travelFrom) this.el.travelFrom.textContent = snap.fromLabel || '—';
@@ -1054,8 +1089,10 @@ export class UI {
     }
     if (this.el.travelNote) {
       const veh = snap.vehicle ? `载具:${snap.vehicle}` : '徒步';
-      this.el.travelNote.textContent = `全程 ${snap.dist} 里 · 预计 ${this._fmtDuration(snap.totalSec)} · ${veh} · 途经 Lv.${snap.level} 地带`;
+      const terrain = TERRAIN_CN[snap.terrain] ? `${TERRAIN_CN[snap.terrain]} · ` : '';
+      this.el.travelNote.textContent = `全程 ${snap.dist} 里 · 预计 ${this._fmtDuration(snap.totalSec)} · ${veh} · 途经 ${terrain}Lv.${snap.level} 地带`;
     }
+    this._renderTravelTip(snap);
     if (this.el.travelLog) {
       this.el.travelLog.innerHTML = (snap.log || []).map((t) => `<div class="tl-line">${this._escapeHtml(t)}</div>`).join('');
     }

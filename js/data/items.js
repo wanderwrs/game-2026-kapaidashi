@@ -55,11 +55,16 @@ export const ITEMS = {
 
   // ===== 载具(降低旅行行动力消耗,并加快旅途的真实耗时) =====
   // equipment.stats.travelDiscount:降低行动力消耗;speedMul:旅途耗时倍率(越小越快)
-  old_horse:   { id: 'old_horse',   name: '老马',     category: 'vehicle', price: 90,  icon: '🐴', desc: '旅途耗时 ×0.75,行动力消耗 −1。', speedMul: 0.75, equipment: { slot: 'vehicle', stats: { travelDiscount: 1 } } },
-  cart:        { id: 'cart',        name: '板车',     category: 'vehicle', price: 180, icon: '🛒', desc: '旅途耗时 ×0.55,行动力消耗 −2。', speedMul: 0.55, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
-  swift_horse: { id: 'swift_horse', name: '快马',     category: 'vehicle', price: 260, icon: '🐎', desc: '旅途耗时 ×0.45,行动力消耗 −2。', speedMul: 0.45, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
-  skiff:       { id: 'skiff',       name: '快帆船',   category: 'vehicle', price: 320, icon: '⛵', desc: '旅途耗时 ×0.38,行动力消耗 −2。', speedMul: 0.38, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
-  wind_glider: { id: 'wind_glider', name: '风翼',     category: 'vehicle', price: 360, icon: '🪂', desc: '旅途耗时 ×0.30,行动力消耗 −3,行动力上限 +2。', speedMul: 0.30, equipment: { slot: 'vehicle', stats: { travelDiscount: 3, apMax: 2 } } },
+  // terrain:该载具可通行的地形(land 陆地 / plateau 高原 / sea 海面·港口 / sky 浮空);
+  //         徒步不受地形限制,但装备的载具走不了的地形就无法出发
+  old_horse:   { id: 'old_horse',   name: '老马',     category: 'vehicle', price: 90,  icon: '🐴', terrain: ['land', 'plateau'], desc: '旅途耗时 ×0.75,行动力消耗 −1。只走陆地与高原。', speedMul: 0.75, equipment: { slot: 'vehicle', stats: { travelDiscount: 1 } } },
+  cart:        { id: 'cart',        name: '板车',     category: 'vehicle', price: 180, icon: '🛒', terrain: ['land', 'plateau'], desc: '旅途耗时 ×0.55,行动力消耗 −2。只走陆地与高原。', speedMul: 0.55, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
+  swift_horse: { id: 'swift_horse', name: '快马',     category: 'vehicle', price: 260, icon: '🐎', terrain: ['land', 'plateau'], desc: '旅途耗时 ×0.45,行动力消耗 −2。只走陆地与高原。', speedMul: 0.45, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
+  snow_leopard:{ id: 'snow_leopard',name: '雪豹',     category: 'vehicle', price: 420, icon: '🐆', terrain: ['land', 'plateau'], desc: '旅途耗时 ×0.34,行动力消耗 −3。只走陆地与高原,不渡海。', speedMul: 0.34, equipment: { slot: 'vehicle', stats: { travelDiscount: 3 } } },
+  skiff:       { id: 'skiff',       name: '快帆船',   category: 'vehicle', price: 320, icon: '⛵', terrain: ['sea'], desc: '旅途耗时 ×0.38,行动力消耗 −2。只走海面与港口。', speedMul: 0.38, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
+  steamship:   { id: 'steamship',   name: '轮船',     category: 'vehicle', price: 440, icon: '🚢', terrain: ['sea'], desc: '旅途耗时 ×0.30,行动力消耗 −3。只走海面与港口。', speedMul: 0.30, equipment: { slot: 'vehicle', stats: { travelDiscount: 3 } } },
+  wind_glider: { id: 'wind_glider', name: '风翼',     category: 'vehicle', price: 360, icon: '🪂', terrain: ['land', 'plateau', 'sky'], desc: '旅途耗时 ×0.30,行动力消耗 −3,行动力上限 +2。走陆地、高原与浮空,不渡海。', speedMul: 0.30, equipment: { slot: 'vehicle', stats: { travelDiscount: 3, apMax: 2 } } },
+  airship:     { id: 'airship',     name: '飞艇',     category: 'vehicle', price: 680, icon: '🎈', terrain: ['land', 'plateau', 'sea', 'sky'], desc: '旅途耗时 ×0.18,行动力消耗 −4,行动力上限 +2。可飞跃全部地区。', speedMul: 0.18, equipment: { slot: 'vehicle', stats: { travelDiscount: 4, apMax: 2 } } },
 
   // ===== 杂物(可捡拾 / 可出售) =====
   herbs:       { id: 'herbs',       name: '草药',     category: 'misc', price: 10, icon: '🌿', desc: '寻常草药,可卖给商人。' },
@@ -79,10 +84,10 @@ export function sellPrice(itemId) {
 export const SHOP_STOCK = {
   village: ['hp_small', 'bread', 'traveler_cloak', 'iron_sword', 'old_horse'],
   forest:  ['hp_small', 'dried_meat', 'mp_small', 'iron_sword', 'swift_horse'],
-  mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'steel_blade', 'cart'],
-  city:    ['hp_large', 'mp_large', 'power_elixir', 'noble_robe', 'steel_blade', 'swift_horse', 'emperor_new_clothes'],
-  port:    ['hp_small', 'dried_meat', 'mp_large', 'noble_robe', 'cart', 'skiff'],
-  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'swift_horse', 'wind_glider'],
+  mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'steel_blade', 'cart', 'snow_leopard'],
+  city:    ['hp_large', 'mp_large', 'power_elixir', 'noble_robe', 'steel_blade', 'swift_horse', 'airship', 'emperor_new_clothes'],
+  port:    ['hp_small', 'dried_meat', 'mp_large', 'noble_robe', 'cart', 'skiff', 'steamship'],
+  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'swift_horse', 'wind_glider', 'airship'],
   ruins:   ['hp_small', 'dried_meat', 'leather_armor', 'bone_charm', 'cart'],
   cliff:   ['hp_small', 'mp_small', 'iron_sword', 'swift_horse'],
   camp:    ['hp_small', 'bread', 'iron_sword', 'old_horse'],

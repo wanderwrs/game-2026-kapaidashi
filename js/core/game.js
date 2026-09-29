@@ -11,27 +11,28 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260929i';
-import { EventBus } from './eventbus.js?v=20260929i';
-import { AudioEngine } from './audio.js?v=20260929i';
-import { Player } from '../combat/entity.js?v=20260929i';
-import { Deck } from '../card/deck.js?v=20260929i';
-import { Battle } from '../combat/battle.js?v=20260929i';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929i';
-import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929i';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929i';
-import { jobsFor } from '../data/jobs.js?v=20260929i';
+import { RNG, seedFromString } from './rng.js?v=20260929j';
+import { EventBus } from './eventbus.js?v=20260929j';
+import { AudioEngine } from './audio.js?v=20260929j';
+import { Player } from '../combat/entity.js?v=20260929j';
+import { Deck } from '../card/deck.js?v=20260929j';
+import { Battle } from '../combat/battle.js?v=20260929j';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260929j';
+import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js?v=20260929j';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260929j';
+import { jobsFor } from '../data/jobs.js?v=20260929j';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
-} from '../data/world.js?v=20260929i';
-import { NPCS } from '../data/npcs.js?v=20260929i';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929i';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929i';
-import { Economy } from './economy.js?v=20260929i';
-import { Travel } from './travel.js?v=20260929i';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929i';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929i';
-import { UI } from '../ui/ui.js?v=20260929i';
+  regionTerrain, TERRAIN_CN,
+} from '../data/world.js?v=20260929j';
+import { NPCS } from '../data/npcs.js?v=20260929j';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260929j';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260929j';
+import { Economy } from './economy.js?v=20260929j';
+import { Travel } from './travel.js?v=20260929j';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260929j';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929j';
+import { UI } from '../ui/ui.js?v=20260929j';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -255,10 +256,14 @@ export class Game {
   /** 世界地图状态:全部地区 + 里程 / 耗时 / 穿梭费用 */
   _worldState() {
     const cur = this.regionId;
-    const city = this.economy.travelSpeedMul();
+    const curTerrain = regionTerrain(cur);
+    const speedMul = this.economy.travelSpeedMul();
     const discount = this.economy.equipStats().travelDiscount;
+    // 载具的起止地形都要能通行,才算「可达」(徒步恒可)
+    const canUseHere = this.economy.vehicleCanReach(curTerrain);
     const regions = Object.keys(WORLD).map((id) => {
       const dist = regionDistance(cur, id);
+      const terrain = regionTerrain(id);
       return {
         id,
         name: REGIONS[id]?.name || id,
@@ -268,21 +273,27 @@ export class Game {
         level: WORLD[id].level,
         levelLabel: levelLabel(WORLD[id].level),
         city: !!WORLD[id].city,
+        terrain,
+        terrainLabel: TERRAIN_CN[terrain] || '',
         current: id === cur,
         story: id === this.storyRegionId,
         visited: this._visited.has(id),
         dist,
-        seconds: tripSeconds(dist, city),
+        seconds: tripSeconds(dist, speedMul),
         ap: travelApCost(dist, discount),
         shuttleGold: shuttleGold(dist),
+        reachable: canUseHere && this.economy.vehicleCanReach(terrain),
       };
     });
     return {
       regions,
       currentId: cur,
+      currentTerrain: TERRAIN_CN[curTerrain] || '',
+      canUseVehicleHere: canUseHere,
       storyRegionId: this.storyRegionId,
       vehicle: this.economy.vehicleName(),
-      speedMul: city,
+      vehicleTerrain: (this.economy.vehicleTerrain() || []).map((t) => TERRAIN_CN[t] || t),
+      speedMul,
       cities: Object.keys(WORLD).filter((id) => WORLD[id].city),
       tutorialSeen: this.tutorialSeen,
       economy: this.economy,
@@ -302,6 +313,12 @@ export class Game {
   _worldDepart(regionId) {
     if (!WORLD[regionId] || regionId === this.regionId) {
       this.ui.showToast('你已经在这里了');
+      return;
+    }
+    const toTerrain = regionTerrain(regionId);
+    if (!this.economy.vehicleCanReach(regionTerrain(this.regionId))
+      || !this.economy.vehicleCanReach(toTerrain)) {
+      this.ui.showToast(`「${this.economy.vehicleName()}」去不了${TERRAIN_CN[toTerrain]} —— 先在背包卸下载具(徒步不限地形)`);
       return;
     }
     const dist = regionDistance(this.regionId, regionId);
@@ -352,6 +369,11 @@ export class Game {
   _travelTo(i) {
     const region = REGIONS[this.regionId];
     if (!region || i < 0 || i >= region.stops.length || i === this.stopIndex) return;
+    const terrain = regionTerrain(this.regionId);
+    if (!this.economy.vehicleCanReach(terrain)) {
+      this.ui.showToast(`「${this.economy.vehicleName()}」走不了${TERRAIN_CN[terrain]} —— 先在背包卸下载具(徒步不限地形)`);
+      return;
+    }
     const dist = stopDistance(this.stopIndex, i);
     const discount = this.economy.equipStats().travelDiscount;
     const ap = travelApCost(dist, discount);
@@ -385,6 +407,7 @@ export class Game {
       level: trip.level,
       poolKey: trip.poolKey,
       vehicle: this.economy.vehicleName(),
+      terrain: regionTerrain(trip.regionId),
       npcPool: this._npcsForTheme(trip.theme),
     });
     this.transition(GameState.TRAVEL);
@@ -1042,7 +1065,7 @@ export class Game {
     this.bus.on('ui:intel-close', () => this._closeIntel());
     this.bus.on('ui:tutorial-close', () => this._closeTutorial());
     this.bus.on('travel:progress', (snap) => this.ui.renderTravel(snap));
-    this.bus.on('travel:start', (snap) => this.ui.renderTravel(snap));
+    this.bus.on('travel:start', (snap) => { this.ui.resetTravelTips(); this.ui.renderTravel(snap); });
     this.bus.on('travel:event', (payload) => this._onTravelEvent(payload));
     this.bus.on('travel:arrive', () => this._onTravelArrive());
 

@@ -175,6 +175,7 @@ export class Travel {
       pct,
       level: this.info?.level ?? 1,
       vehicle: this.info?.vehicle ?? null,
+      terrain: this.info?.terrain ?? null,
       log: [...this.log],
     };
   }

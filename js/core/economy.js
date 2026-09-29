@@ -7,8 +7,8 @@
  *   · 战力(power)由武器/服饰加成,开战时折算为力量,并叠加战力药剂的临时加成
  */
 
-import { ITEMS, sellPrice } from '../data/items.js?v=20260929i';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929i';
+import { ITEMS, sellPrice } from '../data/items.js?v=20260929j';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260929j';
 
 const SLOTS = ['weapon', 'outfit', 'vehicle'];
 
@@ -127,6 +127,19 @@ export class Economy {
   vehicleName() {
     const id = this.equipped.vehicle;
     return id ? ITEMS[id]?.name || id : null;
+  }
+
+  /** 当前载具可通行的地形列表(未装备 -> null,表示徒步不受限) */
+  vehicleTerrain() {
+    const id = this.equipped.vehicle;
+    const t = id ? ITEMS[id]?.terrain : null;
+    return Array.isArray(t) ? t : null;
+  }
+
+  /** 当前载具能否抵达该地形的地区(徒步恒可) */
+  vehicleCanReach(terrain) {
+    const t = this.vehicleTerrain();
+    return !t || t.includes(terrain);
   }
 
   // ===== 使用消耗品 =====
