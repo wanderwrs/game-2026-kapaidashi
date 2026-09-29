@@ -129,6 +129,9 @@ const THEMES = {
   road:     { sky: ['#0f1727', '#1a2942', '#2b4367'], far: '#141e2c', mid: '#1d2937', ground: '#33322b', kind: 'road',     weather: 'none' },
   cliff:    { sky: ['#0b0f17', '#141b27', '#202b3b'], far: '#111720', mid: '#19212c', ground: '#171c23', kind: 'cliff',    weather: 'rain' },
   mountain: { sky: ['#0f171f', '#1d2b39', '#32475b'], far: '#17212b', mid: '#1f2b37', ground: '#293038', kind: 'mountain', weather: 'cloud' },
+  city:     { sky: ['#141926', '#22293a', '#3a4356'], far: '#1a2029', mid: '#252c38', ground: '#2b2f36', kind: 'city',     weather: 'none' },
+  port:     { sky: ['#0d1722', '#17303f', '#2b5566'], far: '#122029', mid: '#1a2f38', ground: '#22323a', kind: 'port',     weather: 'none' },
+  sky:      { sky: ['#1a2740', '#2f4a6e', '#5b7ea6'], far: '#3d5a7a', mid: '#587ba0', ground: '#6f92b5', kind: 'sky',      weather: 'cloud' },
 };
 
 const THEME_DESC = {
@@ -140,6 +143,9 @@ const THEME_DESC = {
   road:     '北道漫长,里程碑越来越稀',
   cliff:    '雨敲着岩棚,火不敢冒烟',
   mountain: '云雾缠在山腰,峰顶不见',
+  city:     '石墙与旗帜之间,钟声沉沉',
+  port:     '咸风与帆影,桅杆如林',
+  sky:      '云在脚下翻涌,风迎面而来',
 };
 
 /** 由章节与节点推导当前环境 */
@@ -161,6 +167,19 @@ const SCENE_RULES = {
     [/^sq1_/, { theme: 'cliff', name: '崖下 · 雨夜' }],
     [/^sq2_/, { theme: 'mountain', name: '山脚哨站旁' }],
   ],
+  ch03: [[/^./, { theme: 'city',     name: '王城 · 书记官宅邸' }]],
+  ch04: [[/^./, { theme: 'port',     name: '南方渔港' }]],
+  ch05: [[/^./, { theme: 'mountain', name: '圣心坛 · 雪岭' }]],
+  ch06: [[/^./, { theme: 'village',  name: '山间村舍' }]],
+  ch07: [[/^./, { theme: 'forest',   name: '幽深森林' }]],
+  ch08: [[/^./, { theme: 'mountain', name: '剑塔 · 雪原' }]],
+  ch09: [[/^./, { theme: 'sky',      name: '云端浮岛' }]],
+  ch10: [[/^./, { theme: 'port',     name: '远洋学院' }]],
+  ch11: [[/^./, { theme: 'city',     name: '大教堂' }]],
+  ch12: [[/^./, { theme: 'forest',   name: '山道密林' }]],
+  ch13: [[/^./, { theme: 'ruins',    name: '被洗劫的村庄' }]],
+  ch14: [[/^./, { theme: 'mountain', name: '圣心坛 · 火柱' }]],
+  ch15: [[/^./, { theme: 'city',     name: '王城广场' }]],
 };
 const CHAPTER_DEFAULT = {
   ch01: { theme: 'meadow', name: '家园 · 边境村落' },
@@ -255,10 +274,28 @@ function drawEnv(ctx, scale, themeKey, nodeId) {
       P(x, 11 - h, 1, h + 1, t.mid);
       if (11 - h < 4) P(x, 11 - h, 1, 2, '#aeb9c2'); // 雪线
     }
+  } else if (k === 'city') {
+    for (const bx of [1, 6, 11, 16]) {
+      const bh = 4 + (bx % 5);
+      P(bx, 11 - bh, 4, bh, t.mid);
+      P(bx + 1, 12 - bh, 1, 1, '#e8cd6e');       // 窗
+      P(bx, 11 - bh, 4, 1, t.far);               // 檐
+    }
+    P(9, 1, 1, 6, '#5a4a34'); P(8, 1, 3, 2, '#7a2a22'); // 旗
+  } else if (k === 'port') {
+    P(0, 9, ENV_W, 5, '#1d3a44');                // 海
+    for (let x = 0; x < ENV_W; x += 3) P(x, 9 + (x % 2), 2, 1, '#2b5666');
+    P(3, 6, 1, 4, '#5a4a34'); P(4, 6, 3, 3, '#d9d2c0');   // 帆 1
+    P(15, 7, 1, 3, '#5a4a34'); P(13, 7, 3, 2, '#c9bda5'); // 帆 2
+    P(0, 11, 6, 2, '#3a2f24');                   // 码头
+  } else if (k === 'sky') {
+    P(0, 7, 9, 1, '#7d9cc0'); P(8, 9, 14, 1, '#6b8cb2'); P(3, 11, 12, 1, '#5c7ba1');
+    P(4, 3, 7, 2, '#4a6a8c'); P(4, 5, 7, 1, '#3f5c7c');   // 浮岛
+    P(6, 2, 1, 1, '#2f4a66'); P(9, 2, 1, 1, '#2f4a66');   // 塔尖
   }
 
   // 地面
-  if (k !== 'cliff') P(0, 11, ENV_W, 3, t.ground);
+  if (k !== 'cliff' && k !== 'port' && k !== 'sky') P(0, 11, ENV_W, 3, t.ground);
 
   // 天气叠层
   if (t.weather === 'rain') {
