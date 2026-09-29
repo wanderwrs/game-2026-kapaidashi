@@ -129,20 +129,23 @@ export class Economy {
     let msg = '';
     switch (kind) {
       case 'heal': {
+        if (player.hp >= player.maxHp) return { ok: false, msg: '生命已满,无需用药' };
         const before = player.hp;
         player.hp = Math.min(player.maxHp, player.hp + amount);
         msg = `恢复了 ${player.hp - before} 点生命`;
         break;
       }
       case 'mp': {
+        if (player.mp >= player.maxMp) return { ok: false, msg: '魔力已满,无需用药' };
         const before = player.mp;
         player.mp = Math.min(player.maxMp, player.mp + amount);
         msg = `恢复了 ${player.mp - before} 点魔力`;
         break;
       }
       case 'ap': {
+        if (this.ap >= this.apCap()) return { ok: false, msg: '行动力已满' };
         const got = this.addAp(amount);
-        msg = got > 0 ? `恢复了 ${got} 点行动力` : '行动力已满';
+        msg = `恢复了 ${got} 点行动力`;
         break;
       }
       case 'power': {

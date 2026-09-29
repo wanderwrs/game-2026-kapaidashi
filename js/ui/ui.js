@@ -10,7 +10,7 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js';
+import { GameState } from '../core/game.js?v=20260929d';
 import { CAREERS, CAREER_MAP } from '../narrative/careers.js';
 import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js';
 import { cardMpCost } from '../data/data.js';

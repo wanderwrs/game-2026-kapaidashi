@@ -20,10 +20,10 @@ import { Battle } from '../combat/battle.js';
 import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js';
 import { ITEMS, SHOP_STOCK, LOOT_MISC } from '../data/items.js';
 import { REGIONS, JOBS, REST_AP_RECOVER } from '../data/regions.js';
-import { Economy } from './economy.js';
+import { Economy } from './economy.js?v=20260929d';
 import { NarrativeEngine, ENDINGS } from '../narrative/engine.js';
 import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js';
-import { UI } from '../ui/ui.js?v=20260929c';
+import { UI } from '../ui/ui.js?v=20260929d';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 
@@ -186,8 +186,9 @@ export class Game {
     this.regionId = chapterId;
     if (!region) { this.transition(GameState.NARRATIVE); return; }
     const idx = region.stops.findIndex((s) => s.node === nodeId);
-    this.stopIndex = idx >= 0 ? idx : 0;
-    this.segment = { chapterId, nodeId, stopIndex: this.stopIndex };
+    // 门控开启:玩家须依剧情提示自行前往目标地点(回到地区起点,消耗行动力抵达)
+    this.stopIndex = 0;
+    this.segment = { chapterId, nodeId, stopIndex: idx >= 0 ? idx : 0 };
     this._syncPlayerStats();
     this.transition(GameState.MAP);
     this._renderMap();
@@ -264,14 +265,14 @@ export class Game {
 
   // ===== 背包 =====
   _openBag() {
-    this.ui.renderBag({ economy: this.economy, player: this.player });
     this._syncUi();
+    this.ui.renderBag({ economy: this.economy, player: this.player });
     this.transition(GameState.BAG);
   }
 
   _bagRefresh() {
-    this.ui.renderBag({ economy: this.economy, player: this.player });
     this._syncUi();
+    this.ui.renderBag({ economy: this.economy, player: this.player });
   }
 
   _useItem(id) {
