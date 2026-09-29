@@ -4,8 +4,8 @@
  * 通过 bus 广播 snapshot,UI 据此渲染,无需反向耦合。
  */
 
-import { Enemy } from './entity.js?v=20260929u';
-import { cardMpCost } from '../data/data.js?v=20260929u';
+import { Enemy } from './entity.js?v=20260929v';
+import { cardMpCost } from '../data/data.js?v=20260929v';
 
 const STATUS_CN = {
   vulnerable: '易伤',

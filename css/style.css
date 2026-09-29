@@ -1835,3 +1835,148 @@ body {
   .dock-btn { width: 42px; height: 42px; }
   .dock-icon { font-size: 19px; }
 }
+
+/* ============================================================
+   游戏前 · 年龄限制与内容警告门(每次打开都需通过;需真人验证)
+   ============================================================ */
+.agegate {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-24);
+  overflow-y: auto;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(208, 64, 43, 0.14), transparent 60%),
+    radial-gradient(120% 90% at 50% 100%, rgba(201, 162, 39, 0.10), transparent 62%),
+    rgba(4, 5, 9, 0.94);
+  backdrop-filter: blur(6px);
+  animation: fadeIn 0.3s var(--ease) both;
+}
+.agegate[hidden] { display: none; }
+.agegate.is-leaving { animation: fadeOut 0.45s var(--ease) both; }
+@keyframes fadeOut { to { opacity: 0; } }
+
+/* 门未通过期间:锁住背景滚动,并屏蔽游戏内的指针操作 */
+body.is-gated { overflow: hidden; }
+body.is-gated #app { pointer-events: none; user-select: none; }
+
+.agegate-panel {
+  position: relative;
+  width: min(560px, 100%);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  padding: var(--sp-32) var(--sp-24);
+  background: linear-gradient(180deg, var(--surface), var(--bg-soft));
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md), var(--shadow-gold);
+  animation: cardReveal 0.4s var(--ease) both;
+}
+.agegate-badge {
+  align-self: center;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 4px 16px;
+  border: 2px solid var(--ember);
+  border-radius: var(--radius);
+  color: var(--ember-bright);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  box-shadow: 0 0 22px var(--ember-soft);
+}
+.agegate-badge span { font-size: 15px; }
+.agegate-title {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 4px;
+  color: var(--gold-bright);
+}
+.agegate-lead { font-size: 13px; line-height: 1.9; color: var(--text-soft); }
+.agegate-lead b { color: var(--ember-bright); }
+.agegate-sub {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-8);
+}
+.agegate-list { display: flex; flex-direction: column; gap: 6px; }
+.agegate-list li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--text-soft);
+}
+.agegate-list li::before { content: "▸"; position: absolute; left: 0; color: var(--gold); }
+.agegate-list b { color: var(--text); }
+
+.agegate-claims { display: flex; flex-direction: column; gap: var(--sp-8); }
+.agegate-claim {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px var(--sp-12);
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: border-color 0.16s var(--ease), background 0.16s var(--ease);
+}
+.agegate-claim:hover { border-color: var(--gold-line); }
+.agegate-claim:has(input:checked) { border-color: var(--gold); background: var(--gold-soft); }
+.agegate-claim input { flex: none; width: 15px; height: 15px; margin-top: 2px; accent-color: var(--gold); }
+.agegate-claim b { color: var(--text); }
+
+.agegate-human { display: flex; flex-direction: column; gap: var(--sp-8); }
+.agegate-human-tip { font-size: 12px; letter-spacing: 1px; color: var(--text-muted); }
+.agegate-hold {
+  position: relative;
+  overflow: hidden;
+  height: 46px;
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  color: var(--text-soft);
+  font: 600 14px var(--font-sans);
+  letter-spacing: 2px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: border-color 0.16s var(--ease), color 0.16s var(--ease);
+}
+.agegate-hold-fill {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--gold-soft), var(--gold));
+  opacity: 0.55;
+}
+.agegate-hold.is-holding { border-color: var(--gold); color: var(--gold-bright); }
+.agegate-hold.is-verified { border-color: var(--success); color: var(--success); cursor: default; }
+.agegate-hold.is-verified .agegate-hold-fill { background: var(--success); opacity: 0.22; }
+.agegate-hold-label { position: relative; }
+
+.agegate-enter { align-self: stretch; }
+.agegate-foot { min-height: 18px; font-size: 12px; line-height: 1.7; text-align: center; color: var(--text-muted); }
+.agegate-foot.is-ok { color: var(--success); }
+
+@media (max-width: 760px) {
+  .agegate { padding: var(--sp-12); }
+  .agegate-panel { padding: var(--sp-20) var(--sp-16); gap: var(--sp-12); }
+  .agegate-title { font-size: 18px; letter-spacing: 2px; }
+}

@@ -10,17 +10,17 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929u';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929u';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929u';
-import { cardMpCost } from '../data/data.js?v=20260929u';
-import { ENDINGS } from '../narrative/engine.js?v=20260929u';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929u';
-import { SceneView } from './scene.js?v=20260929u';
-import { Minigame } from '../minigame/minigame.js?v=20260929u';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929u';
-import { TERRAIN_CN } from '../data/world.js?v=20260929u';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929u';
+import { GameState } from '../core/game.js?v=20260929v';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929v';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929v';
+import { cardMpCost } from '../data/data.js?v=20260929v';
+import { ENDINGS } from '../narrative/engine.js?v=20260929v';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929v';
+import { SceneView } from './scene.js?v=20260929v';
+import { Minigame } from '../minigame/minigame.js?v=20260929v';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929v';
+import { TERRAIN_CN } from '../data/world.js?v=20260929v';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929v';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -339,6 +339,8 @@ export class UI {
 
   _bindKeyboard() {
     window.addEventListener('keydown', (e) => {
+      // 年龄 / 内容警告门未通过时,游戏不响应任何按键
+      if (document.body.classList.contains('is-gated')) return;
       // 忽略输入框内按键
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;

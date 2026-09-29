@@ -9,9 +9,54 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260929u" />
+  <link rel="stylesheet" href="css/style.css?v=20260929v" />
 </head>
 <body>
+  <!-- 游戏前 · 年龄限制与内容警告门(每次打开页面都需通过;需真人验证) -->
+  <div id="agegate" class="agegate" role="dialog" aria-modal="true" aria-labelledby="agegate-title">
+    <div class="agegate-panel">
+      <div class="agegate-badge" aria-hidden="true">18<span>+</span></div>
+      <h1 id="agegate-title" class="agegate-title">年龄限制 · 内容警告</h1>
+      <p class="agegate-lead">
+        《龙脊少年 · 守约》是一部中世纪奇幻题材的文字冒险。出于分级提示,本作面向
+        <b>年满 18 周岁</b>的玩家;未满 18 周岁请在监护人陪同下退出。
+      </p>
+
+      <div class="agegate-warn">
+        <h2 class="agegate-sub">本作包含以下内容</h2>
+        <ul class="agegate-list">
+          <li><b>暴力与战斗</b> —— 剑术、法术与怪物厮杀的描写</li>
+          <li><b>流血与死亡</b> —— 伤亡、创伤与遗体的文字刻画</li>
+          <li><b>家庭离散</b> —— 家园被焚、幼弟被掳等沉重剧情</li>
+          <li><b>宗教与信仰</b> —— 教会、教团与异端审判的情节</li>
+          <li><b>恐怖与黑暗</b> —— 龙族、焦土废墟与幽暗场景的氛围</li>
+        </ul>
+      </div>
+
+      <div class="agegate-claims">
+        <label class="agegate-claim">
+          <input id="agegate-age" type="checkbox" />
+          <span>我已年满 <b>18 周岁</b>,具备阅读上述内容的年龄与心智。</span>
+        </label>
+        <label class="agegate-claim">
+          <input id="agegate-consent" type="checkbox" />
+          <span>我已阅读并知悉上述<b>内容警告</b>,自愿继续游玩。</span>
+        </label>
+      </div>
+
+      <div class="agegate-human">
+        <p id="agegate-human-tip" class="agegate-human-tip">真人验证:请按住下方按钮,持续 3 秒不放。</p>
+        <button id="agegate-hold" class="agegate-hold" type="button" aria-describedby="agegate-human-tip">
+          <span id="agegate-hold-fill" class="agegate-hold-fill" aria-hidden="true"></span>
+          <span id="agegate-hold-label" class="agegate-hold-label">按住 3 秒</span>
+        </button>
+      </div>
+
+      <button id="agegate-enter" class="btn btn-primary agegate-enter" type="button" disabled>进 入 游 戏</button>
+      <p id="agegate-foot" class="agegate-foot" role="status">请先勾选两项声明,并完成真人验证。</p>
+    </div>
+  </div>
+
   <div id="app" class="app">
     <!-- 顶部状态栏 -->
     <header class="topbar">
@@ -660,6 +705,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260929u"></script>
+  <script type="module" src="js/main.js?v=20260929v"></script>
 </body>
 </html>
