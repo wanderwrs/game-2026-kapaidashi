@@ -1980,3 +1980,124 @@ body.is-gated #app { pointer-events: none; user-select: none; }
   .agegate-panel { padding: var(--sp-20) var(--sp-16); gap: var(--sp-12); }
   .agegate-title { font-size: 18px; letter-spacing: 2px; }
 }
+
+/* 门未通过时,右下角功能坞也一并封锁(关于入口在门内) */
+body.is-gated #dock { pointer-events: none; }
+
+/* ============================================================
+   关于 · 条款与声明(分节文档)
+   ============================================================ */
+.about { z-index: 2200; } /* 需高于年龄门(2000),以便在门前也能查阅 */
+.modal-panel-wide {
+  width: min(880px, calc(100vw - 32px));
+  height: min(84vh, 760px);
+  max-height: min(84vh, 760px);
+}
+.about-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 208px 1fr;
+  gap: var(--sp-20);
+  padding: var(--sp-20);
+  overflow: hidden;
+}
+
+.about-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  padding-right: 4px;
+  border-right: 1px solid var(--border-soft);
+}
+.about-nav-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text-soft);
+  font: 500 12.5px var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s var(--ease), border-color 0.16s var(--ease), color 0.16s var(--ease);
+}
+.about-nav-btn:hover { background: var(--bg-soft); color: var(--text); }
+.about-nav-btn.is-active { background: var(--gold-soft); border-color: var(--gold-line); color: var(--gold-bright); }
+.about-nav-no { flex: none; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1px; color: var(--text-faint); }
+.about-nav-btn.is-active .about-nav-no { color: var(--gold); }
+.about-nav-title { flex: 1; min-width: 0; }
+
+.about-main { min-height: 0; overflow-y: auto; padding-right: 4px; }
+.about-doc-title {
+  margin-bottom: var(--sp-12);
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: var(--gold-bright);
+}
+.about-sub {
+  margin: var(--sp-16) 0 var(--sp-8);
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--text);
+}
+.about-doc .about-sub:first-child { margin-top: 0; }
+.about-p { font-size: 12.5px; line-height: 1.95; color: var(--text-soft); }
+.about-p + .about-p { margin-top: 6px; }
+.about-list { display: flex; flex-direction: column; gap: 5px; margin: 4px 0; }
+.about-list li {
+  position: relative;
+  padding-left: 15px;
+  font-size: 12.5px;
+  line-height: 1.9;
+  color: var(--text-soft);
+}
+.about-list li::before { content: "▸"; position: absolute; left: 0; color: var(--gold); }
+.about-updated {
+  margin-top: var(--sp-20);
+  padding-top: var(--sp-12);
+  border-top: 1px solid var(--border-soft);
+  font-size: 11.5px;
+  letter-spacing: 1px;
+  color: var(--text-faint);
+}
+
+/* 年龄门上的文档入口 */
+.agegate-link {
+  align-self: center;
+  padding: 2px 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font: 400 12px var(--font-sans);
+  letter-spacing: 1px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 0.16s var(--ease);
+}
+.agegate-link:hover { color: var(--gold-bright); }
+
+@media (max-width: 760px) {
+  .modal-panel-wide { width: calc(100vw - 20px); height: min(88vh, 760px); max-height: min(88vh, 760px); }
+  .about-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    gap: var(--sp-12);
+    padding: var(--sp-12);
+  }
+  .about-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 0 8px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .about-nav-btn { flex: none; white-space: nowrap; }
+}

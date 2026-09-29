@@ -10,17 +10,18 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260929v';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929v';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929v';
-import { cardMpCost } from '../data/data.js?v=20260929v';
-import { ENDINGS } from '../narrative/engine.js?v=20260929v';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929v';
-import { SceneView } from './scene.js?v=20260929v';
-import { Minigame } from '../minigame/minigame.js?v=20260929v';
-import { MODE_LABELS } from '../data/jobs.js?v=20260929v';
-import { TERRAIN_CN } from '../data/world.js?v=20260929v';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929v';
+import { GameState } from '../core/game.js?v=20260929w';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260929w';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260929w';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20260929w';
+import { cardMpCost } from '../data/data.js?v=20260929w';
+import { ENDINGS } from '../narrative/engine.js?v=20260929w';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260929w';
+import { SceneView } from './scene.js?v=20260929w';
+import { Minigame } from '../minigame/minigame.js?v=20260929w';
+import { MODE_LABELS } from '../data/jobs.js?v=20260929w';
+import { TERRAIN_CN } from '../data/world.js?v=20260929w';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260929w';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -68,6 +69,8 @@ export class UI {
     this._intelOpen = false;      // 情报面板是否打开
     this._mailOpen = false;       // 邮箱弹窗是否打开
     this._redeemOpen = false;     // 兑换码弹窗是否打开
+    this._aboutOpen = false;      // 关于 · 条款弹窗是否打开
+    this._aboutId = null;         // 当前阅读的文档 id
     this._chestId = null;         // 当前宝箱 id
     this._mgOpen = false;         // 打工小游戏是否打开
     this._mg = null;              // 当前小游戏实例
@@ -196,6 +199,11 @@ export class UI {
       redeemInput: $('redeem-input'),
       redeemMsg: $('redeem-msg'),
       btnRedeemConfirm: $('btn-redeem-confirm'),
+      about: $('about'),
+      aboutNav: $('about-nav'),
+      aboutDoc: $('about-doc'),
+      aboutDocTitle: $('about-doc-title'),
+      aboutUpdated: $('about-updated'),
       // 打工小游戏
       minigame: $('minigame'),
       mgTitle: $('mg-title'),
@@ -274,10 +282,17 @@ export class UI {
     document.querySelectorAll('[data-intel-close]').forEach((b) => {
       b.addEventListener('click', () => this.bus.emit('ui:intel-close'));
     });
-    // 右下角功能坞:邮箱 / 兑换码
+    // 右下角功能坞:邮箱 / 兑换码 / 关于
     on('btn-mailbox', 'click', () => this.bus.emit('ui:open-mailbox'));
     on('btn-redeem', 'click', () => this.bus.emit('ui:open-redeem'));
+    on('btn-about', 'click', () => this.openAbout());
     on('btn-redeem-confirm', 'click', () => this._submitRedeem());
+    document.querySelectorAll('[data-about-open]').forEach((b) => {
+      b.addEventListener('click', () => this.openAbout());
+    });
+    document.querySelectorAll('[data-about-close]').forEach((b) => {
+      b.addEventListener('click', () => this.closeAbout());
+    });
     document.querySelectorAll('[data-mail-close]').forEach((b) => {
       b.addEventListener('click', () => this.bus.emit('ui:mail-close'));
     });
@@ -339,6 +354,11 @@ export class UI {
 
   _bindKeyboard() {
     window.addEventListener('keydown', (e) => {
+      // 关于弹窗可先于年龄门打开,因此它的 Esc 处理放在门禁检查之前
+      if (this._aboutOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.closeAbout(); }
+        return;
+      }
       // 年龄 / 内容警告门未通过时,游戏不响应任何按键
       if (document.body.classList.contains('is-gated')) return;
       // 忽略输入框内按键
@@ -663,6 +683,88 @@ export class UI {
     if (!box) return;
     box.classList.remove('is-open');
     setTimeout(() => { if (!this._redeemOpen) box.hidden = true; }, 200);
+  }
+
+  // ===== 右下角:关于 · 条款与声明(数据源 data/about.js) =====
+  /** 打开「关于」弹窗;activeId 指定要展示的文档,缺省沿用上次/第一篇 */
+  openAbout(activeId) {
+    const box = this.el.about;
+    if (!box) return;
+    this._renderAboutNav();
+    this._renderAboutDoc(activeId || this._aboutId || (ABOUT_DOCS[0] && ABOUT_DOCS[0].id));
+    if (this.el.aboutUpdated) this.el.aboutUpdated.textContent = `条款最后更新:${ABOUT_UPDATED}`;
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._aboutOpen = true;
+  }
+
+  closeAbout() {
+    const box = this.el.about;
+    this._aboutOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._aboutOpen) box.hidden = true; }, 200);
+  }
+
+  /** 目录:每篇文档一个按钮 */
+  _renderAboutNav() {
+    const nav = this.el.aboutNav;
+    if (!nav) return;
+    nav.innerHTML = '';
+    for (const doc of ABOUT_DOCS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'about-nav-btn';
+      b.dataset.aboutId = doc.id;
+      b.innerHTML = `<span class="about-nav-no">${this._escapeHtml(doc.no || '')}</span>`
+        + `<span class="about-nav-title">${this._escapeHtml(doc.title)}</span>`;
+      b.addEventListener('click', () => this._renderAboutDoc(doc.id));
+      nav.appendChild(b);
+    }
+  }
+
+  /** 渲染单篇文档(极简标记:## 小标题 / - 列表 / 空行分段) */
+  _renderAboutDoc(id) {
+    const doc = ABOUT_DOCS.find((d) => d.id === id) || ABOUT_DOCS[0];
+    if (!doc) return;
+    this._aboutId = doc.id;
+    if (this.el.aboutDocTitle) {
+      this.el.aboutDocTitle.textContent = `${doc.no ? `${doc.no} · ` : ''}${doc.title}`;
+    }
+    const host = this.el.aboutDoc;
+    if (host) {
+      host.innerHTML = '';
+      let ul = null;
+      for (const raw of String(doc.body || '').split('\n')) {
+        const t = raw.trim();
+        if (!t) { ul = null; continue; }
+        if (t.startsWith('## ')) {
+          ul = null;
+          const h = document.createElement('h4');
+          h.className = 'about-sub';
+          h.textContent = t.slice(3).trim();
+          host.appendChild(h);
+        } else if (t.startsWith('- ')) {
+          if (!ul) { ul = document.createElement('ul'); ul.className = 'about-list'; host.appendChild(ul); }
+          const li = document.createElement('li');
+          li.textContent = t.slice(2).trim();
+          ul.appendChild(li);
+        } else {
+          ul = null;
+          const p = document.createElement('p');
+          p.className = 'about-p';
+          p.textContent = t;
+          host.appendChild(p);
+        }
+      }
+      const scroller = host.parentElement;
+      if (scroller) scroller.scrollTop = 0;
+    }
+    if (this.el.aboutNav) {
+      this.el.aboutNav.querySelectorAll('[data-about-id]').forEach((b) => {
+        b.classList.toggle('is-active', b.dataset.aboutId === doc.id);
+      });
+    }
   }
 
   // ===== 职业选择视图(扩展用) =====
