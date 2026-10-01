@@ -9,12 +9,12 @@
  *   单次获得数量的平均值 = 平均货物售出价格的七分之一(TOKEN_AVG_YIELD)。
  */
 
-import { ITEMS, sellPrice, TOKEN_PER_GOLD } from './items.js?v=20260930h';
+import { ITEMS, sellPrice, TOKEN_PER_GOLD } from './items.js?v=20261001a';
 
 /** 市场每笔交易的额外管理费比例 */
 export const MARKET_FEE = 0.1;
 
-const GOODS = Object.values(ITEMS).filter((it) => it.category !== 'token' && !it.rare);
+const GOODS = Object.values(ITEMS).filter((it) => it.category !== 'token' && !it.rare && !it.noTrade);
 const AVG_SELL = GOODS.reduce((s, it) => s + sellPrice(it.id), 0) / Math.max(1, GOODS.length);
 /** 单次获得特殊交易币的平均数量(≈ 平均货物售出价格的七分之一) */
 export const TOKEN_AVG_YIELD = Math.max(1, Math.round(AVG_SELL * TOKEN_PER_GOLD));

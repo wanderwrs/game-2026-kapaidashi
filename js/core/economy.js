@@ -11,11 +11,27 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20260930h';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260930h';
+import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261001a';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261001a';
+import { GEM_EFFECT } from '../data/gems.js?v=20261001a';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261001a';
 
 const SLOTS = ['weapon', 'armor', 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
 const OUTFIT_SLOTS = ['hat', 'top', 'bottom', 'shoes'];
+
+/** 背包初始格数 / 每次扩展格数 / 扩展基准价(每 70 格 ×1.25) */
+export const BAG_BASE = 40;
+export const BAG_STEP = 10;
+export const BAG_BASE_COST = 100;
+export const BAG_TIER_SLOTS = 70;
+export const BAG_TIER_MUL = 1.25;
+
+/** 背包扩容费用:已开格数决定档位 */
+export function bagUpgradeCost(currentCap) {
+  const opened = Math.max(0, currentCap - BAG_BASE);
+  const tier = Math.floor(opened / BAG_TIER_SLOTS);
+  return Math.round(BAG_BASE_COST * Math.pow(BAG_TIER_MUL, tier));
+}
 
 export class Economy {
   constructor({ gold = 40, apMax = 10 } = {}) {
@@ -28,7 +44,36 @@ export class Economy {
     this.hasteRest = 0;              // 剩余「缩短休息耗时」次数
     this.hasteTravel = 0;            // 剩余「缩短旅途耗时」次数
     this.goldLuckActive = false;     // 幸运币:下场战斗金币翻倍
+    // ===== 背包格数 / 图纸 / 货架 =====
+    this.bagCap = BAG_BASE;          // 背包格数(按物品种类计数,数量不限)
+    this.blueprints = new Set();     // 已解锁的图纸 id
+    this.custom = new Map();         // 动态物品:镶嵌武器等(id -> def)
+    this._customSeq = 0;             // 动态物品 id 序号
+    this.shelfCount = SHELF.start;   // 当前货架数
+    this.shelfUpgrades = 0;          // 已扩容次数(用于算价)
+    this.listings = [];              // 挂单:[{ id, itemId, price, at }]
+    this._listingSeq = 0;
   }
+
+  // ===== 背包格数 =====
+  /** 当前占用的格数(每个物品种类一格;镶嵌武器等动态物品各占一格) */
+  slotCount() { return this.bag.size; }
+
+  /** 背包是否还能容纳该物品(已持有的种类恒可叠加) */
+  canHold(id) {
+    return this.bag.has(id) || this.bag.size < this.bagCap;
+  }
+
+  /** 扩容背包(一次 +10 格);返回花费,失败返回 -1 */
+  expandBag() {
+    const cost = bagUpgradeCost(this.bagCap);
+    if (this.gold < cost) return -1;
+    this.gold -= cost;
+    this.bagCap += BAG_STEP;
+    return cost;
+  }
+
+  bagUpgradeCost() { return bagUpgradeCost(this.bagCap); }
 
   // ===== 背包 =====
   count(id) { return this.bag.get(id) || 0; }
@@ -122,6 +167,137 @@ export class Economy {
     return out;
   }
 
+  // ===== 图纸(解锁锻造配方) =====
+  hasBlueprint(id) { return this.blueprints.has(id); }
+
+  /** 使用一张图纸,解锁对应配方 */
+  unlockBlueprint(id) {
+    if (!ITEMS[id] || ITEMS[id].category !== 'blueprint') return false;
+    if (!this.removeItem(id, 1)) return false;
+    this.blueprints.add(id);
+    return true;
+  }
+
+  // ===== 动态物品(镶嵌武器) =====
+  /** 注册一件动态物品,并入全局 ITEMS,便于各处按 id 查表 */
+  registerCustom(def) {
+    this._customSeq += 1;
+    const id = `x_${def.base || 'item'}_${this._customSeq}`;
+    const withId = { ...def, id };
+    ITEMS[id] = withId;
+    this.custom.set(id, withId);
+    return withId;
+  }
+
+  isCustom(id) { return this.custom.has(id); }
+
+  /** 某武器剩余可镶嵌槽数 */
+  freeSockets(weaponId) { return socketsOf(weaponId); }
+
+  /** 以基础武器 + 宝石列表,合成镶嵌武器的定义 */
+  _composeSocketed(baseId, gems) {
+    const base = ITEMS[baseId];
+    if (!base) return null;
+    const stats = { ...(base.equipment?.stats || {}) };
+    for (const gid of gems) {
+      const eff = GEM_EFFECT[ITEMS[gid]?.gem] || {};
+      for (const [k, v] of Object.entries(eff)) stats[k] = (stats[k] || 0) + v;
+    }
+    const shortMap = { gem_strength: '力', gem_magic: '魔', gem_brave: '勇', gem_life: '生' };
+    const tag = gems.map((g) => shortMap[g] || '石').join('');
+    return {
+      base: baseId,
+      name: gems.length ? `${base.name}[${tag}]` : base.name,
+      category: 'weapon',
+      career: base.career,
+      forged: !!base.forged,
+      sockets: Math.max(0, socketsOf(baseId) - gems.length),
+      gems: [...gems],
+      icon: base.icon || '🗡️',
+      price: 0,
+      desc: `${base.desc || ''}${gems.length ? ` 镶嵌:${gems.map((g) => ITEMS[g]?.name || g).join('、')}。` : ''}`,
+      equipment: { slot: 'weapon', stats },
+    };
+  }
+
+  /**
+   * 镶嵌:把 gemId 镶进背包中的 weaponId。成功返回新武器 id。
+   */
+  socketGem(weaponId, gemId) {
+    const base = ITEMS[weaponId];
+    const gem = ITEMS[gemId];
+    if (!base || base.category !== 'weapon' || !gem || gem.category !== 'gem') return null;
+    if (!this.has(weaponId, 1) || !this.has(gemId, 1)) return null;
+    if (socketsOf(weaponId) <= 0) return null;
+    const def = this._composeSocketed(base.base || base.id, [...(base.gems || []), gemId]);
+    if (!def) return null;
+    const created = this.registerCustom(def);
+    this.removeItem(weaponId, 1);
+    this.removeItem(gemId, 1);
+    this.addItem(created.id, 1);
+    return created.id;
+  }
+
+  /**
+   * 取下最后一颗宝石(武器须在背包)。有几率把宝石打碎成碎片。
+   * @returns {{ weaponId:string, gemId:string, shattered:boolean }|null}
+   */
+  unsocketGem(weaponId) {
+    const w = ITEMS[weaponId];
+    if (!w || !this.custom.has(weaponId) || !this.has(weaponId, 1)) return null;
+    const gems = [...(w.gems || [])];
+    if (!gems.length) return null;
+    const gemId = gems.pop();
+    const def = this._composeSocketed(w.base || w.id, gems);
+    if (!def) return null;
+    const created = this.registerCustom(def);
+    this.removeItem(weaponId, 1);
+    this.addItem(created.id, 1);
+    const shattered = Math.random() < 0.6;
+    if (shattered) this.addItem('mat_shard', 1);
+    else this.addItem(gemId, 1);
+    return { weaponId: created.id, gemId, shattered };
+  }
+
+  // ===== 玩家货架(市场挂售) =====
+  shelfFree() { return this.listings.length < this.shelfCount; }
+
+  /** 货架扩容:开一个货架的费用 = 上一货架 × 1.3 */
+  expandShelf() {
+    if (this.shelfCount >= SHELF.max) return -1;
+    const cost = shelfUpgradeCost(this.shelfUpgrades);
+    if (this.gold < cost) return -1;
+    this.gold -= cost;
+    this.shelfCount = Math.min(SHELF.max, this.shelfCount + 1);
+    this.shelfUpgrades += 1;
+    return cost;
+  }
+
+  shelfUpgradeCost() {
+    return this.shelfCount >= SHELF.max ? -1 : shelfUpgradeCost(this.shelfUpgrades);
+  }
+
+  /** 上架一件物品(占用一格货架) */
+  listItem(itemId, price) {
+    if (!this.has(itemId, 1)) return null;
+    if (!this.shelfFree()) return null;
+    this._listingSeq += 1;
+    const listing = { id: `L${this._listingSeq}`, itemId, price: Math.max(1, Math.round(price)), at: Date.now() };
+    this.listings.push(listing);
+    this.removeItem(itemId, 1);
+    return listing;
+  }
+
+  /** 撤下挂单,物品回到背包 */
+  cancelListing(listingId) {
+    const i = this.listings.findIndex((l) => l.id === listingId);
+    if (i < 0) return false;
+    const l = this.listings[i];
+    this.listings.splice(i, 1);
+    this.addItem(l.itemId, 1);
+    return true;
+  }
+
   // ===== 加速恢复(药水):缩短之后若干次休息 / 旅途的真实耗时 =====
   /** 消耗一次「休息加速」,有则返回 true */
   consumeRestHaste() {
@@ -161,7 +337,7 @@ export class Economy {
 
   /** 汇总装备加成 */
   equipStats() {
-    const total = { atkPower: 0, maxHp: 0, maxMp: 0, apMax: 0, travelDiscount: 0, shopDiscount: 0, goldBonus: 0, restBonus: 0 };
+    const total = { atkPower: 0, maxHp: 0, maxMp: 0, apMax: 0, travelDiscount: 0, shopDiscount: 0, goldBonus: 0, restBonus: 0, startBlock: 0 };
     for (const slot of SLOTS) {
       const id = this.equipped[slot];
       const st = id && ITEMS[id]?.equipment?.stats;
@@ -436,6 +612,15 @@ export class Economy {
       hasteRest: this.hasteRest,
       hasteTravel: this.hasteTravel,
       goldLuckActive: this.goldLuckActive,
+      // 新增:背包格数 / 图纸 / 动态物品 / 货架
+      bagCap: this.bagCap,
+      blueprints: [...this.blueprints],
+      custom: [...this.custom.entries()].map(([id, def]) => ({ id, def })),
+      customSeq: this._customSeq,
+      shelfCount: this.shelfCount,
+      shelfUpgrades: this.shelfUpgrades,
+      listings: this.listings.map((l) => ({ ...l })),
+      listingSeq: this._listingSeq,
     };
   }
 
@@ -444,6 +629,16 @@ export class Economy {
     if (!data) return new Economy();
     const eco = new Economy({ gold: data.gold ?? 40, apMax: data.apMax ?? 10 });
     eco.ap = Number(data.ap ?? eco.apMax);
+    // 动态物品:必须先注册回全局 ITEMS,否则背包里的镶嵌武器无法解析
+    eco.custom = new Map();
+    eco._customSeq = Number(data.customSeq ?? 0);
+    if (Array.isArray(data.custom)) {
+      for (const entry of data.custom) {
+        if (!entry || !entry.id || !entry.def) continue;
+        ITEMS[entry.id] = { ...entry.def, id: entry.id };
+        eco.custom.set(entry.id, ITEMS[entry.id]);
+      }
+    }
     // 背包:Map
     eco.bag = new Map();
     if (data.bag) {
@@ -463,6 +658,15 @@ export class Economy {
     eco.hasteRest = Number(data.hasteRest ?? 0);
     eco.hasteTravel = Number(data.hasteTravel ?? 0);
     eco.goldLuckActive = !!data.goldLuckActive;
+    // 新增字段
+    eco.bagCap = Number(data.bagCap ?? BAG_BASE);
+    eco.blueprints = new Set(Array.isArray(data.blueprints) ? data.blueprints : []);
+    eco.shelfCount = Number(data.shelfCount ?? SHELF.start);
+    eco.shelfUpgrades = Number(data.shelfUpgrades ?? 0);
+    eco._listingSeq = Number(data.listingSeq ?? 0);
+    eco.listings = Array.isArray(data.listings)
+      ? data.listings.filter((l) => l && l.itemId && ITEMS[l.itemId]).map((l) => ({ ...l }))
+      : [];
     return eco;
   }
 }

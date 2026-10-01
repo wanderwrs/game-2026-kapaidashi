@@ -11,32 +11,36 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260930h';
-import { EventBus } from './eventbus.js?v=20260930h';
-import { AudioEngine } from './audio.js?v=20260930h';
-import { Player } from '../combat/entity.js?v=20260930h';
-import { Deck } from '../card/deck.js?v=20260930h';
-import { Battle } from '../combat/battle.js?v=20260930h';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260930h';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260930h';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260930h';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260930h';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260930h';
-import { jobsFor } from '../data/jobs.js?v=20260930h';
+import { RNG, seedFromString } from './rng.js?v=20261001a';
+import { EventBus } from './eventbus.js?v=20261001a';
+import { AudioEngine } from './audio.js?v=20261001a';
+import { Player } from '../combat/entity.js?v=20261001a';
+import { Deck } from '../card/deck.js?v=20261001a';
+import { Battle } from '../combat/battle.js?v=20261001a';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001a';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice } from '../data/items.js?v=20261001a';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001a';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001a';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001a';
+import { SELL_FLOOR, SHELF, FEES, priceMul, msToNextTick, pct } from '../data/trade.js?v=20261001a';
+import { TradeEngine } from './trade.js?v=20261001a';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001a';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001a';
+import { jobsFor } from '../data/jobs.js?v=20261001a';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20260930h';
-import { NPCS } from '../data/npcs.js?v=20260930h';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260930h';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260930h';
-import { generatePois, POI_COUNT, POI_TYPE_CN, POI_ICON, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS } from '../data/pois.js?v=20260930h';
-import { Economy } from './economy.js?v=20260930h';
-import { Travel } from './travel.js?v=20260930h';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260930h';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260930h';
-import { CAREERS } from '../narrative/careers.js?v=20260930h';
-import { UI } from '../ui/ui.js?v=20260930h';
+} from '../data/world.js?v=20261001a';
+import { NPCS } from '../data/npcs.js?v=20261001a';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001a';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001a';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, FIXED_STALLS, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001a';
+import { Economy } from './economy.js?v=20261001a';
+import { Travel } from './travel.js?v=20261001a';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001a';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001a';
+import { CAREERS } from '../narrative/careers.js?v=20261001a';
+import { UI } from '../ui/ui.js?v=20261001a';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -143,6 +147,9 @@ export const GameState = Object.freeze({
   HOTEL: 'hotel',
   MARKET_POI: 'market_poi',
   MERCHANT: 'merchant',
+  BLACKSMITH: 'blacksmith',
+  GEMSHOP: 'gemshop',
+  JEWELER: 'jeweler',
 });
 
 export class Game {
@@ -176,6 +183,9 @@ export class Game {
     this._atPoi = null;             // 当前所在 POI(或 null)
     this._hotelRoom = null;         // 酒店入住中正在休息的房型
     this._currentMerchant = null;   // 当前打开的商人类型(weapon/armor/medicine)
+    this.trade = null;              // 交易引擎(浮动定价 / 手续费 / 节日)
+    this._roaming = null;           // 流动摊位缓存(每次世界地图刷新重抽)
+    this._stallGuard = false;       // 摊位视图防重入
     this.tutorialSeen = loadTutorialSeen();
     this.audio = new AudioEngine();
     this.audio.arm();
@@ -253,6 +263,8 @@ export class Game {
     this._atPoi = null;
     this._hotelRoom = null;
     this._currentMerchant = null;
+    this.trade = new TradeEngine({ seed: this.rng.seed });
+    this._roaming = null;
     this._venueCache = new Map();     // regionId -> 专属交易场所(可能为 null)
     this._marketMode = 'market';      // 市场视图当前展示:'market' | 'venue'
     this.travel = new Travel({ bus: this.bus, rng: this.rng });
@@ -426,6 +438,8 @@ export class Game {
       this._wildBattle = false;
       this.currentBattle = null;
       this._currentRewards = null;
+      this.trade = new TradeEngine({ seed: this.rng.seed });
+      this._roaming = null;
       this.travel = new Travel({ bus: this.bus, rng: this.rng });
 
       this.ui.updateSeed(this.rng.seed);
@@ -528,6 +542,7 @@ export class Game {
         };
       })(),
       tokens: this.economy.tokens(),
+      stalls: this._stallsHere(),
       economy: this.economy,
     };
   }
@@ -564,6 +579,24 @@ export class Game {
       this._renderMap();
       this.ui.showToast(`剧情推进,有人塞来 ${token.name} ×${token.amount}`);
     }
+    // 剧情推进:可能获得锻造材料,偶有图纸解锁配方
+    if (this.rng.next() < 0.5) {
+      const mid = rollMaterial(() => this.rng.next());
+      const qty = 1 + Math.floor(this.rng.next() * 2);
+      this.economy.addItem(mid, qty);
+      this.ui.showToast(`途中拾得锻造材料:${ITEMS[mid]?.name || mid} ×${qty}`);
+    }
+    const bp = this._rollBlueprintDrop();
+    if (bp) this.ui.showToast(`📜 获得图纸「${bp.name}」,锻造配方已解锁`);
+  }
+
+  /** 剧情 / NPC 处获得图纸(解锁锻造配方) */
+  _rollBlueprintDrop() {
+    if (this.rng.next() >= 0.12) return null;
+    const pool = Object.values(BLUEPRINT_ITEMS).filter((b) => !this.economy.hasBlueprint(b.id));
+    if (!pool.length) return null;
+    const bp = pool[Math.floor(this.rng.next() * pool.length)];
+    return this._grantBlueprint(bp.id);
   }
 
   // ===== 世界地图 / 旅途 =====
@@ -630,10 +663,38 @@ export class Game {
   /** 打开世界地图(全部地区总览) */
   _openWorld() {
     this._visited.add(this.regionId);
+    // 每次刷新世界地图 → 重抽流动摊位(铁匠 / 宝石商 / 精益师)
+    this._rollRoaming();
     this.ui.renderWorld(this._worldState());
     this._syncUi();
     this.transition(GameState.WORLD);
     this._maybeShowTutorial();
+  }
+
+  /** 主城地区 id 列表 */
+  _cityRegions() {
+    return Object.keys(WORLD).filter((id) => WORLD[id]?.city);
+  }
+
+  /** 重抽流动摊位(每次打开世界地图时调用) */
+  _rollRoaming() {
+    const all = Object.keys(WORLD);
+    this._roaming = rollRoamingStalls(() => this.rng.next(), all, this._cityRegions());
+    return this._roaming;
+  }
+
+  /** 当前地区拥有的摊位类型(铁匠 / 宝石商 / 精益师) */
+  _stallsHere() {
+    if (!this._roaming) this._rollRoaming();
+    const isCity = !!WORLD[this.regionId]?.city;
+    return stallsAtRegion(this.regionId, isCity, FIXED_STALLS, this._roaming);
+  }
+
+  /** 打开某类摊位(铁匠铺 / 宝石商 / 精益师) */
+  _openStall(type) {
+    if (type === 'blacksmith') this._openBlacksmith();
+    else if (type === 'gemshop') this._openGemshop();
+    else if (type === 'jeweler') this._openJeweler();
   }
 
   /** 从世界地图「启程」前往某地区:花行动力 + 真实旅途时间 */
@@ -1221,7 +1282,7 @@ export class Game {
   // ===== 商店 =====
   _openShop() {
     const theme = this._currentTheme();
-    this.ui.renderShop({ theme, stock: SHOP_STOCK[theme] || SHOP_STOCK.village, economy: this.economy });
+    this.ui.renderShop({ theme, stock: SHOP_STOCK[theme] || SHOP_STOCK.village, economy: this.economy, fee: FEES.shop });
     this._syncUi();
     this.transition(GameState.SHOP);
   }
@@ -1229,9 +1290,14 @@ export class Game {
   _buy(id) {
     const it = ITEMS[id];
     if (!it) return;
-    const price = this.economy.itemPrice(id);
-    if (this.economy.buy(id)) this.ui.showToast(`购入「${it.name}」(花费 ${price} 金币)`);
-    else this.ui.showToast('金币不足');
+    if (!isTradeable(id)) { this.ui.showToast('此物不出售'); return; }
+    const base = this.economy.itemPrice(id);
+    const price = Math.max(1, Math.round(base * (1 + FEES.shop)));
+    if (this.economy.gold < price) { this.ui.showToast('金币不足'); return; }
+    if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+    this.economy.gold -= price;
+    this.economy.addItem(id, 1);
+    this.ui.showToast(`购入「${it.name}」(含 ${pct(FEES.shop)} 手续费,共 ${price} 金币)`);
     this._openShopRefresh();
     this._autosave();
   }
@@ -1247,24 +1313,84 @@ export class Game {
   _sell(id) {
     if (!this.economy.has(id)) { this.ui.showToast('背包里没有这件物品'); return; }
     if (this.economy.isEquipped(id)) { this.ui.showToast('已装备的物品需先卸下'); return; }
-    const before = this.economy.gold;
-    if (this.economy.sell(id)) {
-      this.ui.showToast(`卖出「${ITEMS[id].name}」,获得 ${this.economy.gold - before} 金币`);
-    }
+    if (!isTradeable(id)) { this.ui.showToast('此物无法买卖'); return; }
+    if (ITEMS[id]?.category === 'blueprint') { this.ui.showToast('图纸用于解锁配方,不能出售'); return; }
+    const gross = sellPrice(id);
+    const net = Math.max(1, Math.round(gross * (1 - FEES.shop)));
+    this.economy.removeItem(id, 1);
+    this.economy.gold += net;
+    this.ui.showToast(`卖出「${ITEMS[id].name}」,扣 ${pct(FEES.shop)} 手续费后得 ${net} 金币`);
     this._openShopRefresh();
     this._autosave();
   }
 
   _openShopRefresh() {
     const theme = this._currentTheme();
-    this.ui.renderShop({ theme, stock: SHOP_STOCK[theme] || SHOP_STOCK.village, economy: this.economy });
+    this.ui.renderShop({ theme, stock: SHOP_STOCK[theme] || SHOP_STOCK.village, economy: this.economy, fee: FEES.shop });
     this._syncUi();
   }
 
-  // ===== 市场(玩家集市:全品类,另收 10% 管理费) =====
+  // ===== 市场(玩家集市:浮动定价 + 手续费 + 玩家货架) =====
+  /** 市场数据(含多个商家、宝石摊与镶嵌武器摊、玩家货架) */
+  _marketData() {
+    this.trade?.refresh();
+    const { fee, festival } = this.trade ? this.trade.feeFor('market') : { fee: MARKET_FEE, festival: false };
+    return {
+      stalls: marketStalls(),
+      wares: this._marketWares(),
+      gems: Object.values(GEM_ITEMS).map((g) => ({
+        ...g,
+        price: this.trade ? this.trade.marketAvg(g.id) : g.price,
+        trend: this.trade ? this.trade.priceTrend(g.id) : 1,
+      })),
+      listings: this.economy.listings,
+      economy: this.economy,
+      fee,
+      festival,
+      trade: this.trade,
+      shelfCount: this.economy.shelfCount,
+      shelfMax: SHELF.max,
+      shelfCost: this.economy.shelfUpgradeCost(),
+      tick: this.trade ? this.trade.tick : 0,
+      nextTickMs: msToNextTick(),
+      sellFloor: SELL_FLOOR,
+    };
+  }
+
+  /** 市场里出售的「已镶嵌武器」(价格随强度递增) */
+  _marketWares() {
+    if (!this.trade) return [];
+    const tick = this.trade.tick;
+    const seed = this.rng.seed;
+    const weaponPool = Object.values(ITEMS).filter((it) => it.category === 'weapon' && !it.forged && !(it.gems && it.gems.length));
+    const gemPool = Object.values(GEM_ITEMS);
+    if (!weaponPool.length || !gemPool.length) return [];
+    const wares = [];
+    const N = 3;
+    for (let i = 0; i < N; i++) {
+      const wi = Math.floor(priceMul(`ware${i}`, seed, tick) * weaponPool.length) % weaponPool.length;
+      const gi1 = Math.floor(priceMul(`wareg${i}a`, seed, tick) * gemPool.length) % gemPool.length;
+      const gemIds = [gemPool[gi1].id];
+      // 第二颗宝石概率出现,使强档更贵
+      if (priceMul(`wareg${i}b`, seed, tick) > 0.5) {
+        const gi2 = Math.floor(priceMul(`wareg${i}c`, seed, tick) * gemPool.length) % gemPool.length;
+        if (gemPool[gi2].id !== gemIds[0]) gemIds.push(gemPool[gi2].id);
+      }
+      const base = weaponPool[wi];
+      const def = this.economy._composeSocketed(base.id, gemIds);
+      if (!def) continue;
+      const gemsValue = gemIds.reduce((s, g) => s + (ITEMS[g]?.price || 0), 0);
+      const trend = this.trade.priceTrend(base.id);
+      const price = Math.max(1, Math.round(((base.price || 60) + gemsValue) * 0.9 * trend * (1 + this.trade.feeFor('market').fee)));
+      wares.push({ key: `ware_${i}`, def, price });
+    }
+    return wares;
+  }
+
   _openMarket() {
     this._marketMode = 'market';
-    this.ui.renderMarket({ stalls: marketStalls(), economy: this.economy, fee: MARKET_FEE });
+    this._settleListings();
+    this.ui.renderMarket(this._marketData());
     this._syncUi();
     this.transition(GameState.MARKET);
   }
@@ -1275,16 +1401,19 @@ export class Game {
   }
 
   _openMarketRefreshOnly() {
-    this.ui.renderMarket({ stalls: marketStalls(), economy: this.economy, fee: MARKET_FEE });
+    this.ui.renderMarket(this._marketData());
     this._syncUi();
   }
 
   _marketBuy(id) {
     const it = ITEMS[id];
     if (!it) return;
-    const price = this.economy.marketBuyPrice(id, MARKET_FEE);
-    if (this.economy.marketBuy(id, MARKET_FEE)) this.ui.showToast(`购入「${it.name}」,含管理费共 ${price} 金币`);
-    else this.ui.showToast('金币不足');
+    const price = this.trade ? this.trade.marketBuyPrice(id, this.trade.feeFor('market').fee) : it.price;
+    if (this.economy.gold < price) { this.ui.showToast('金币不足'); return; }
+    if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+    this.economy.gold -= price;
+    this.economy.addItem(id, 1);
+    this.ui.showToast(`购入「${it.name}」,含管理费共 ${price} 金币`);
     this._marketRefresh();
     this._autosave();
   }
@@ -1292,13 +1421,92 @@ export class Game {
   _marketSell(id) {
     if (!this.economy.has(id)) { this.ui.showToast('背包里没有这件物品'); return; }
     if (this.economy.isEquipped(id)) { this.ui.showToast('已装备的物品需先卸下'); return; }
-    if (ITEMS[id]?.category === 'token') { this.ui.showToast('交易币不能换金币'); return; }
-    const net = this.economy.marketSellPrice(id, MARKET_FEE);
-    if (this.economy.marketSell(id, MARKET_FEE)) {
-      this.ui.showToast(`卖出「${ITEMS[id]?.name || id}」,扣管理费后得 ${net} 金币`);
-    }
+    if (!isTradeable(id)) { this.ui.showToast('此物无法买卖'); return; }
+    const fee = this.trade ? this.trade.feeFor('market').fee : MARKET_FEE;
+    const net = this.trade ? this.trade.marketSellNet(id, fee) : this.economy.marketSellPrice(id, fee);
+    this.economy.removeItem(id, 1);
+    this.economy.gold += net;
+    this.ui.showToast(`卖出「${ITEMS[id]?.name || id}」,扣 ${pct(fee)} 管理费后得 ${net} 金币`);
     this._marketRefresh();
     this._autosave();
+  }
+
+  /** 市场购买宝石(含市场管理费) */
+  _marketBuyGem(id) {
+    const g = ITEMS[id];
+    if (!g) return;
+    const fee = this.trade ? this.trade.feeFor('market').fee : MARKET_FEE;
+    const price = this.trade ? this.trade.marketBuyPrice(id, fee) : g.price;
+    if (this.economy.gold < price) { this.ui.showToast('金币不足'); return; }
+    if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+    this.economy.gold -= price;
+    this.economy.addItem(id, 1);
+    this.ui.showToast(`购入「${g.name}」(含管理费共 ${price} 金币)`);
+    this._marketRefresh();
+    this._syncUi();
+    this._autosave();
+  }
+
+  /** 购买市场的镶嵌武器(动态注册为背包中的唯一物品) */
+  _marketBuyWare(key) {
+    const ware = this._marketWares().find((w) => w.key === key);
+    if (!ware) return;
+    if (this.economy.gold < ware.price) { this.ui.showToast('金币不足'); return; }
+    if (!this.economy.canHold('ware')) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+    this.economy.gold -= ware.price;
+    const created = this.economy.registerCustom(ware.def);
+    this.economy.addItem(created.id, 1);
+    this.ui.showToast(`购入「${created.name}」(花费 ${ware.price} 金币)`);
+    this._marketRefresh();
+    this._syncUi();
+    this._autosave();
+  }
+
+  /** 上架一件物品到玩家货架(低于均价约 45% 会被秒卖) */
+  _listItem(itemId, price) {
+    if (!this.economy.has(itemId)) { this.ui.showToast('背包里没有这件物品'); return; }
+    if (this.economy.isEquipped(itemId)) { this.ui.showToast('已装备的物品需先卸下'); return; }
+    if (!isTradeable(itemId)) { this.ui.showToast('此物无法买卖'); return; }
+    if (!this.economy.shelfFree()) { this.ui.showToast('货架已满,请先扩容或撤单'); return; }
+    const fee = this.trade ? this.trade.feeFor('market').fee : MARKET_FEE;
+    const res = this.trade ? this.trade.trySellListing(itemId, price, fee) : { sold: false };
+    if (res.sold) {
+      this.economy.removeItem(itemId, 1);
+      this.economy.gold += res.gain;
+      this.ui.showToast(`⚡ 秒卖成功:「${ITEMS[itemId]?.name}」售出,得 ${res.gain} 金币`);
+    } else {
+      const l = this.economy.listItem(itemId, price);
+      this.ui.showToast(l ? `已上架「${ITEMS[itemId]?.name}」,售价 ${l.price}(等待买家)` : '上架失败');
+    }
+    this._openMarket();
+    this._autosave();
+  }
+
+  _cancelListing(listingId) {
+    if (this.economy.cancelListing(listingId)) this.ui.showToast('已撤下货架上的物品');
+    this._openMarket();
+    this._autosave();
+  }
+
+  _expandShelf() {
+    const cost = this.economy.expandShelf();
+    if (cost < 0) { this.ui.showToast('金币不足或货架已达上限'); return; }
+    this.ui.showToast(`已开通货架,当前 ${this.economy.shelfCount} 个(花费 ${cost} 金币)`);
+    this._openMarket();
+    this._autosave();
+  }
+
+  /** 结算挂单:达到成交线的自动售出 */
+  _settleListings() {
+    if (!this.trade || !this.economy.listings.length) return [];
+    const fee = this.trade.feeFor('market').fee;
+    const sold = [];
+    this.economy.listings = this.economy.listings.filter((l) => {
+      const r = this.trade.trySellListing(l.itemId, l.price, fee);
+      if (r.sold) { this.economy.gold += r.gain; sold.push({ ...l, gain: r.gain }); return false; }
+      return true;
+    });
+    return sold;
   }
 
   // ===== 专属交易场所(随机出现,只收当地主题的特殊交易币) =====
@@ -1521,13 +1729,33 @@ export class Game {
   // ===== 背包 =====
   _openBag() {
     this._syncUi();
-    this.ui.renderBag({ economy: this.economy, player: this.player });
+    this.ui.renderBag(this._bagData());
     this.transition(GameState.BAG);
   }
 
   _bagRefresh() {
     this._syncUi();
-    this.ui.renderBag({ economy: this.economy, player: this.player });
+    this.ui.renderBag(this._bagData());
+  }
+
+  /** 背包数据(含格数与扩容费用) */
+  _bagData() {
+    return {
+      economy: this.economy,
+      player: this.player,
+      bagCap: this.economy.bagCap,
+      bagUsed: this.economy.slotCount(),
+      expandCost: this.economy.bagUpgradeCost(),
+    };
+  }
+
+  /** 背包扩容(一次 +10 格) */
+  _expandBag() {
+    const cost = this.economy.expandBag();
+    if (cost < 0) { this.ui.showToast('金币不足,无法扩容'); return; }
+    this.ui.showToast(`背包已扩至 ${this.economy.bagCap} 格(花费 ${cost} 金币)`);
+    this._bagRefresh();
+    this._autosave();
   }
 
   _useItem(id) {
@@ -1671,6 +1899,13 @@ export class Game {
     this.ui.bindBattle(this.currentBattle);
     this.transition(GameState.BATTLE);
     this.currentBattle.start();
+    this._applyBattleStartBlock();
+  }
+
+  /** 战斗开始时的装备增益(勇敢宝石 → 初始护甲) */
+  _applyBattleStartBlock() {
+    const blk = this.economy?.equipStats?.().startBlock || 0;
+    if (blk > 0 && this.player?.addBlock) this.player.addBlock(blk);
   }
 
   onBattleEnd(result) {
@@ -1733,6 +1968,7 @@ export class Game {
     this.ui.bindBattle(this.currentBattle);
     this.transition(GameState.BATTLE);
     this.currentBattle.start();
+    this._applyBattleStartBlock();
   }
 
   /** 途中遭遇战结束:胜则继续赶路,败则中止旅途退回起点 */
@@ -1764,8 +2000,13 @@ export class Game {
         loot = LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
         this.economy.addItem(loot, 1);
       }
+      const drops = this._rollBattleDrops();
+      const dropTxt = [
+        drops.material ? `${ITEMS[drops.material.id]?.name}×${drops.material.qty}` : '',
+        drops.gem ? `${ITEMS[drops.gem.id]?.name}×${drops.gem.qty}` : '',
+      ].filter(Boolean).join('、');
       this._syncUi();
-      this.ui.showToast(`击退拦路者,拾得 ${gold} 金币${loot ? `与「${ITEMS[loot]?.name || loot}」` : ''}`);
+      this.ui.showToast(`击退拦路者,拾得 ${gold} 金币${loot ? `与「${ITEMS[loot]?.name || loot}」` : ''}${dropTxt ? `,另得 ${dropTxt}` : ''}`);
       if (this.travel?.active) {
         this.transition(GameState.TRAVEL);
         this.travel.resume();
@@ -1797,7 +2038,7 @@ export class Game {
     this._autosave();
   }
 
-  /** 胜利奖励:金币 + 概率掉落杂物 */
+  /** 胜利奖励:金币 + 概率掉落杂物 + 材料 / 宝石 */
   _grantBattleRewards() {
     const ch = this._chapterNum();
     let baseGold = 8 + Math.floor(this.rng.next() * 6) + ch * 2;
@@ -1811,8 +2052,29 @@ export class Game {
       loot = LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
       this.economy.addItem(loot, 1);
     }
-    this._lastBattleReward = { gold, loot };
+    const drops = this._rollBattleDrops();
+    this._lastBattleReward = { gold, loot, drops };
     this._syncUi();
+  }
+
+  /**
+   * 战斗掉落:锻造材料(常见)与宝石(稀有,自然获取难度较大)。
+   * 铁匠锻造的原料主要来源之一。
+   */
+  _rollBattleDrops() {
+    const out = { material: null, gem: null };
+    if (this.rng.next() < 0.7) {
+      const id = rollMaterial(() => this.rng.next());
+      const qty = id === 'mat_meteor' || id === 'mat_scale' ? 1 : 1 + Math.floor(this.rng.next() * 2);
+      this.economy.addItem(id, qty);
+      out.material = { id, qty };
+    }
+    if (this.rng.next() < 0.08) {
+      const id = rollGem(() => this.rng.next());
+      this.economy.addItem(id, 1);
+      out.gem = { id, qty: 1 };
+    }
+    return out;
   }
 
   /** 战败:退回地区起点、损失金币,并须重新抵达该地点再战 */
@@ -2060,7 +2322,8 @@ export class Game {
 
   _openWeaponMerchant() {
     this._currentMerchant = 'weapon';
-    const weapons = Object.values(ITEMS).filter((it) => it.category === 'weapon');
+    // 只卖常规武器:排除锻造武器与已镶嵌武器(不可买卖)
+    const weapons = Object.values(ITEMS).filter((it) => it.category === 'weapon' && !it.forged && !it.noTrade && !(it.gems && it.gems.length));
     const career = this.engine?.career?.id;
     this.ui.renderMerchant({
       title: '武器商',
@@ -2112,6 +2375,138 @@ export class Game {
     else if (this._currentMerchant === 'armor') this._openArmorMerchant();
     else if (this._currentMerchant === 'medicine') this._openMedicineMerchant();
     this._autosave();
+  }
+
+  // ===== 铁匠铺:锻造(材料 + 金币 + 图纸 → 特殊武器) =====
+  _openBlacksmith() {
+    const recipes = FORGE_RECIPES.map((r) => {
+      const result = ITEMS[r.result];
+      const unlocked = this.economy.hasBlueprint(r.blueprint);
+      const mats = Object.entries(r.materials).map(([mid, q]) => ({
+        id: mid, name: ITEMS[mid]?.name || mid, icon: ITEMS[mid]?.icon || '📦',
+        need: q, have: this.economy.count(mid),
+      }));
+      const canMats = mats.every((m) => m.have >= m.need);
+      const canGold = this.economy.gold >= r.gold;
+      return { ...r, result, unlocked, mats, canMats, canGold, canForge: unlocked && canMats && canGold };
+    });
+    this.ui.renderBlacksmith({
+      recipes,
+      economy: this.economy,
+      name: STALL_CN.blacksmith,
+    });
+    this.transition(GameState.BLACKSMITH);
+  }
+
+  /** 锻造:消耗材料 + 金币,产出特殊武器(不可买卖) */
+  _forge(recipeId) {
+    const r = FORGE_RECIPES.find((x) => x.id === recipeId);
+    if (!r) return;
+    if (!this.economy.hasBlueprint(r.blueprint)) { this.ui.showToast('尚未解锁该配方(需要对应图纸)'); return; }
+    for (const [mid, q] of Object.entries(r.materials)) {
+      if (this.economy.count(mid) < q) { this.ui.showToast(`材料不足:${ITEMS[mid]?.name || mid} ×${q}`); return; }
+    }
+    if (this.economy.gold < r.gold) { this.ui.showToast(`金币不足(需 ${r.gold})`); return; }
+    if (!this.economy.canHold(r.result)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+    for (const [mid, q] of Object.entries(r.materials)) this.economy.removeItem(mid, q);
+    this.economy.gold -= r.gold;
+    this.economy.addItem(r.result, 1);
+    this.ui.showToast(`🔨 锻造成功:获得「${ITEMS[r.result].name}」`);
+    this._openBlacksmith();
+    this._syncPlayerStats();
+    this._syncUi();
+    this._autosave();
+  }
+
+  // ===== 宝石商:售卖宝石(随市场浮动定价) =====
+  _openGemshop() {
+    this.trade?.refresh();
+    const gems = Object.values(GEM_ITEMS).map((g) => {
+      const price = this.trade ? this.trade.marketAvg(g.id) : g.price;
+      return { ...g, price, trend: this.trade ? this.trade.priceTrend(g.id) : 1 };
+    });
+    this.ui.renderGemshop({ gems, economy: this.economy, name: STALL_CN.gemshop });
+    this.transition(GameState.GEMSHOP);
+  }
+
+  _gemshopBuy(id) {
+    const g = ITEMS[id];
+    if (!g) return;
+    const price = this.trade ? this.trade.marketAvg(id) : g.price;
+    if (this.economy.gold < price) { this.ui.showToast(`金币不足(需 ${price})`); return; }
+    if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+    this.economy.gold -= price;
+    this.economy.addItem(id, 1);
+    this.ui.showToast(`购入「${g.name}」(花费 ${price} 金币)`);
+    this._openGemshop();
+    this._syncUi();
+    this._autosave();
+  }
+
+  // ===== 精益师:把宝石镶嵌进武器 =====
+  _openJeweler() {
+    const weapons = [];
+    for (const [id, qty] of this.economy.bag.entries()) {
+      const def = ITEMS[id];
+      if (!def || def.category !== 'weapon') continue;
+      weapons.push({ id, qty, def, free: socketsOf(id), gems: def.gems || [] });
+    }
+    const gems = [];
+    for (const [id, qty] of this.economy.bag.entries()) {
+      const def = ITEMS[id];
+      if (!def || def.category !== 'gem') continue;
+      gems.push({ id, qty, def });
+    }
+    this.ui.renderJeweler({
+      weapons, gems, economy: this.economy, cost: SOCKET_GOLD_PER_GEM, name: STALL_CN.jeweler,
+    });
+    this.transition(GameState.JEWELER);
+  }
+
+  /** 镶嵌:消耗金币,把宝石镶进武器的空槽 */
+  _socket(weaponId, gemId) {
+    const w = ITEMS[weaponId];
+    const g = ITEMS[gemId];
+    if (!w || !g) return;
+    if (socketsOf(weaponId) <= 0) { this.ui.showToast('该武器已无空余宝石槽'); return; }
+    if (!this.economy.has(weaponId) || !this.economy.has(gemId)) { this.ui.showToast('物品不在背包中'); return; }
+    if (this.economy.gold < SOCKET_GOLD_PER_GEM) { this.ui.showToast(`金币不足(镶嵌需 ${SOCKET_GOLD_PER_GEM})`); return; }
+    this.economy.gold -= SOCKET_GOLD_PER_GEM;
+    const created = this.economy.socketGem(weaponId, gemId);
+    if (!created) { this.economy.gold += SOCKET_GOLD_PER_GEM; this.ui.showToast('镶嵌失败'); return; }
+    this.ui.showToast(`🔧 镶嵌成功:${ITEMS[created].name}`);
+    this._openJeweler();
+    this._syncPlayerStats();
+    this._syncUi();
+    this._autosave();
+  }
+
+  /** 取下武器最后一颗宝石(可能碎成碎片) */
+  _unsocket(weaponId) {
+    const r = this.economy.unsocketGem(weaponId);
+    if (!r) { this.ui.showToast('该武器没有可取下的宝石'); return; }
+    this.ui.showToast(r.shattered ? '宝石取下时碎裂了,只余下一点碎片' : '宝石完好取下,已放回背包');
+    this._openJeweler();
+    this._syncPlayerStats();
+    this._syncUi();
+    this._autosave();
+  }
+
+  /** 发放一张图纸并直接解锁配方 */
+  _grantBlueprint(bpId) {
+    if (!bpId || !ITEMS[bpId]) return null;
+    if (this.economy.hasBlueprint(bpId)) return null;
+    this.economy.blueprints.add(bpId);
+    return ITEMS[bpId];
+  }
+
+  /** 使用背包中的图纸(解锁配方) */
+  _useBlueprint(id) {
+    if (!this.economy.unlockBlueprint(id)) { this.ui.showToast('无法使用该图纸'); return; }
+    this.ui.showToast(`📜 已解锁配方:${ITEMS[id]?.name || id}`);
+    this._syncUi();
+    this._autosave();
+    if (this.state === GameState.BAG) this._openBag();
   }
 
   transition(next) {
@@ -2203,6 +2598,22 @@ export class Game {
     this.bus.on('ui:job-challenge', (p) => this._challengeJob(p.jobId, p.tierIndex));
     this.bus.on('ui:job-finish', (r) => this._finishJob(r));
     this.bus.on('ui:minigame-close', () => this._closeMinigame());
+
+    // 铁匠 / 宝石商 / 精益师 / 玩家货架 / 背包扩容
+    this.bus.on('ui:map-blacksmith', () => this._openBlacksmith());
+    this.bus.on('ui:map-gemshop', () => this._openGemshop());
+    this.bus.on('ui:map-jeweler', () => this._openJeweler());
+    this.bus.on('ui:forge', (id) => this._forge(id));
+    this.bus.on('ui:gemshop-buy', (id) => this._gemshopBuy(id));
+    this.bus.on('ui:socket', (p) => this._socket(p.weaponId, p.gemId));
+    this.bus.on('ui:unsocket', (id) => this._unsocket(id));
+    this.bus.on('ui:market-buy-gem', (id) => this._marketBuyGem(id));
+    this.bus.on('ui:market-buy-ware', (k) => this._marketBuyWare(k));
+    this.bus.on('ui:market-list', (p) => this._listItem(p.itemId, p.price));
+    this.bus.on('ui:market-cancel', (id) => this._cancelListing(id));
+    this.bus.on('ui:market-expand-shelf', () => this._expandShelf());
+    this.bus.on('ui:bag-expand', () => this._expandBag());
+    this.bus.on('ui:bag-use-blueprint', (id) => this._useBlueprint(id));
 
     this.bus.on('battle:end', (result) => this.onBattleEnd(result));
     this.bus.on('narrative:battle', (payload) => this._startNarrativeBattle(payload));

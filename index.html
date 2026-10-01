@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260930c" />
+  <link rel="stylesheet" href="css/style.css?v=20261001a" />
 </head>
 <body>
   <!-- 游戏前 · 年龄限制与内容警告门(每次打开页面都需通过;需真人验证) -->
@@ -228,41 +228,49 @@
       </div>
     </section>
 
-    <!-- 商店 -->
+    <!-- 商店(左:物品分类 / 右:具体货物) -->
     <section id="view-shop" class="view view-shop">
       <div class="panel-head">
         <h2 class="view-title">商 店</h2>
         <div id="shop-res" class="map-res"></div>
       </div>
-      <p class="view-sub">买入所需,卖出冗余</p>
-      <div id="shop-list" class="shop-list"></div>
+      <p class="view-sub" id="shop-note">买入所需,卖出冗余(手续费 3%)</p>
+      <div class="trade-layout">
+        <nav id="shop-cats" class="trade-nav" aria-label="物品分类"></nav>
+        <div id="shop-list" class="shop-list trade-goods"></div>
+      </div>
       <div class="panel-actions">
         <button id="btn-shop-back" class="btn btn-ghost">返 回 地 图</button>
       </div>
     </section>
 
-    <!-- 市场 / 密市:玩家集市(全品类)与专属交易场所(只收特殊交易币) -->
+    <!-- 市场 / 密市:玩家集市(左:分类 / 右:货物) -->
     <section id="view-market" class="view view-market">
       <div class="panel-head">
         <h2 class="view-title" id="market-title">市 场</h2>
         <div id="market-res" class="map-res"></div>
       </div>
       <p id="market-note" class="view-sub">—</p>
-      <div id="market-list" class="shop-list"></div>
+      <div class="trade-layout">
+        <nav id="market-cats" class="trade-nav" aria-label="市场分类"></nav>
+        <div id="market-list" class="shop-list trade-goods"></div>
+      </div>
       <div class="panel-actions">
         <button id="btn-market-back" class="btn btn-ghost">返 回 地 图</button>
       </div>
     </section>
 
-    <!-- 背包 -->
+    <!-- 背包(窗格样式) -->
     <section id="view-bag" class="view view-bag">
       <div class="panel-head">
         <h2 class="view-title">背 包</h2>
         <div id="bag-res" class="map-res"></div>
       </div>
+      <div id="bag-cap" class="bag-cap"></div>
       <div id="bag-equipped" class="bag-equipped"></div>
-      <div id="bag-list" class="bag-list"></div>
+      <div id="bag-list" class="bag-list bag-grid"></div>
       <div class="panel-actions">
+        <button id="btn-bag-expand" class="btn btn-primary">扩 容 +10 格</button>
         <button id="btn-bag-back" class="btn btn-ghost">返 回 地 图</button>
       </div>
     </section>
@@ -332,6 +340,48 @@
       <div id="merchant-list" class="shop-list"></div>
       <div class="panel-actions">
         <button id="btn-merchant-back" class="btn btn-ghost">返 回 商 市</button>
+      </div>
+    </section>
+
+    <!-- 铁匠铺:锻造(材料 + 金币 + 图纸 → 特殊武器) -->
+    <section id="view-blacksmith" class="view view-market">
+      <div class="panel-head">
+        <h2 class="view-title" id="blacksmith-title">铁 匠 铺</h2>
+        <div id="blacksmith-res" class="map-res"></div>
+      </div>
+      <p id="blacksmith-note" class="view-sub">收集材料与图纸,锻造无法买卖的特殊武器</p>
+      <div id="blacksmith-list" class="shop-list"></div>
+      <div class="panel-actions">
+        <button id="btn-blacksmith-back" class="btn btn-ghost">离 开</button>
+      </div>
+    </section>
+
+    <!-- 宝石商:售卖宝石(随市场浮动定价) -->
+    <section id="view-gemshop" class="view view-market">
+      <div class="panel-head">
+        <h2 class="view-title" id="gemshop-title">宝 石 商</h2>
+        <div id="gemshop-res" class="map-res"></div>
+      </div>
+      <p id="gemshop-note" class="view-sub">力量 / 魔力 / 勇敢 / 生命 —— 镶嵌进武器方能生效</p>
+      <div id="gemshop-list" class="shop-list"></div>
+      <div class="panel-actions">
+        <button id="btn-gemshop-back" class="btn btn-ghost">离 开</button>
+      </div>
+    </section>
+
+    <!-- 精益师:把宝石镶嵌进武器 -->
+    <section id="view-jeweler" class="view view-market">
+      <div class="panel-head">
+        <h2 class="view-title" id="jeweler-title">精 益 师</h2>
+        <div id="jeweler-res" class="map-res"></div>
+      </div>
+      <p id="jeweler-note" class="view-sub">选择一件武器与一颗宝石,镶嵌提升能力</p>
+      <div class="shop-section-title">选择武器</div>
+      <div id="jeweler-weapons" class="shop-list"></div>
+      <div class="shop-section-title">选择宝石</div>
+      <div id="jeweler-gems" class="shop-list"></div>
+      <div class="panel-actions">
+        <button id="btn-jeweler-back" class="btn btn-ghost">离 开</button>
       </div>
     </section>
 
@@ -792,6 +842,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20260930c"></script>
+  <script type="module" src="js/main.js?v=20261001a"></script>
 </body>
 </html>

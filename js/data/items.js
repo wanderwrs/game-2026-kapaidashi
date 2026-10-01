@@ -10,7 +10,11 @@
  *            speedMul 为旅途耗时倍率(越小越快,1 = 步行)
  *   misc    杂物:无效果,可捡拾、可出售换取金币
  *   token   交易币:专属交易场所专用,不能换成金币(见 data/market.js)
+ *   material 材料:锻造武器所需(见 data/forge.js)
+ *   blueprint 图纸:使用后解锁锻造配方
+ *   gem     宝石:交给精益师镶嵌进武器(见 data/gems.js)
  * rare: true 的物品不会进普通商店,只在专属交易场所低概率出现。
+ * noTrade: true 的物品无法在商店 / 市场买卖(如锻造武器、图纸)。
  *
  * effect(消耗品):{ kind: 'heal'|'mp'|'power'|'ap'|'full'|'rest_haste'|'travel_haste', amount }
  *   full         生命与魔力尽数回满
@@ -21,6 +25,9 @@
  * sell 未填时按 price 的 50% 计算。
  */
 
+import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261001a';
+import { GEM_ITEMS } from './gems.js?v=20261001a';
+
 export const ITEM_CATEGORY_CN = {
   potion: '药品',
   food: '食品',
@@ -30,6 +37,9 @@ export const ITEM_CATEGORY_CN = {
   vehicle: '载具',
   misc: '杂物',
   token: '交易币',
+  material: '材料',
+  blueprint: '图纸',
+  gem: '宝石',
 };
 
 /** 1 枚特殊交易币 ≈ 7 金币的货值(见 data/market.js) */
@@ -200,6 +210,24 @@ export const ITEMS = {
   old_coin:    { id: 'old_coin',    name: '古币',     category: 'misc', price: 30, icon: '🪙', desc: '不知年代的旧钱,收藏者或愿出价。' },
   bone_charm:  { id: 'bone_charm',  name: '骨符',     category: 'misc', price: 45, icon: '🦴', desc: '教团遗落的骨符,阴森但值钱。' },
 };
+
+// ===== 并入锻造 / 图纸 / 宝石类物品(见 data/forge.js、data/gems.js) =====
+Object.assign(ITEMS, MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS, GEM_ITEMS);
+// 图纸不可买卖(仅用于解锁配方)
+for (const id of Object.keys(BLUEPRINT_ITEMS)) ITEMS[id].noTrade = true;
+
+/** 某物品是否可在商店 / 市场买卖 */
+export function isTradeable(id) {
+  const it = ITEMS[id];
+  return !!it && !it.noTrade && it.category !== 'token';
+}
+
+/** 某武器的宝石槽数(普通武器默认 1,需显式 sockets 覆盖) */
+export function socketsOf(id) {
+  const it = ITEMS[id];
+  if (!it || it.category !== 'weapon') return 0;
+  return Number.isFinite(it.sockets) ? it.sockets : 1;
+}
 
 /** 出售价:未显式给出则取买价的 50%(向下取整) */
 export function sellPrice(itemId) {
