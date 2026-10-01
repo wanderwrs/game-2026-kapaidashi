@@ -9,9 +9,10 @@
  *   · 1~40   可在各地「商店」买到
  *   · 41~100 可在「市场」买到
  *   · 101~150 只能靠「镶嵌宝石」逐级提升(每颗宝石 +10 级,最多 5 颗到 150)
- *   · 一旦镶嵌过宝石,该防具不可再出售/交易
+ *   · 镶嵌过宝石的防具可在市场流通(购买 / 出售);但 130 级以上的防具不得出售
  *
  * 数值与价格随等级增长;防具名称由「等级档位前缀 + 部位名 + Lv.等级」组成。
+ * 等级同时决定品级(见 data/grade.js)与盔甲色泽(见 armorBand 的 tint)。
  */
 
 /** 七个防具槽位(顺序即 UI 展示顺序) */
@@ -132,7 +133,6 @@ export function makeArmor(slot, level, id, gems = []) {
     sockets: Math.max(0, ARMOR_MAX_GEMS - gems.length),
     gems: [...gems],
   };
-  if (gems.length) def.noTrade = true; // 镶嵌过的防具不得出售
   return def;
 }
 

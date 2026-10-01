@@ -9,7 +9,7 @@
  *   单次获得数量的平均值 = 平均货物售出价格的七分之一(TOKEN_AVG_YIELD)。
  */
 
-import { ITEMS, sellPrice, TOKEN_PER_GOLD } from './items.js?v=20261001e';
+import { ITEMS, sellPrice, TOKEN_PER_GOLD } from './items.js?v=20261001g';
 
 /** 市场每笔交易的额外管理费比例 */
 export const MARKET_FEE = 0.1;
@@ -27,6 +27,7 @@ export const MARKET_SELLERS = [
   { id: 'herbalist', name: '「苦根」', title: '游方药贩', icon: '🧪', categories: ['potion'] },
   { id: 'baker',     name: '「胖婶」', title: '干粮客',   icon: '🍞', categories: ['food'] },
   { id: 'smith',     name: '「锤三」', title: '铁匠',     icon: '⚔️', categories: ['weapon'] },
+  { id: 'armorer',   name: '「铆钉」', title: '甲匠',     icon: '🛡️', categories: ['armor'] },
   { id: 'tailor',    name: '「细针」', title: '裁缝',     icon: '🧵', categories: ['outfit'] },
   { id: 'caravan',   name: '「远辙」', title: '车马行东家', icon: '🐎', categories: ['vehicle'] },
   { id: 'junker',    name: '「零碎」', title: '杂货摊主', icon: '🪙', categories: ['misc'] },

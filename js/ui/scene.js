@@ -173,13 +173,31 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   const bootHi = shade(bootCol, 0.18), bootLo = shade(bootCol, -0.35);
   const skinLo = shade(SKIN, -0.26), skinHi = shade(SKIN, 0.12), skinMid = shade(SKIN, -0.1);
 
+  // ---- 身材参数(身高 / 体格 / 四肢粗细),由形象决定 ----
+  const stature = Math.round(a.stature || 0);  // 正数 = 更矮(上身下移、腿变短)
+  const girth = Math.round(a.girth || 0);      // 躯干每侧加宽像素
+  const limb = Math.round(a.limb || 0);        // 手臂 / 腿的粗细增减
+  const uy = stature;                          // 上身整体纵向位移
+  const legLen = 12 - uy;                      // 腿长(脚掌固定于地面)
+  const tx = 15 - girth;                       // 躯干左缘
+  const tw = 18 + 2 * girth;                   // 躯干宽度
+  const armLx = 11 - girth - limb;             // 左臂左缘
+  const armRx = 33 + girth;                    // 右臂左缘
+  const armW = 4 + limb;                       // 手臂粗细
+  const legLx = 18 - limb;                     // 左腿左缘
+  const legRx = 24;                            // 右腿左缘
+  const legW = 6 + limb;                       // 腿粗细
+
+  // 身高体现在「上身整体平移 + 腿随之伸缩」:y<55 的部分随身材位移,
+  // 脚掌与靴子(y≥55)与地面阴影保持不动。
+  const Y = (y) => (y < 55 ? y + uy : y);
   const ox = swayX;
   const oy = breathY;
-  const P = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox, y + oy, w, h); };
-  const PaL = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox + leftArmX, y + oy, w, h); };
-  const PaR = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox + rightArmX, y + oy, w, h); };
-  const Ph = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox + hairFlutter, y + oy, w, h); };
-  const Pc = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox + clothFlutter, y + oy, w, h); };
+  const P = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox, Y(y) + oy, w, h); };
+  const PaL = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox + leftArmX, Y(y) + oy, w, h); };
+  const PaR = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox + rightArmX, Y(y) + oy, w, h); };
+  const Ph = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox + hairFlutter, Y(y) + oy, w, h); };
+  const Pc = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + ox + clothFlutter, Y(y) + oy, w, h); };
 
   // ============================================================
   // 1. 地面阴影
@@ -200,15 +218,16 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
     P(39, 42, 2, 1, trim);
   }
   if (acc === 'staff') {
-    P(6, 18, 2, 34, '#6b4a30');
-    P(6, 18, 1, 34, '#835c3c');
+    // 杖杆随身高伸缩,杖尾始终保持在同一高度
+    P(6, 18, 2, 34 - uy, '#6b4a30');
+    P(6, 18, 1, 34 - uy, '#835c3c');
     P(5, 14, 4, 4, trim);
     P(6, 15, 2, 2, trimHi);
     if (sheen > 0.5) P(6, 15, 1, 1, '#ffffff');
   }
   if (acc === 'spear') {
-    P(39, 2, 2, 50, LEATHER);
-    P(39, 2, 1, 50, '#7d5b3c');
+    P(39, 2, 2, 50 - uy, LEATHER);
+    P(39, 2, 1, 50 - uy, '#7d5b3c');
     P(38, 0, 4, 3, METAL);
     P(39, 0, 2, 2, '#e6ebf0');
   }
@@ -221,16 +240,16 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   // ============================================================
   // 3. 腿部 + 靴子(先画,被躯干遮挡)
   // ============================================================
-  // 左腿
-  P(18, 44, 6, 12, pantsCol);
-  P(18, 44, 1, 12, pantsHi);
-  P(23, 44, 1, 12, pantsLo);
-  P(19, 48, 1, 6, pantsMid);
+  // 左腿(上端随身高升降,下端固定,故腿长 = legLen)
+  P(legLx, 44, legW, legLen, pantsCol);
+  P(legLx, 44, 1, legLen, pantsHi);
+  P(legLx + legW - 1, 44, 1, legLen, pantsLo);
+  P(legLx + 1, 48, 1, Math.max(2, legLen - 6), pantsMid);
   // 右腿
-  P(24, 44, 6, 12, pantsCol);
-  P(24, 44, 1, 12, pantsHi);
-  P(29, 44, 1, 12, pantsLo);
-  P(27, 48, 1, 6, pantsMid);
+  P(legRx, 44, legW, legLen, pantsCol);
+  P(legRx, 44, 1, legLen, pantsHi);
+  P(legRx + legW - 1, 44, 1, legLen, pantsLo);
+  P(legRx + 3, 48, 1, Math.max(2, legLen - 6), pantsMid);
   // 左靴
   Pc(17, 55, 8, 7, bootCol);
   Pc(17, 55, 8, 1, bootHi);
@@ -245,34 +264,34 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   // ============================================================
   // 4. 躯干(肩 → 腰)
   // ============================================================
-  // 肩胸主体
-  P(15, 23, 18, 20, cloth);
-  P(15, 23, 2, 20, clothHi);          // 左受光
-  P(31, 23, 2, 20, clothLo);           // 右入影
+  // 肩胸主体(宽度随体格变化:左缘 tx,宽 tw)
+  P(tx, 23, tw, 20, cloth);
+  P(tx, 23, 2, 20, clothHi);            // 左受光
+  P(tx + tw - 2, 23, 2, 20, clothLo);   // 右入影
   // 肩部圆润过渡
-  P(16, 23, 16, 1, clothHi);
-  P(31, 24, 2, 1, clothLo);
-  // 内襟
+  P(tx + 1, 23, tw - 2, 1, clothHi);
+  P(tx + tw - 2, 24, 2, 1, clothLo);
+  // 内襟(居中,不随体格加宽)
   P(21, 25, 6, 16, cloth2);
   P(21, 25, 1, 16, cloth2Hi);
   P(26, 25, 1, 16, cloth2Lo);
   P(23, 27, 2, 12, shade(cloth2, -0.1));
   // V 领
-  P(15, 23, 18, 1, trim);
+  P(tx, 23, tw, 1, trim);
   P(20, 24, 8, 1, trim);
   P(21, 25, 6, 1, cloth2);
   P(23, 24, 2, 2, cloth2Hi);
-  // 胸前褶皱
-  P(17, 28, 1, 3, clothMid);
-  P(30, 28, 1, 3, clothLo);
-  P(17, 34, 1, 3, clothMid);
-  P(30, 34, 1, 3, clothLo);
+  // 胸前褶皱(贴着两肋)
+  P(tx + 2, 28, 1, 3, clothMid);
+  P(tx + tw - 3, 28, 1, 3, clothLo);
+  P(tx + 2, 34, 1, 3, clothMid);
+  P(tx + tw - 3, 34, 1, 3, clothLo);
 
   // 腰带
   if (!bareTop) {
-    P(15, 41, 18, 3, LEATHER);
-    P(15, 41, 18, 1, shade(LEATHER, 0.2));
-    P(15, 43, 18, 1, shade(LEATHER, -0.3));
+    P(tx, 41, tw, 3, LEATHER);
+    P(tx, 41, tw, 1, shade(LEATHER, 0.2));
+    P(tx, 43, tw, 1, shade(LEATHER, -0.3));
     P(22, 41, 4, 3, trim);
     P(22, 41, 4, 1, trimHi);
   }
@@ -285,32 +304,32 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
     P(21, 33, 6, 1, METAL_DARK);
   }
   if (acc === 'censer') {
-    P(29, 30, 4, 1, METAL_DARK);
-    P(30, 31, 2, 3, trim);
-    P(30, 34, 2, 1, METAL_DARK);
+    P(tx + tw - 4, 30, 4, 1, METAL_DARK);
+    P(tx + tw - 3, 31, 2, 3, trim);
+    P(tx + tw - 3, 34, 2, 1, METAL_DARK);
   }
 
   // ============================================================
   // 5. 双臂(随重心摆动)
   // ============================================================
-  // 左臂
-  PaL(11, 24, 4, 16, cloth);
-  PaL(11, 24, 1, 16, clothHi);
-  PaL(14, 24, 1, 16, clothLo);
-  PaL(11, 24, 4, 1, clothHi);
+  // 左臂(粗细随四肢,外缘随体格外扩)
+  PaL(armLx, 24, armW, 16, cloth);
+  PaL(armLx, 24, 1, 16, clothHi);
+  PaL(armLx + armW - 1, 24, 1, 16, clothLo);
+  PaL(armLx, 24, armW, 1, clothHi);
   // 左手
-  PaL(11, 40, 4, 3, SKIN);
-  PaL(11, 42, 4, 1, skinLo);
-  PaL(12, 40, 1, 2, skinHi);
+  PaL(armLx, 40, armW, 3, SKIN);
+  PaL(armLx, 42, armW, 1, skinLo);
+  PaL(armLx + 1, 40, 1, 2, skinHi);
   // 右臂
-  PaR(33, 24, 4, 16, cloth);
-  PaR(33, 24, 1, 16, clothMid);
-  PaR(36, 24, 1, 16, clothLo);
-  PaR(33, 24, 4, 1, clothHi);
+  PaR(armRx, 24, armW, 16, cloth);
+  PaR(armRx, 24, 1, 16, clothMid);
+  PaR(armRx + armW - 1, 24, 1, 16, clothLo);
+  PaR(armRx, 24, armW, 1, clothHi);
   // 右手
-  PaR(33, 40, 4, 3, SKIN);
-  PaR(33, 42, 4, 1, skinLo);
-  PaR(34, 40, 1, 2, skinHi);
+  PaR(armRx, 40, armW, 3, SKIN);
+  PaR(armRx, 42, armW, 1, skinLo);
+  PaR(armRx + 1, 40, 1, 2, skinHi);
 
   // ============================================================
   // 6. 颈部
@@ -454,11 +473,76 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   drawHatPixel(P, a);
 
   // ============================================================
+  // 8.5 防具(与服饰各画各的:里衣外甲,同一部位可同时可见)
+  //     头盔 / 胸甲 / 护手 / 护腿 / 战靴 / 戒指 / 耳饰
+  // ============================================================
+  const AR = a.armor;
+  if (AR) {
+    const hi = (c) => shade(c, 0.3);
+    const lo = (c) => shade(c, -0.34);
+    const mid = (c) => shade(c, -0.12);
+
+    // 头部防具:压在头发之上的盔沿 + 护鼻
+    const hc = AR.head;
+    if (hc) {
+      P(15, 3, 18, 3, hc);
+      P(15, 3, 18, 1, hi(hc));
+      P(14, 6, 20, 1, lo(hc));
+      P(16, 4, 4, 2, hi(hc));
+      P(23, 6, 2, 4, hc);          // 护鼻
+      P(23, 6, 1, 4, hi(hc));
+      P(28, 4, 1, 1, '#ffffff');
+    }
+
+    // 上身防具:胸甲覆在服饰之上,并带两片肩甲
+    const bc = AR.body;
+    if (bc) {
+      P(tx - 1, 23, tw + 2, 3, bc);
+      P(tx - 1, 23, tw + 2, 1, hi(bc));
+      P(tx, 26, tw, 15, bc);
+      P(tx, 26, 2, 15, hi(bc));
+      P(tx + tw - 2, 26, 2, 15, lo(bc));
+      P(tx + 2, 28, tw - 4, 1, mid(bc));
+      P(tx + 2, 34, tw - 4, 1, mid(bc));
+      P(23, 27, 2, 13, hi(bc));    // 中脊
+      P(22, 30, 4, 2, lo(bc));     // 甲扣
+    }
+
+    // 手部防具:护手
+    const gc = AR.hands;
+    if (gc) {
+      PaL(armLx, 39, armW, 4, gc); PaL(armLx, 39, armW, 1, hi(gc));
+      PaR(armRx, 39, armW, 4, gc); PaR(armRx, 39, armW, 1, hi(gc));
+    }
+
+    // 腿部防具:护腿
+    const lc = AR.legs;
+    if (lc) {
+      const gLen = Math.max(2, legLen - 4);
+      P(legLx, 47, legW, gLen, lc);
+      P(legLx, 47, 1, gLen, hi(lc));
+      P(legRx, 47, legW, gLen, lc);
+      P(legRx + legW - 1, 47, 1, gLen, lo(lc));
+    }
+
+    // 脚步防具:战靴(盖住布靴)
+    const fc = AR.feet;
+    if (fc) {
+      Pc(17, 55, 8, 7, fc); Pc(17, 55, 8, 1, hi(fc)); Pc(17, 61, 8, 1, lo(fc));
+      Pc(23, 55, 8, 7, fc); Pc(23, 55, 8, 1, hi(fc)); Pc(23, 61, 8, 1, lo(fc));
+    }
+
+    // 戒指 / 耳饰(小而亮)
+    if (AR.ring) { P(armLx, 41, 1, 1, AR.ring); P(armLx + armW - 1, 41, 1, 1, hi(AR.ring)); }
+    if (AR.earring) { P(16, 12, 1, 1, AR.earring); P(15, 13, 1, 1, hi(AR.earring)); }
+  }
+
+  // ============================================================
   // 9. 伤势叠层
   // ============================================================
   if (hpRatio < 0.5) {
-    PaL(11, 28, 4, 3, BANDAGE);
-    PaL(11, 29, 4, 1, 'rgba(0,0,0,0.1)');
+    PaL(armLx, 28, armW, 3, BANDAGE);
+    PaL(armLx, 29, armW, 1, 'rgba(0,0,0,0.1)');
     P(29, 9, 1, 1, BLOOD);
   }
   if (hpRatio < 0.25) {

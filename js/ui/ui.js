@@ -10,21 +10,22 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001e';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001e';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, socketsOf } from '../data/items.js?v=20261001e';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001e';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001e';
-import { cardMpCost } from '../data/data.js?v=20261001e';
-import { ENDINGS } from '../narrative/engine.js?v=20261001e';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001e';
-import { SceneView, paintCharacter } from './scene.js?v=20261001e';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001e';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001e';
-import { Minigame } from '../minigame/minigame.js?v=20261001e';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001e';
-import { TERRAIN_CN } from '../data/world.js?v=20261001e';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001e';
+import { GameState } from '../core/game.js?v=20261001g';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001g';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001g';
+import { gradeOf } from '../data/grade.js?v=20261001g';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001g';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001g';
+import { cardMpCost } from '../data/data.js?v=20261001g';
+import { ENDINGS } from '../narrative/engine.js?v=20261001g';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001g';
+import { SceneView, paintCharacter } from './scene.js?v=20261001g';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001g';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001g';
+import { Minigame } from '../minigame/minigame.js?v=20261001g';
+import { MODE_LABELS } from '../data/jobs.js?v=20261001g';
+import { TERRAIN_CN } from '../data/world.js?v=20261001g';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001g';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -48,6 +49,17 @@ const TYPE_LABELS = {
 
 /** 服饰四部位的显示名 */
 const OUTFIT_CN = { hat: '帽子', top: '上衣', bottom: '裤子', shoes: '鞋子' };
+/** 背包分类栏(武器 / 防具 / 服饰 各自独立) */
+const BAG_TABS = [
+  { key: 'all',      label: '全部', match: () => true },
+  { key: 'weapon',   label: '武器', match: (it) => it.category === 'weapon' },
+  { key: 'armor',    label: '防具', match: (it) => it.category === 'armor' },
+  { key: 'outfit',   label: '服饰', match: (it) => it.category === 'outfit' },
+  { key: 'vehicle',  label: '载具', match: (it) => it.category === 'vehicle' },
+  { key: 'potion',   label: '药品', match: (it) => it.category === 'potion' || it.category === 'food' },
+  { key: 'material', label: '材料', match: (it) => it.category === 'material' || it.category === 'gem' || it.category === 'blueprint' },
+  { key: 'misc',     label: '杂物', match: (it) => it.category === 'misc' || it.category === 'token' },
+];
 /** 7 种形象的表情符号(仅用于选择面板) */
 const BODY_EMOJI = { cute: '🧒', dopey: '😴', genki: '😆', quiet: '😌', roguish: '😜', brave: '😤', gentle: '🥰' };
 
@@ -244,17 +256,21 @@ export class UI {
       shopList: $('shop-list'),
       shopCats: $('shop-cats'),
       shopNote: $('shop-note'),
+      shopSearch: $('shop-search'),
       btnShopBack: $('btn-shop-back'),
       marketTitle: $('market-title'),
       marketNote: $('market-note'),
       marketRes: $('market-res'),
       marketList: $('market-list'),
       marketCats: $('market-cats'),
+      marketSearch: $('market-search'),
       btnMarketBack: $('btn-market-back'),
       bagRes: $('bag-res'),
       bagCap: $('bag-cap'),
       bagEquipped: $('bag-equipped'),
       bagList: $('bag-list'),
+      bagSearch: $('bag-search'),
+      bagFilters: $('bag-filters'),
       btnBagBack: $('btn-bag-back'),
       btnBagExpand: $('btn-bag-expand'),
       jobRes: $('job-res'),
@@ -282,6 +298,7 @@ export class UI {
       merchantRes: $('merchant-res'),
       merchantNote: $('merchant-note'),
       merchantList: $('merchant-list'),
+      merchantSearch: $('merchant-search'),
       btnMerchantBack: $('btn-merchant-back'),
       // 铁匠铺 / 宝石商 / 精益师
       blacksmithTitle: $('blacksmith-title'),
@@ -442,6 +459,15 @@ export class UI {
     if (this.el.btnGemshopBack) this.el.btnGemshopBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnJewelerBack) this.el.btnJewelerBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnBagExpand) this.el.btnBagExpand.addEventListener('click', () => this.bus.emit('ui:bag-expand'));
+    // 搜索框:输入即按当前数据重绘(商店 / 市场 / 商人 / 背包)
+    const bindSearch = (el, field, redraw) => {
+      if (!el) return;
+      el.addEventListener('input', () => { this[field] = el.value || ''; redraw(); });
+    };
+    bindSearch(this.el.shopSearch, '_shopQuery', () => { if (this._shopData) this.renderShop(this._shopData); });
+    bindSearch(this.el.marketSearch, '_marketQuery', () => { if (this._marketData) this.renderMarket(this._marketData); });
+    bindSearch(this.el.merchantSearch, '_merchantQuery', () => { if (this._merchantData) this.renderMerchant(this._merchantData); });
+    bindSearch(this.el.bagSearch, '_bagQuery', () => { if (this._bagData) this.renderBag(this._bagData); });
     // 角色弹窗:点击角色形象打开,[data-char-close] 关闭
     document.querySelectorAll('[data-char-open]').forEach((b) => {
       b.addEventListener('click', () => this.bus.emit('ui:open-character'));
@@ -1862,8 +1888,9 @@ export class UI {
       if (!byCat.has(k)) byCat.set(k, []);
       byCat.get(k).push(id);
     });
+    // 镶嵌过宝石的武器 / 防具只在市场流通,不在普通商店回收
     const sellables = [...economy.bag.entries()]
-      .filter(([id]) => !economy.isEquipped(id) && isTradeable(id));
+      .filter(([id]) => !economy.isEquipped(id) && isTradeable(id) && !(ITEMS[id]?.gems?.length));
 
     const cats = [...byCat.entries()].map(([key, ids]) => ({
       key, label: ITEM_CATEGORY_CN[key] || key, count: ids.length,
@@ -1878,6 +1905,19 @@ export class UI {
     }
     if (!cats.some((c) => c.key === this._shopCat)) this._shopCat = cats[0].key;
 
+    const q = (this._shopQuery || '').trim().toLowerCase();
+    const buyRow = (id) => {
+      const it = ITEMS[id];
+      if (!it) return null;
+      const price = Math.max(1, Math.round((economy.itemPrice ? economy.itemPrice(id) : it.price) * priceMul));
+      const afford = economy.gold >= price;
+      const priceTxt = (disc > 0 || priceMul !== 1) && price < it.price
+        ? `🪙 ${price} <s class="item-was">${it.price}</s>`
+        : `🪙 ${price}`;
+      const tag = `${it.rare ? '<span class="item-tag-rare">★绝世</span>' : ''}${this._gradeTag(it)}`;
+      return this._shopRow(it, afford, priceTxt, '买入', 'data-buy', () => this.bus.emit('ui:shop-buy', id), 0, tag);
+    };
+
     const draw = () => {
       this._renderTradeNav(nav, cats, this._shopCat, (k) => { this._shopCat = k; draw(); });
       box.innerHTML = '';
@@ -1887,29 +1927,79 @@ export class UI {
         note.textContent = `服饰折扣生效:全场 ${Math.round(disc * 100)}% off`;
         box.appendChild(note);
       }
+      // 输入关键词时跨分类检索全店
+      if (q) {
+        const hits = (stock || []).filter((id) => this._matchItem(id, q));
+        const title = document.createElement('div');
+        title.className = 'shop-section-title';
+        title.textContent = `搜索「${this._shopQuery.trim()}」:${hits.length} 条`;
+        box.appendChild(title);
+        if (!hits.length) box.insertAdjacentHTML('beforeend', '<p class="bag-empty">没有找到相符的货物。</p>');
+        hits.forEach((id) => { const r = buyRow(id); if (r) box.appendChild(r); });
+        return;
+      }
       if (this._shopCat === '__sell') {
         sellables.forEach(([id, qty]) => {
           const it = ITEMS[id];
           if (!it) return;
-          box.appendChild(this._shopRow(it, true, `🪙 ${sellPrice(id)}`, '卖出', 'data-sell', () => this.bus.emit('ui:shop-sell', id), qty));
+          box.appendChild(this._shopRow(it, true, `🪙 ${sellPrice(id)}`, '卖出', 'data-sell', () => this.bus.emit('ui:shop-sell', id), qty, this._gradeTag(it)));
         });
         if (!sellables.length) box.innerHTML = '<p class="bag-empty">背包里没有可出售的物品。</p>';
       } else {
-        (byCat.get(this._shopCat) || []).forEach((id) => {
-          const it = ITEMS[id];
-          if (!it) return;
-          const price = Math.max(1, Math.round((economy.itemPrice ? economy.itemPrice(id) : it.price) * priceMul));
-          const afford = economy.gold >= price;
-          const priceTxt = (disc > 0 || priceMul !== 1) && price < it.price
-            ? `🪙 ${price} <s class="item-was">${it.price}</s>`
-            : `🪙 ${price}`;
-          const tag = it.rare ? '<span class="item-tag-rare">★绝世</span>' : '';
-          box.appendChild(this._shopRow(it, afford, priceTxt, '买入', 'data-buy', () => this.bus.emit('ui:shop-buy', id), 0, tag));
-        });
+        (byCat.get(this._shopCat) || []).forEach((id) => { const r = buyRow(id); if (r) box.appendChild(r); });
       }
     };
+    this._shopData = { stock, economy, fee, priceMul, isCity };
     draw();
     this.renderResources(economy);
+  }
+
+  /** 物品分类标签(防具额外标出部位) */
+  _catLabel(it) {
+    const c = ITEM_CATEGORY_CN[it.category] || '';
+    if (it.category === 'armor' && it.armorSlot) return `${c}·${ARMOR_SLOT_CN[it.armorSlot] || ''}`;
+    return c;
+  }
+
+  /** 品级标签(仅武器 / 防具) */
+  _gradeTag(it) {
+    const g = gradeOf(it);
+    if (!g) return '';
+    return `<span class="item-grade" style="--grade:${g.color}">${g.name}</span>`;
+  }
+
+  /** 搜索匹配:名称 / 分类(含防具部位) / 品级 / 等级 / 描述 */
+  _matchItem(id, q) {
+    if (!q) return true;
+    const it = ITEMS[id];
+    if (!it) return false;
+    const g = gradeOf(it);
+    const hay = [
+      it.name,
+      ITEM_CATEGORY_CN[it.category] || '',
+      this._catLabel(it),
+      g ? g.name : '',
+      it.level ? `lv.${it.level} ${it.level}级` : '',
+      it.desc || '',
+    ].join(' ').toLowerCase();
+    return hay.indexOf(q) >= 0;
+  }
+
+  /** 背包分类栏(带各类数量,点选即筛选) */
+  _renderBagFilters(all, q) {
+    const nav = this.el.bagFilters;
+    if (!nav) return;
+    const cur = this._bagTab || 'all';
+    nav.innerHTML = '';
+    for (const t of BAG_TABS) {
+      const n = all.filter(([id]) => t.match(ITEMS[id]) && (!q || this._matchItem(id, q))).length;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `bag-filter${t.key === cur ? ' is-active' : ''}`;
+      b.innerHTML = `${t.label}<i>${n}</i>`;
+      b.addEventListener('click', () => { this._bagTab = t.key; if (this._bagData) this.renderBag(this._bagData); });
+      nav.appendChild(b);
+    }
   }
 
   _shopRow(it, enabled, priceTxt, btnTxt, attr, onClick, qty = 0, tag = '') {
@@ -1918,7 +2008,7 @@ export class UI {
     row.innerHTML = `
       <div class="item-icon">${it.icon || '📦'}</div>
       <div class="item-body">
-        <div class="item-name">${this._escapeHtml(it.name)}${qty > 1 ? ` <span class="item-qty">×${qty}</span>` : ''}<span class="item-cat">${ITEM_CATEGORY_CN[it.category] || ''}</span>${tag}</div>
+        <div class="item-name">${this._escapeHtml(it.name)}${qty > 1 ? ` <span class="item-qty">×${qty}</span>` : ''}<span class="item-cat">${this._catLabel(it)}</span>${tag}</div>
         <div class="item-desc">${this._escapeHtml(it.desc || '')}</div>
       </div>
       <div class="item-actions">
@@ -1963,16 +2053,37 @@ export class UI {
 
     const cats = [...byCat.entries()].map(([key, arr]) => ({ key, label: ITEM_CATEGORY_CN[key] || key, count: arr.length }));
     if (gems.length) cats.push({ key: '__gem', label: '宝石', icon: '💎', count: gems.length });
-    if (wares.length) cats.push({ key: '__ware', label: '镶嵌武器', icon: '🗡️', count: wares.length });
+    if (wares.length) cats.push({ key: '__ware', label: '镶嵌装备', icon: '🛠️', count: wares.length });
     if (pets.length) cats.push({ key: '__pet', label: '宠物摊', icon: '🐾', count: pets.length });
     cats.push({ key: '__shelf', label: '我的货架', icon: '🧺', count: listings.length });
     if (sellables.length) cats.push({ key: '__sell', label: '出售(背包)', icon: '🪙', count: sellables.length });
 
     if (!cats.some((c) => c.key === this._marketCat)) this._marketCat = cats[0].key;
 
+    const q = (this._marketQuery || '').trim().toLowerCase();
     const draw = () => {
       this._renderTradeNav(nav, cats, this._marketCat, (k) => { this._marketCat = k; draw(); });
       box.innerHTML = '';
+      // 输入关键词时跨分类检索全场货物
+      if (q) {
+        const hits = [];
+        byCat.forEach((arr) => arr.forEach((e) => { if (this._matchItem(e.id, q)) hits.push(e); }));
+        const title = document.createElement('div');
+        title.className = 'shop-section-title';
+        title.textContent = `搜索「${this._marketQuery.trim()}」:${hits.length} 条`;
+        box.appendChild(title);
+        if (!hits.length) box.insertAdjacentHTML('beforeend', '<p class="bag-empty">没有找到相符的货物。</p>');
+        hits.forEach(({ id, seller }) => {
+          const it = ITEMS[id];
+          if (!it) return;
+          const price = trade ? trade.marketBuyPrice(id, fee) : it.price;
+          const trend = trade ? trade.priceTrend(id) : 1;
+          const afford = economy.gold >= price;
+          const tag = `<span class="item-cat">${this._escapeHtml(seller?.name || '')}</span>${this._gradeTag(it)}`;
+          box.appendChild(this._shopRow(it, afford, `🪙 ${price}${this._trendTag(trend)}<s class="item-was">${it.price}</s>`, '买入', 'data-buy', () => this.bus.emit('ui:market-buy', id), 0, tag));
+        });
+        return;
+      }
       const key = this._marketCat;
       if (key === '__gem') this._renderMarketGems(box, gems, economy, fee);
       else if (key === '__ware') this._renderMarketWares(box, wares, economy);
@@ -1986,11 +2097,12 @@ export class UI {
           const price = trade ? trade.marketBuyPrice(id, fee) : it.price;
           const trend = trade ? trade.priceTrend(id) : 1;
           const afford = economy.gold >= price;
-          const tag = `<span class="item-cat">${this._escapeHtml(seller?.name || '')}</span>`;
+          const tag = `<span class="item-cat">${this._escapeHtml(seller?.name || '')}</span>${this._gradeTag(it)}`;
           box.appendChild(this._shopRow(it, afford, `🪙 ${price}${this._trendTag(trend)}<s class="item-was">${it.price}</s>`, '买入', 'data-buy', () => this.bus.emit('ui:market-buy', id), 0, tag));
         });
       }
     };
+    this._marketData = data;
     draw();
     this.renderResources(economy);
   }
@@ -2017,18 +2129,19 @@ export class UI {
   _renderMarketWares(box, wares, economy) {
     const head = document.createElement('div');
     head.className = 'market-stall-head';
-    head.innerHTML = '<span class="stall-icon">🗡️</span><span class="stall-name">「霜刃」</span><span class="stall-title">镶嵌武器匠</span>';
+    head.innerHTML = '<span class="stall-icon">🛠️</span><span class="stall-name">「霜刃」</span><span class="stall-title">镶嵌铺(武器 · 防具)</span>';
     box.appendChild(head);
     wares.forEach((w) => {
       const def = w.def;
       const afford = economy.gold >= w.price;
       const gems = (def.gems || []).map((gid) => ITEMS[gid]?.name || gid).join('、');
+      const kind = def.category === 'armor' ? `镶嵌防具·${ARMOR_SLOT_CN[def.armorSlot] || ''}` : '镶嵌武器';
       const row = document.createElement('div');
       row.className = 'item-row';
       row.innerHTML = `
         <div class="item-icon">${def.icon || '🗡️'}</div>
         <div class="item-body">
-          <div class="item-name">${this._escapeHtml(def.name)}<span class="item-cat">镶嵌武器</span></div>
+          <div class="item-name">${this._escapeHtml(def.name)}<span class="item-cat">${kind}</span>${this._gradeTag(def)}</div>
           <div class="item-desc">${this._escapeHtml(def.desc || '')}</div>
           <div class="item-sub">镶嵌:${this._escapeHtml(gems || '无')}</div>
         </div>
@@ -2127,7 +2240,7 @@ export class UI {
       row.innerHTML = `
         <div class="item-icon">${it.icon || '📦'}</div>
         <div class="item-body">
-          <div class="item-name">${this._escapeHtml(it.name)}${qty > 1 ? ` <span class="item-qty">×${qty}</span>` : ''}<span class="item-cat">${ITEM_CATEGORY_CN[it.category] || ''}</span></div>
+          <div class="item-name">${this._escapeHtml(it.name)}${qty > 1 ? ` <span class="item-qty">×${qty}</span>` : ''}<span class="item-cat">${this._catLabel(it)}</span>${this._gradeTag(it)}</div>
           <div class="item-desc">当前均价 🪙 ${avg}</div>
         </div>
         <div class="item-actions">
@@ -2163,7 +2276,7 @@ export class UI {
       if (!it) return;
       const avg = trade ? trade.marketAvg(id) : sellPrice(id) * 2;
       const net = trade ? trade.marketSellNet(id, fee) : sellPrice(id);
-      box.appendChild(this._shopRow(it, true, `🪙 ${net}<s class="item-was">均价 ${avg}</s>`, '卖出', 'data-sell', () => this.bus.emit(evt, id), qty));
+      box.appendChild(this._shopRow(it, true, `🪙 ${net}<s class="item-was">均价 ${avg}</s>`, '卖出', 'data-sell', () => this.bus.emit(evt, id), qty, this._gradeTag(it)));
     });
   }
 
@@ -2336,22 +2449,27 @@ export class UI {
     }
     const box = this.el.merchantList;
     if (!box) return;
+    this._merchantData = { title, icon, desc, items, economy, career };
+    const q = (this._merchantQuery || '').trim().toLowerCase();
     box.innerHTML = '';
     const list = (items || []).filter((it) => {
       // 按职业过滤:若物品有 career 限制,仅显示匹配职业的
       if (it.career && career && it.career !== career) return false;
+      if (q && !this._matchItem(it.id, q)) return false;
       return true;
     });
     if (list.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'bag-empty';
-      empty.textContent = career ? `当前职业「${career}」暂无适配的${title}。` : '暂无商品。';
+      empty.textContent = q
+        ? `没有找到相符的${title || '商品'}。`
+        : (career ? `当前职业「${CAREER_MAP[career]?.name || career}」暂无适配的${title}。` : '暂无商品。');
       box.appendChild(empty);
     }
     list.forEach((it) => {
       const price = economy.itemPrice ? economy.itemPrice(it.id) : it.price;
       const afford = economy.gold >= price;
-      const tag = it.career ? `<span class="item-cat">${CAREER_MAP[it.career]?.name || it.career}</span>` : '';
+      const tag = `${it.career ? `<span class="item-cat">${CAREER_MAP[it.career]?.name || it.career}</span>` : ''}${this._gradeTag(it)}`;
       box.appendChild(this._shopRow(it, afford, `🪙 ${price}`, '买入', 'data-buy', () => this.bus.emit('ui:merchant-buy', it.id), 0, tag));
     });
     this.renderResources(economy);
@@ -2482,7 +2600,11 @@ export class UI {
 
   // ===== 背包 =====
   renderBag({ economy, player, bagCap = 40, bagUsed = 0, expandCost = 0 }) {
-    const SLOT_CN = { weapon: '武器', armor: '防具', hat: '帽子', top: '衣服', bottom: '裤子', shoes: '鞋子', vehicle: '载具' };
+    this._bagData = { economy, player, bagCap, bagUsed, expandCost };
+    // 武器 / 七个防具格 / 服饰四件 / 载具
+    const SLOT_CN = { weapon: '武器' };
+    for (const s of ARMOR_SLOTS) SLOT_CN[s] = ARMOR_SLOT_CN[s] || s;
+    Object.assign(SLOT_CN, { hat: '帽子', top: '衣服', bottom: '裤子', shoes: '鞋子', vehicle: '载具' });
     if (this.el.bagEquipped) {
       this.el.bagEquipped.innerHTML = Object.entries(SLOT_CN).map(([slot, label]) => {
         const id = economy.equipped[slot];
@@ -2511,8 +2633,13 @@ export class UI {
 
     const box = this.el.bagList;
     if (box) {
+      const q = (this._bagQuery || '').trim().toLowerCase();
+      const tab = this._bagTab || 'all';
+      const def = BAG_TABS.find((t) => t.key === tab) || BAG_TABS[0];
+      const all = [...economy.bag.entries()].filter(([id]) => ITEMS[id]);
+      const entries = all.filter(([id]) => def.match(ITEMS[id]) && (!q || this._matchItem(id, q)));
+      this._renderBagFilters(all, q);
       box.innerHTML = '';
-      const entries = [...economy.bag.entries()].filter(([id]) => ITEMS[id]);
       entries.forEach(([id, qty]) => {
         const it = ITEMS[id];
         const canBatch = it.effect && ['heal', 'mp', 'ap'].includes(it.effect.kind) && qty > 1;
@@ -2524,7 +2651,7 @@ export class UI {
           <div class="bag-tile-icon">${it.icon || '📦'}</div>
           ${qty > 1 ? `<div class="bag-tile-qty">×${qty}</div>` : ''}
           <div class="bag-tile-name">${this._escapeHtml(it.name)}</div>
-          <div class="bag-tile-cat">${ITEM_CATEGORY_CN[it.category] || ''}</div>
+          <div class="bag-tile-cat">${this._catLabel(it)}${this._gradeTag(it)}${isSellLocked(id) ? '<span class="item-locked">超 130 级 · 不可售</span>' : ''}</div>
           <div class="bag-tile-actions">
             ${it.effect ? '<button class="btn btn-primary btn-sm" data-use>使用</button>' : ''}
             ${canBatch ? '<button class="btn btn-ghost btn-sm" data-useall>全部</button>' : ''}
@@ -2539,14 +2666,18 @@ export class UI {
         tile.querySelector('[data-drop]')?.addEventListener('click', () => this.bus.emit('ui:bag-drop', id));
         box.appendChild(tile);
       });
-      const emptyCount = Math.max(0, bagCap - entries.length);
+      // 空位仅在「全部 + 无搜索」时展示,筛选/搜索时把位置留给结果
+      const showEmpty = tab === 'all' && !q;
+      const emptyCount = showEmpty ? Math.max(0, bagCap - entries.length) : 0;
       for (let i = 0; i < emptyCount; i++) {
         const t = document.createElement('div');
         t.className = 'bag-tile is-empty';
         t.innerHTML = '<span class="bag-tile-empty">空</span>';
         box.appendChild(t);
       }
-      if (!entries.length && emptyCount === 0) box.innerHTML = '<p class="bag-empty">背包空空如也。</p>';
+      if (!entries.length) {
+        box.innerHTML = `<p class="bag-empty">${q || tab !== 'all' ? '没有符合条件的物品。' : '背包空空如也。'}</p>`;
+      }
     }
 
     // 底部数值概览
@@ -2989,6 +3120,7 @@ export class UI {
       skinCol: skin.skin, skinShade: skin.shade,
       hair: body.hairColor, hairStyle: body.hairStyle, eyeStyle: body.eyeStyle,
       blush: body.blush, bodyAcc: body.accessory,
+      stature: body.stature, girth: body.girth, limb: body.limb,
     });
     paintCharacter(this._csCtx, 5, d.career && d.career.id, look);
     if (this.el.csLook) this.el.csLook.textContent = lookLabel(this._csSelBody, this._csSelSkin);

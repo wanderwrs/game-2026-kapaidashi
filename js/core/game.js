@@ -11,41 +11,41 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261001e';
-import { EventBus } from './eventbus.js?v=20261001e';
-import { AudioEngine } from './audio.js?v=20261001e';
-import { Player } from '../combat/entity.js?v=20261001e';
-import { Deck } from '../card/deck.js?v=20261001e';
-import { Battle } from '../combat/battle.js?v=20261001e';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001e';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001e';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001e';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001e';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001e';
-import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001e';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001e';
-import { majorSetIds } from '../data/extras.js?v=20261001e';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, armorId } from '../data/armor.js?v=20261001e';
-import { lookLabel } from '../data/looks.js?v=20261001e';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001e';
-import { TradeEngine } from './trade.js?v=20261001e';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001e';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001e';
-import { jobsFor } from '../data/jobs.js?v=20261001e';
+import { RNG, seedFromString } from './rng.js?v=20261001g';
+import { EventBus } from './eventbus.js?v=20261001g';
+import { AudioEngine } from './audio.js?v=20261001g';
+import { Player } from '../combat/entity.js?v=20261001g';
+import { Deck } from '../card/deck.js?v=20261001g';
+import { Battle } from '../combat/battle.js?v=20261001g';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001g';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001g';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001g';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001g';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001g';
+import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001g';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001g';
+import { majorSetIds } from '../data/extras.js?v=20261001g';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261001g';
+import { lookLabel } from '../data/looks.js?v=20261001g';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001g';
+import { TradeEngine } from './trade.js?v=20261001g';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001g';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001g';
+import { jobsFor } from '../data/jobs.js?v=20261001g';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261001e';
-import { NPCS } from '../data/npcs.js?v=20261001e';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001e';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001e';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001e';
-import { Economy } from './economy.js?v=20261001e';
-import { Travel } from './travel.js?v=20261001e';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001e';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001e';
-import { CAREERS } from '../narrative/careers.js?v=20261001e';
-import { UI } from '../ui/ui.js?v=20261001e';
+} from '../data/world.js?v=20261001g';
+import { NPCS } from '../data/npcs.js?v=20261001g';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001g';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001g';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001g';
+import { Economy } from './economy.js?v=20261001g';
+import { Travel } from './travel.js?v=20261001g';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001g';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001g';
+import { CAREERS } from '../narrative/careers.js?v=20261001g';
+import { UI } from '../ui/ui.js?v=20261001g';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -1498,6 +1498,7 @@ export class Game {
     if (this.economy.isEquipped(id)) { this.ui.showToast('已装备的物品需先卸下'); return; }
     if (!isTradeable(id)) { this.ui.showToast('此物无法买卖'); return; }
     if (ITEMS[id]?.category === 'blueprint') { this.ui.showToast('图纸用于解锁配方,不能出售'); return; }
+    if (ITEMS[id]?.gems?.length) { this.ui.showToast('镶嵌过的装备请到市场交易'); return; }
     const gross = sellPrice(id);
     const net = Math.max(1, Math.round(gross * (1 - FEES.shop)));
     this.economy.removeItem(id, 1);
@@ -1565,6 +1566,27 @@ export class Game {
       const trend = this.trade.priceTrend(base.id);
       const price = Math.max(1, Math.round(((base.price || 60) + gemsValue) * 0.9 * trend * (1 + this.trade.feeFor('market').fee)));
       wares.push({ key: `ware_${i}`, def, price });
+    }
+    // 镶嵌防具摊:同样可在市场买到(等级保持在出售上限之内)
+    const armorPool = Object.values(ITEMS)
+      .filter((it) => it.category === 'armor' && !(it.gems && it.gems.length) && (it.level || 1) <= 80);
+    const AN = 2;
+    for (let i = 0; i < AN && armorPool.length; i++) {
+      const ai = Math.floor(priceMul(`wareA${i}`, seed, tick) * armorPool.length) % armorPool.length;
+      const gi1 = Math.floor(priceMul(`wareAg${i}a`, seed, tick) * gemPool.length) % gemPool.length;
+      const gemIds = [gemPool[gi1].id];
+      if (priceMul(`wareAg${i}b`, seed, tick) > 0.55) {
+        const gi2 = Math.floor(priceMul(`wareAg${i}c`, seed, tick) * gemPool.length) % gemPool.length;
+        if (gemPool[gi2].id !== gemIds[0]) gemIds.push(gemPool[gi2].id);
+      }
+      const baseA = armorPool[ai];
+      const lv = Math.min(120, (baseA.level || 1) + ARMOR_GEM_STEP * gemIds.length);
+      const def = makeArmor(baseA.armorSlot || baseA.equipment?.slot || 'body', lv, null, gemIds);
+      if (!def) continue;
+      const gemsValue = gemIds.reduce((s, g) => s + (ITEMS[g]?.price || 0), 0);
+      const trend = this.trade.priceTrend(baseA.id);
+      const price = Math.max(1, Math.round(((baseA.price || 60) + gemsValue * 0.8) * 0.9 * trend * (1 + this.trade.feeFor('market').fee)));
+      wares.push({ key: `wareA_${i}`, def, price });
     }
     return wares;
   }
@@ -2773,16 +2795,14 @@ export class Game {
 
   _openArmorMerchant() {
     this._currentMerchant = 'armor';
-    // 防具:与服装独立 — 此处定义为 category 为 armor 的物品(若无则用 outfit 中防御型)
+    // 防具与服饰是两个独立品类:防具商只卖 category === 'armor' 的护甲,绝不混入服饰
     let armors = Object.values(ITEMS).filter((it) => it.category === 'armor');
-    if (armors.length === 0) {
-      // 兼容:若没有独立 armor 分类,用 outfit 中偏防御的
-      armors = Object.values(ITEMS).filter((it) => it.category === 'outfit' && (it.stats?.maxHp || 0) > 0);
-    }
+    // 市场档位以上(>100 级)的防具只能靠镶嵌升阶,不在普通商人处出售
+    armors = armors.filter((it) => (it.level || 1) <= ARMOR_MARKET_MAX);
     this.ui.renderMerchant({
       title: '防具商',
       icon: '🛡️',
-      desc: '出售护甲与护具(独立于服装系统)',
+      desc: '出售护甲与护具(独立于服饰系统,可穿戴在人物身上)',
       items: armors,
       economy: this.economy,
     });

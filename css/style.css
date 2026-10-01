@@ -1568,6 +1568,18 @@ body {
   font-size: 10.5px; color: var(--text-faint); font-weight: 400;
   border: 1px solid var(--border-soft); border-radius: var(--radius-full); padding: 0 6px;
 }
+/* 品级标签(武器 / 防具)与「超 130 级不可售」标记 */
+.item-grade {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 1px;
+  color: var(--grade, var(--text-faint));
+  border: 1px solid var(--grade, var(--border-soft));
+  border-radius: var(--radius-full); padding: 0 6px;
+}
+.item-locked {
+  font-size: 10px; color: var(--danger);
+  border: 1px solid rgba(226, 112, 90, 0.45);
+  border-radius: var(--radius-full); padding: 0 5px;
+}
 .item-qty { font-family: var(--font-mono); font-size: 12px; color: var(--gold-bright); }
 .item-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 .item-actions { display: flex; align-items: center; gap: var(--sp-8); flex-shrink: 0; }
@@ -1617,6 +1629,32 @@ body {
   border: 1px solid var(--border-soft); border-radius: var(--radius-full); padding: 0 6px;
 }
 .trade-goods { min-width: 0; }
+
+/* 搜索框(商店 / 市场 / 商人 / 背包) */
+.trade-search { margin-bottom: var(--sp-12); }
+.trade-search-input {
+  width: 100%; padding: 8px 12px; font: inherit; font-size: 12.5px;
+  color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border-soft); border-radius: var(--radius); outline: none;
+}
+.trade-search-input::placeholder { color: var(--text-faint); }
+.trade-search-input:focus { border-color: var(--gold-line); box-shadow: inset 0 0 14px var(--gold-soft); }
+
+/* 背包:搜索 + 分类栏 */
+.bag-toolbar { display: flex; flex-direction: column; gap: var(--sp-8); margin-bottom: var(--sp-12); }
+.bag-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.bag-filter {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: inherit; font-size: 12px; letter-spacing: 1px; cursor: pointer;
+  color: var(--text-soft); background: var(--surface-2);
+  border: 1px solid var(--border-soft); border-radius: var(--radius-full);
+  padding: 4px 10px;
+  transition: color 0.16s var(--ease), background 0.16s var(--ease), border-color 0.16s var(--ease);
+}
+.bag-filter i { font-family: var(--font-mono); font-style: normal; font-size: 11px; color: var(--text-faint); }
+.bag-filter:hover { color: var(--gold-bright); background: var(--gold-soft); }
+.bag-filter.is-active { color: var(--gold-bright); background: var(--gold-soft); border-color: var(--gold-line); }
+.bag-filter.is-active i { color: var(--gold-bright); }
 
 /* 涨跌标记 */
 .trend { font-size: 10.5px; margin-left: 4px; }
@@ -1697,7 +1735,10 @@ body {
   max-width: 100%; overflow: hidden; display: -webkit-box;
   -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
-.bag-tile-cat { font-size: 10px; color: var(--text-faint); }
+.bag-tile-cat {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px;
+  font-size: 10px; color: var(--text-faint);
+}
 .bag-tile-empty { color: var(--text-faint); font-size: 11px; margin: auto; }
 .bag-tile-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: auto; }
 .bag-tile-actions .btn-sm { padding: 2px 8px; font-size: 11px; letter-spacing: 0; }

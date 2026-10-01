@@ -11,13 +11,13 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261001e';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261001e';
-import { GEM_EFFECT } from '../data/gems.js?v=20261001e';
-import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261001e';
-import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, makeArmor } from '../data/armor.js?v=20261001e';
-import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261001e';
-import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261001e';
+import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261001g';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261001g';
+import { GEM_EFFECT } from '../data/gems.js?v=20261001g';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261001g';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261001g';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261001g';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261001g';
 
 /** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
 const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
@@ -333,16 +333,19 @@ export class Economy {
     }
     const shortMap = { gem_strength: '力', gem_magic: '魔', gem_brave: '勇', gem_life: '生' };
     const tag = gems.map((g) => shortMap[g] || '石').join('');
+    // 镶嵌后的武器可在市场流通:估价 = 基础武器价 + 已镶宝石价
+    const gemsValue = gems.reduce((s, gid) => s + (ITEMS[gid]?.price || 0), 0);
     return {
       base: baseId,
       name: gems.length ? `${base.name}[${tag}]` : base.name,
       category: 'weapon',
       career: base.career,
       forged: !!base.forged,
+      level: base.level || 1,
       sockets: Math.max(0, socketsOf(baseId) - gems.length),
       gems: [...gems],
       icon: base.icon || '🗡️',
-      price: 0,
+      price: Math.max(1, Math.round((base.price || 0) + gemsValue)),
       desc: `${base.desc || ''}${gems.length ? ` 镶嵌:${gems.map((g) => ITEMS[g]?.name || g).join('、')}。` : ''}`,
       equipment: { slot: 'weapon', stats },
     };
@@ -367,7 +370,8 @@ export class Economy {
   }
 
   /**
-   * 给防具镶嵌宝石:每颗 +10 级(上限 150);镶嵌过的防具不可出售。
+   * 给防具镶嵌宝石:每颗 +10 级(上限 150)。
+   * 镶嵌过的防具可在市场流通;但 130 级以上的防具不得出售(见 data/grade.js)。
    * @returns {string|null} 新的防具 id
    */
   socketArmorGem(armorId, gemId) {
@@ -545,6 +549,10 @@ export class Economy {
     a.eyeStyle = bodyDef.eyeStyle;
     a.blush = bodyDef.blush;
     a.bodyAcc = bodyDef.accessory;
+    // 身材参数(身高 / 体格 / 四肢粗细)同样由形象决定
+    a.stature = bodyDef.stature || 0;
+    a.girth = bodyDef.girth || 0;
+    a.limb = bodyDef.limb || 0;
     const top = ITEMS[this.equipped.top];
     if (top) {
       if (top.hide) a.hideTop = true;
@@ -565,8 +573,18 @@ export class Economy {
       if (hat.hide) a.hideHat = true;
       else if (hat.look) { a.hat = hat.look.hat ?? null; a.hatHi = hat.look.hatHi ?? null; a.hatStyle = hat.look.style ?? null; }
     }
+    // 防具与服饰各画各的:防具按「等级档位」取色(见 data/armor.js 的 armorBand),
+    // 与服饰配色互不覆盖,故同一个部位可以「里衣外甲」同时可见。
+    a.armor = {};
+    for (const slot of ARMOR_SLOTS) {
+      const it = ITEMS[this.equipped[slot]];
+      if (!it || it.category !== 'armor') continue;
+      a.armor[slot] = armorBand(it.level || 1).tint;
+    }
+    const armorNames = ARMOR_SLOTS.map((s) => ITEMS[this.equipped[s]]?.name).filter(Boolean);
     const names = OUTFIT_SLOTS.map((s) => ITEMS[this.equipped[s]]?.name).filter(Boolean);
-    a.label = names.length ? names.join(' · ') : null;
+    const all = [...armorNames, ...names];
+    a.label = all.length ? all.join(' · ') : null;
     return a;
   }
 
@@ -857,7 +875,12 @@ export class Economy {
     if (data.equipped) {
       for (const slot of SLOTS) {
         const id = data.equipped[slot];
-        if (id && ITEMS[id]) eco.equipped[slot] = id;
+        if (!id || !ITEMS[id]) continue;
+        // 旧存档迁移:物品的格位若已改判(如「皮甲」由服饰改作防具),按新格位归位
+        const real = ITEMS[id].equipment?.slot;
+        const target = (real && SLOTS.includes(real)) ? real : slot;
+        if (!eco.equipped[target]) eco.equipped[target] = id;
+        else eco.bag.set(id, (eco.bag.get(id) || 0) + 1);
       }
     }
     eco.pendingPower = Number(data.pendingPower ?? 0);

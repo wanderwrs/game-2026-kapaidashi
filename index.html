@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261001e" />
+  <link rel="stylesheet" href="css/style.css?v=20261001g" />
 </head>
 <body>
   <!-- 游戏前 · 年龄限制与内容警告门(每次打开页面都需通过;需真人验证) -->
@@ -243,6 +243,9 @@
         <div id="shop-res" class="map-res"></div>
       </div>
       <p class="view-sub" id="shop-note">买入所需,卖出冗余(手续费 3%)</p>
+      <div class="trade-search">
+        <input id="shop-search" class="trade-search-input" type="search" placeholder="搜索货物:名称 / 分类 / 品级" aria-label="搜索商店货物" />
+      </div>
       <div class="trade-layout">
         <nav id="shop-cats" class="trade-nav" aria-label="物品分类"></nav>
         <div id="shop-list" class="shop-list trade-goods"></div>
@@ -259,6 +262,9 @@
         <div id="market-res" class="map-res"></div>
       </div>
       <p id="market-note" class="view-sub">—</p>
+      <div class="trade-search">
+        <input id="market-search" class="trade-search-input" type="search" placeholder="搜索市场:名称 / 分类 / 品级" aria-label="搜索市场货物" />
+      </div>
       <div class="trade-layout">
         <nav id="market-cats" class="trade-nav" aria-label="市场分类"></nav>
         <div id="market-list" class="shop-list trade-goods"></div>
@@ -275,6 +281,10 @@
         <div id="bag-res" class="map-res"></div>
       </div>
       <div id="bag-cap" class="bag-cap"></div>
+      <div class="bag-toolbar">
+        <input id="bag-search" class="trade-search-input" type="search" placeholder="搜索背包:名称 / 分类 / 品级" aria-label="搜索背包" />
+        <nav id="bag-filters" class="bag-filters" aria-label="背包分类"></nav>
+      </div>
       <div id="bag-equipped" class="bag-equipped"></div>
       <div id="bag-list" class="bag-list bag-grid"></div>
       <div class="panel-actions">
@@ -345,6 +355,9 @@
         <div id="merchant-res" class="map-res"></div>
       </div>
       <p id="merchant-note" class="view-sub">—</p>
+      <div class="trade-search">
+        <input id="merchant-search" class="trade-search-input" type="search" placeholder="搜索货物:名称 / 品级" aria-label="搜索商人货物" />
+      </div>
       <div id="merchant-list" class="shop-list"></div>
       <div class="panel-actions">
         <button id="btn-merchant-back" class="btn btn-ghost">返 回 商 市</button>
@@ -903,6 +916,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20261001e"></script>
+  <script type="module" src="js/main.js?v=20261001g"></script>
 </body>
 </html>
