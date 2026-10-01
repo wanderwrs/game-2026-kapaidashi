@@ -97,21 +97,72 @@ function drawHat(P, a) {
 }
 
 /* ============================================================
-   人物像素图(24 × 32 逻辑像素)
-   站立正面像 —— 一个小男孩:圆头大眼、窄肩短腿、圆润脸颊
-   轮廓描边 + 左侧受光 / 右侧入影;保留全部服饰与配件挂点
+   人物立绘(144 × 192 逻辑像素)
+   写实油画风格:渐变体积 + 抗锯齿曲线 + 统一左上光源
+   站立正面像 —— 少年:自然比例、立体五官、布料褶皱
+   支持呼吸 / 眨眼 / 微晃 / 发丝飘动等待机动画
    ============================================================ */
-const CHAR_W = 24;
-const CHAR_H = 32;
+const CHAR_W = 144;
+const CHAR_H = 192;
 
-function drawCharacter(ctx, scale, careerId, hpRatio, flags, look) {
+/** 动画周期(毫秒) */
+const BREATH_PERIOD = 3200;
+const BLINK_PERIOD = 4200;
+const BLINK_DURATION = 140;
+const SHEEN_PERIOD = 2600;
+const SWAY_PERIOD = 5200;
+const GLANCE_PERIOD = 6500;
+const GLANCE_HOLD = 900;
+const FLUTTER_PERIOD = 3800;
+
+/** 绘制椭圆(圆心 cx,cy; 半径 rx,ry) */
+function ellipse(ctx, cx, cy, rx, ry, fill) {
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+}
+
+/** 绘制圆形 */
+function circle(ctx, cx, cy, r, fill) {
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+}
+
+/** 线性渐变填充路径 */
+function fillPath(ctx, pathFn, gradient) {
+  ctx.beginPath();
+  pathFn(ctx);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+}
+
+function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.clearRect(0, 0, CHAR_W, CHAR_H);
-  ctx.imageSmoothingEnabled = false;
+
+  // ---- 动画参数 ----
+  const breath = Math.sin((time % BREATH_PERIOD) / BREATH_PERIOD * Math.PI * 2);
+  const breathY = breath * 1.2;
+  const sway = Math.sin((time % SWAY_PERIOD) / SWAY_PERIOD * Math.PI * 2);
+  const swayX = sway * 1.0;
+  const armSwing = -sway * 1.6;
+  const leftArmX = armSwing * 0.5;
+  const rightArmX = -leftArmX;
+  const blinkPhase = (time % BLINK_PERIOD) / BLINK_PERIOD;
+  const blinking = blinkPhase > (1 - BLINK_DURATION / BLINK_PERIOD);
+  const glancePhase = (time % GLANCE_PERIOD) / GLANCE_PERIOD;
+  const glanceWindow = GLANCE_HOLD / GLANCE_PERIOD;
+  let eyeShift = 0;
+  if (glancePhase > 0.5 && glancePhase < 0.5 + glanceWindow) eyeShift = 2;
+  else if (glancePhase > 0.75 && glancePhase < 0.75 + glanceWindow) eyeShift = -2;
+  const sheen = (Math.sin((time % SHEEN_PERIOD) / SHEEN_PERIOD * Math.PI * 2) + 1) / 2;
+  const flutter = Math.sin((time % FLUTTER_PERIOD) / FLUTTER_PERIOD * Math.PI * 2);
+  const hairFlutter = flutter * 1.0;
+  const clothFlutter = flutter * 1.2;
 
   const base = OUTFITS[careerId] || OUTFIT_DEFAULT;
   const a = look || {};
-  // 职业默认配色 → 被已装备服饰覆盖
   const o = {
     cloth: a.cloth || base.cloth,
     cloth2: a.cloth2 || base.cloth2,
@@ -128,118 +179,673 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look) {
   const bootCol = bareFeet ? SKIN : (a.boot || BOOT);
   const acc = o.accessory;
 
-  // 明暗派生:同一色相的亮部 / 暗部,让平面色块显出体积
-  const clothHi = shade(cloth, 0.17), clothLo = shade(cloth, -0.3);
-  const cloth2Hi = shade(cloth2, 0.17), cloth2Lo = shade(cloth2, -0.28);
-  const trimHi = shade(trim, 0.22), trimLo = shade(trim, -0.3);
-  const pantsHi = shade(pantsCol, 0.15), pantsLo = shade(pantsCol, -0.28);
-  const bootHi = shade(bootCol, 0.18), bootLo = shade(bootCol, -0.35);
-  const skinLo = shade(SKIN, -0.26);
-  const skinHi = shade(SKIN, 0.12);
+  const clothHi = shade(cloth, 0.2), clothLo = shade(cloth, -0.35);
+  const cloth2Hi = shade(cloth2, 0.2), cloth2Lo = shade(cloth2, -0.3);
+  const trimHi = shade(trim, 0.25), trimLo = shade(trim, -0.3);
+  const pantsHi = shade(pantsCol, 0.18), pantsLo = shade(pantsCol, -0.32);
+  const bootHi = shade(bootCol, 0.2), bootLo = shade(bootCol, -0.4);
+  const skinHi = shade(SKIN, 0.15), skinLo = shade(SKIN, -0.28), skinMid = shade(SKIN, -0.12);
 
-  const P = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+  // 整体偏移原点
+  const ox = swayX;
+  const oy = breathY;
 
-  // ---- 轮廓底(小男孩:圆头 + 窄肩 + 短腿) ----
-  P(6, 0, 12, 1, OUTLINE);       // 头顶
-  P(5, 1, 14, 12, OUTLINE);      // 头(圆润,占全身近半)
-  P(6, 13, 12, 1, OUTLINE);      // 下颌
-  P(10, 13, 4, 2, OUTLINE);      // 颈
-  P(7, 14, 10, 7, OUTLINE);      // 躯干(窄肩小身板)
-  P(4, 15, 4, 8, OUTLINE);       // 左臂
-  P(16, 15, 4, 8, OUTLINE);      // 右臂
-  P(7, 20, 10, 3, OUTLINE);      // 胯
-  P(7, 23, 5, 5, OUTLINE);       // 左腿
-  P(12, 23, 5, 5, OUTLINE);      // 右腿
-  P(6, 27, 6, 5, OUTLINE);       // 左靴
-  P(12, 27, 6, 5, OUTLINE);      // 右靴
+  // 坐标基准
+  const headCX = 72 + ox;
+  const headCY = 52 + oy;
+  const headR = 30;
+  const neckY = 82 + oy;
+  const shoulderY = 96 + oy;
+  const waistY = 148 + oy;
+  const hipY = 160 + oy;
 
-  // ---- 身后配件(先画,被身体遮挡一部分) ----
-  if (acc === 'wings') {
-    P(0, 11, 5, 8, '#8fb6c9'); P(1, 12, 3, 5, '#b9d7e6'); P(0, 17, 4, 2, '#6f96a8');
-    P(19, 11, 5, 8, '#8fb6c9'); P(20, 12, 3, 5, '#b9d7e6'); P(20, 17, 4, 2, '#6f96a8');
-  }
+  ctx.save();
+
+  // ============================================================
+  // 1. 地面投影(软阴影)
+  // ============================================================
+  const shadowGrad = ctx.createRadialGradient(72 + ox, 188, 2, 72 + ox, 188, 40);
+  shadowGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
+  shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = shadowGrad;
+  ctx.beginPath();
+  ctx.ellipse(72 + ox, 188, 38, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ============================================================
+  // 2. 身后配件(剑/杖/枪/翼)
+  // ============================================================
   if (acc === 'sword') {
-    P(20, 8, 2, 14, METAL); P(20, 8, 1, 14, '#e6ebf0');    // 剑身
-    P(19, 21, 4, 1, LEATHER);                              // 护手
-    P(20, 22, 2, 4, LEATHER);                              // 握柄
-    P(20, 26, 2, 1, trim);                                 // 剑首
-  }
-  if (acc === 'spear') {
-    P(20, 4, 2, 23, LEATHER); P(20, 4, 1, 23, '#7d5b3c');
-    P(20, 1, 2, 3, METAL); P(20, 1, 1, 3, '#e6ebf0');
+    // 剑身(背后,被身体遮挡下半部分)
+    const bladeGrad = ctx.createLinearGradient(118, 30, 130, 30);
+    bladeGrad.addColorStop(0, '#79818c');
+    bladeGrad.addColorStop(0.5, '#d8dde4');
+    bladeGrad.addColorStop(1, '#aeb6be');
+    ctx.fillStyle = bladeGrad;
+    ctx.beginPath();
+    ctx.moveTo(122, 28 + oy);
+    ctx.lineTo(128, 28 + oy);
+    ctx.lineTo(126, 130 + oy);
+    ctx.lineTo(124, 130 + oy);
+    ctx.closePath();
+    ctx.fill();
+    // 剑身光泽
+    ctx.fillStyle = `rgba(255,255,255,${0.3 + sheen * 0.5})`;
+    ctx.fillRect(124, 30 + oy + sheen * 80, 1, 15);
+    // 护手
+    ctx.fillStyle = LEATHER;
+    ctx.fillRect(116, 128 + oy, 18, 4);
+    ctx.fillStyle = shade(LEATHER, 0.2);
+    ctx.fillRect(116, 128 + oy, 18, 1);
+    // 握柄
+    ctx.fillStyle = LEATHER;
+    ctx.fillRect(122, 132 + oy, 6, 16);
+    ctx.fillStyle = shade(LEATHER, 0.15);
+    ctx.fillRect(122, 132 + oy, 2, 16);
+    // 剑首
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.arc(125, 150 + oy, 4, 0, Math.PI * 2);
+    ctx.fill();
   }
   if (acc === 'staff') {
-    P(2, 10, 2, 17, '#6b4a30'); P(2, 10, 1, 17, '#835c3c');
-    P(0, 7, 4, 3, trim); P(1, 6, 2, 1, trimHi); P(1, 7, 1, 1, '#fff0b8');
+    ctx.strokeStyle = '#6b4a30';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(22 + ox, 60 + oy);
+    ctx.lineTo(20 + ox, 165 + oy);
+    ctx.stroke();
+    ctx.strokeStyle = '#835c3c';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 法杖顶端宝石
+    const gemGrad = ctx.createRadialGradient(22 + ox, 52 + oy, 1, 22 + ox, 52 + oy, 10);
+    gemGrad.addColorStop(0, `rgba(255,240,184,${0.6 + sheen * 0.4})`);
+    gemGrad.addColorStop(0.5, trim);
+    gemGrad.addColorStop(1, trimLo);
+    ctx.fillStyle = gemGrad;
+    ctx.beginPath();
+    ctx.arc(22 + ox, 52 + oy, 9, 0, Math.PI * 2);
+    ctx.fill();
+    circle(ctx, 22 + ox, 52 + oy, 3, `rgba(255,255,255,${0.5 + sheen * 0.5})`);
+  }
+  if (acc === 'spear') {
+    ctx.strokeStyle = '#5a3f2a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(120 + ox, 20 + oy);
+    ctx.lineTo(124 + ox, 175 + oy);
+    ctx.stroke();
+    // 枪尖
+    ctx.fillStyle = METAL;
+    ctx.beginPath();
+    ctx.moveTo(122 + ox, 8 + oy);
+    ctx.lineTo(128 + ox, 24 + oy);
+    ctx.lineTo(116 + ox, 24 + oy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#e6ebf0';
+    ctx.beginPath();
+    ctx.moveTo(120 + ox, 10 + oy);
+    ctx.lineTo(123 + ox, 22 + oy);
+    ctx.lineTo(119 + ox, 22 + oy);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (acc === 'wings') {
+    const wingGrad = ctx.createLinearGradient(0, 80, 50, 80);
+    wingGrad.addColorStop(0, '#6f96a8');
+    wingGrad.addColorStop(0.5, '#8fb6c9');
+    wingGrad.addColorStop(1, '#b9d7e6');
+    // 左翼
+    ctx.fillStyle = wingGrad;
+    ctx.beginPath();
+    ctx.moveTo(30 + ox, 100 + oy);
+    ctx.bezierCurveTo(5 + ox, 80 + oy, 0 + ox, 120 + oy, 15 + ox, 150 + oy);
+    ctx.bezierCurveTo(25 + ox, 135 + oy, 30 + ox, 120 + oy, 30 + ox, 100 + oy);
+    ctx.fill();
+    // 右翼
+    const wingGrad2 = ctx.createLinearGradient(144, 80, 94, 80);
+    wingGrad2.addColorStop(0, '#6f96a8');
+    wingGrad2.addColorStop(0.5, '#8fb6c9');
+    wingGrad2.addColorStop(1, '#b9d7e6');
+    ctx.fillStyle = wingGrad2;
+    ctx.beginPath();
+    ctx.moveTo(114 + ox, 100 + oy);
+    ctx.bezierCurveTo(139 + ox, 80 + oy, 144 + ox, 120 + oy, 129 + ox, 150 + oy);
+    ctx.bezierCurveTo(119 + ox, 135 + oy, 114 + ox, 120 + oy, 114 + ox, 100 + oy);
+    ctx.fill();
   }
 
-  // ---- 脸(圆润饱满) ----
-  P(7, 5, 10, 8, SKIN);                 // 脸(y5~12)
-  P(8, 6, 5, 1, skinHi);                // 额头受光
-  P(16, 5, 1, 7, skinLo);               // 右颊入影
-  P(9, 12, 6, 1, SKIN_SHADE);           // 下颌阴影
-  P(4, 8, 1, 3, SKIN_SHADE); P(19, 8, 1, 3, SKIN_SHADE);          // 耳
-  P(8, 7, 2, 1, HAIR); P(14, 7, 2, 1, HAIR);                      // 眉
-  P(8, 8, 2, 2, EYE); P(8, 8, 1, 1, EYE_WHITE);                   // 左眼(大眼 + 高光)
-  P(14, 8, 2, 2, EYE); P(14, 8, 1, 1, EYE_WHITE);                 // 右眼
-  P(11, 10, 2, 1, SKIN_SHADE);                                    // 鼻
-  P(11, 11, 2, 1, MOUTH);                                         // 口
-  P(7, 10, 2, 1, BLUSH); P(15, 10, 2, 1, BLUSH);                  // 腮红
-  P(10, 13, 4, 2, SKIN); P(10, 13, 4, 1, SKIN_SHADE);             // 颈(y13~14)
+  // ============================================================
+  // 3. 腿部(先画,被躯干遮挡)
+  // ============================================================
+  const legGrad = ctx.createLinearGradient(56, waistY, 56, hipY + 20);
+  legGrad.addColorStop(0, pantsCol);
+  legGrad.addColorStop(0.5, pantsHi);
+  legGrad.addColorStop(1, pantsLo);
 
-  // ---- 头发(短发蓬松,压在脸上,留额前碎发) ----
-  P(6, 1, 12, 4, HAIR);                 // 发顶(y1~4)
-  P(8, 1, 4, 1, HAIR_HI);               // 顶部高光
-  P(6, 5, 1, 6, HAIR);                  // 左鬓
-  P(17, 5, 1, 6, HAIR_SHADE);           // 右鬓(入影)
-  P(7, 5, 4, 1, HAIR); P(13, 5, 4, 1, HAIR);   // 额前碎发(中间留缝)
+  // 左腿
+  ctx.fillStyle = legGrad;
+  ctx.beginPath();
+  ctx.moveTo(58 + ox, waistY);
+  ctx.lineTo(70 + ox, waistY);
+  ctx.lineTo(68 + ox + clothFlutter * 0.3, hipY + 18);
+  ctx.lineTo(58 + ox + clothFlutter * 0.3, hipY + 18);
+  ctx.closePath();
+  ctx.fill();
+  // 左腿褶皱阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(62 + ox, waistY + 8, 2, 30);
 
-  // ---- 头部服饰(帽子;hideHat 时不着帽,露出头发) ----
-  drawHat(P, a);
+  // 右腿
+  const legGrad2 = ctx.createLinearGradient(88, waistY, 88, hipY + 20);
+  legGrad2.addColorStop(0, pantsLo);
+  legGrad2.addColorStop(0.5, pantsCol);
+  legGrad2.addColorStop(1, pantsLo);
+  ctx.fillStyle = legGrad2;
+  ctx.beginPath();
+  ctx.moveTo(74 + ox, waistY);
+  ctx.lineTo(86 + ox, waistY);
+  ctx.lineTo(86 + ox + clothFlutter * 0.3, hipY + 18);
+  ctx.lineTo(76 + ox + clothFlutter * 0.3, hipY + 18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(80 + ox, waistY + 8, 2, 30);
 
-  // ---- 躯干(窄肩小身板) ----
-  P(8, 14, 8, 6, cloth);               // 肩胸(y14~19)
-  P(8, 14, 1, 6, clothHi); P(15, 14, 1, 6, clothLo);   // 左受光 / 右入影
-  P(10, 16, 4, 4, cloth2);                              // 内襟(y16~19)
-  P(10, 16, 1, 4, cloth2Hi); P(13, 16, 1, 4, cloth2Lo);
-  P(8, 14, 8, 1, trim);                                // 领口滚边
-  P(11, 15, 2, 1, cloth2); P(10, 14, 4, 1, trimHi);     // V 领
+  // 靴子
+  const bootGrad = ctx.createLinearGradient(56, hipY + 10, 56, hipY + 32);
+  bootGrad.addColorStop(0, bootCol);
+  bootGrad.addColorStop(0.5, bootHi);
+  bootGrad.addColorStop(1, bootLo);
+  // 左靴
+  ctx.fillStyle = bootGrad;
+  ctx.beginPath();
+  ctx.ellipse(63 + ox + clothFlutter * 0.3, hipY + 24, 11, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = bootHi;
+  ctx.beginPath();
+  ctx.ellipse(60 + ox + clothFlutter * 0.3, hipY + 20, 6, 3, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // 右靴
+  ctx.fillStyle = bootGrad;
+  ctx.beginPath();
+  ctx.ellipse(81 + ox + clothFlutter * 0.3, hipY + 24, 11, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = bootHi;
+  ctx.beginPath();
+  ctx.ellipse(78 + ox + clothFlutter * 0.3, hipY + 20, 6, 3, -0.3, 0, Math.PI * 2);
+  ctx.fill();
 
-  // ---- 双臂(短而细) ----
-  P(5, 15, 2, 6, cloth); P(5, 15, 1, 6, clothHi); P(6, 15, 1, 6, clothLo);
-  P(17, 15, 2, 6, cloth); P(18, 15, 1, 6, clothLo); P(17, 15, 1, 6, shade(cloth, -0.12));
-  P(5, 21, 2, 2, SKIN); P(5, 22, 2, 1, SKIN_SHADE);      // 左手
-  P(17, 21, 2, 2, SKIN); P(17, 22, 2, 1, SKIN_SHADE);    // 右手
+  // ============================================================
+  // 4. 躯干(肩 → 腰)
+  // ============================================================
+  const torsoGrad = ctx.createLinearGradient(50, shoulderY, 94, waistY);
+  torsoGrad.addColorStop(0, clothHi);
+  torsoGrad.addColorStop(0.4, cloth);
+  torsoGrad.addColorStop(1, clothLo);
 
-  // ---- 腰带 ----
+  ctx.fillStyle = torsoGrad;
+  ctx.beginPath();
+  ctx.moveTo(48 + ox, shoulderY);
+  ctx.bezierCurveTo(44 + ox, shoulderY + 10, 46 + ox, waistY - 5, 52 + ox, waistY);
+  ctx.lineTo(92 + ox, waistY);
+  ctx.bezierCurveTo(98 + ox, waistY - 5, 100 + ox, shoulderY + 10, 96 + ox, shoulderY);
+  ctx.bezierCurveTo(90 + ox, shoulderY - 6, 54 + ox, shoulderY - 6, 48 + ox, shoulderY);
+  ctx.closePath();
+  ctx.fill();
+
+  // 躯干右侧入影
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath();
+  ctx.moveTo(96 + ox, shoulderY);
+  ctx.bezierCurveTo(100 + ox, shoulderY + 10, 98 + ox, waistY - 5, 92 + ox, waistY);
+  ctx.lineTo(84 + ox, waistY);
+  ctx.bezierCurveTo(90 + ox, waistY - 5, 92 + ox, shoulderY + 10, 88 + ox, shoulderY);
+  ctx.closePath();
+  ctx.fill();
+
+  // 内襟
+  const innerGrad = ctx.createLinearGradient(66, shoulderY, 78, waistY);
+  innerGrad.addColorStop(0, cloth2Hi);
+  innerGrad.addColorStop(1, cloth2Lo);
+  ctx.fillStyle = innerGrad;
+  ctx.beginPath();
+  ctx.moveTo(66 + ox, shoulderY + 2);
+  ctx.lineTo(78 + ox, shoulderY + 2);
+  ctx.lineTo(80 + ox, waistY - 2);
+  ctx.lineTo(64 + ox, waistY - 2);
+  ctx.closePath();
+  ctx.fill();
+  // 内襟中线褶皱
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(72 + ox, shoulderY + 4);
+  ctx.lineTo(72 + ox, waistY - 4);
+  ctx.stroke();
+
+  // V 领滚边
+  ctx.strokeStyle = trim;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(64 + ox, shoulderY + 2);
+  ctx.lineTo(72 + ox, shoulderY + 12);
+  ctx.lineTo(80 + ox, shoulderY + 2);
+  ctx.stroke();
+  ctx.strokeStyle = trimHi;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(65 + ox, shoulderY + 2);
+  ctx.lineTo(72 + ox, shoulderY + 11);
+  ctx.lineTo(79 + ox, shoulderY + 2);
+  ctx.stroke();
+
+  // 腰带
   if (!bareTop) {
-    P(8, 20, 8, 1, LEATHER);
-    P(8, 20, 3, 1, shade(LEATHER, 0.2));
-    P(11, 20, 2, 1, trim);
+    ctx.fillStyle = LEATHER;
+    ctx.fillRect(52 + ox, waistY - 3, 40, 6);
+    ctx.fillStyle = shade(LEATHER, 0.2);
+    ctx.fillRect(52 + ox, waistY - 3, 40, 1.5);
+    ctx.fillStyle = shade(LEATHER, -0.3);
+    ctx.fillRect(52 + ox, waistY + 1, 40, 2);
+    // 带扣
+    ctx.fillStyle = trim;
+    ctx.fillRect(68 + ox, waistY - 2, 8, 4);
+    ctx.fillStyle = trimHi;
+    ctx.fillRect(68 + ox, waistY - 2, 8, 1);
   }
 
-  // ---- 下装(短腿小靴) ----
-  P(8, 21, 8, 2, pantsCol);                            // 胯
-  P(8, 22, 8, 1, pantsLo);
-  P(8, 23, 3, 5, pantsCol); P(8, 23, 1, 5, pantsHi); P(10, 23, 1, 5, pantsLo);   // 左腿
-  P(13, 23, 3, 5, pantsCol); P(15, 23, 1, 5, pantsLo);                          // 右腿
-  P(7, 28, 4, 4, bootCol); P(7, 28, 4, 1, bootHi); P(7, 31, 4, 1, bootLo);      // 左靴
-  P(13, 28, 4, 4, bootCol); P(13, 28, 4, 1, bootHi); P(13, 31, 4, 1, bootLo);   // 右靴
+  // 胸前配件
+  if (acc === 'anchor') {
+    ctx.fillStyle = METAL;
+    ctx.beginPath();
+    ctx.arc(72 + ox, 120 + oy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = METAL_DARK;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(72 + ox, 125 + oy);
+    ctx.lineTo(72 + ox, 135 + oy);
+    ctx.moveTo(67 + ox, 132 + oy);
+    ctx.lineTo(77 + ox, 132 + oy);
+    ctx.stroke();
+  }
+  if (acc === 'censer') {
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.ellipse(88 + ox, 125 + oy, 6, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = METAL_DARK;
+    ctx.fillRect(85 + ox, 128 + oy, 6, 8);
+  }
 
-  // ---- 胸前配件 ----
-  if (acc === 'anchor') { P(11, 16, 2, 1, METAL); P(11, 17, 2, 2, METAL_DARK); P(10, 19, 4, 1, METAL_DARK); }
-  if (acc === 'censer') { P(17, 20, 4, 1, METAL_DARK); P(18, 21, 3, 3, trim); P(18, 24, 3, 1, METAL_DARK); }
-  if (acc === 'none' && flags.has('got_horse')) { P(8, 17, 8, 1, LEATHER); }
+  // ============================================================
+  // 5. 双臂(随重心摆动)
+  // ============================================================
+  // 左臂
+  const armGradL = ctx.createLinearGradient(42 + leftArmX, shoulderY, 42 + leftArmX, 140);
+  armGradL.addColorStop(0, clothHi);
+  armGradL.addColorStop(0.5, cloth);
+  armGradL.addColorStop(1, clothLo);
+  ctx.fillStyle = armGradL;
+  ctx.beginPath();
+  ctx.ellipse(46 + ox + leftArmX, 115 + oy, 10, 26, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+  // 左手
+  ctx.fillStyle = SKIN;
+  ctx.beginPath();
+  ctx.ellipse(44 + ox + leftArmX, 140 + oy, 7, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = skinLo;
+  ctx.beginPath();
+  ctx.ellipse(46 + ox + leftArmX, 143 + oy, 5, 4, 0, 0, Math.PI);
+  ctx.fill();
 
-  // ---- 伤势叠层 ----
+  // 右臂
+  const armGradR = ctx.createLinearGradient(102 + rightArmX, shoulderY, 102 + rightArmX, 140);
+  armGradR.addColorStop(0, cloth);
+  armGradR.addColorStop(0.5, clothMid);
+  armGradR.addColorStop(1, clothLo);
+  ctx.fillStyle = armGradR;
+  ctx.beginPath();
+  ctx.ellipse(98 + ox + rightArmX, 115 + oy, 10, 26, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  // 右手
+  ctx.fillStyle = SKIN;
+  ctx.beginPath();
+  ctx.ellipse(100 + ox + rightArmX, 140 + oy, 7, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = skinLo;
+  ctx.beginPath();
+  ctx.ellipse(98 + ox + rightArmX, 143 + oy, 5, 4, 0, 0, Math.PI);
+  ctx.fill();
+
+  // ============================================================
+  // 6. 颈部
+  // ============================================================
+  const neckGrad = ctx.createLinearGradient(66, neckY - 6, 78, neckY + 10);
+  neckGrad.addColorStop(0, skinMid);
+  neckGrad.addColorStop(0.5, SKIN);
+  neckGrad.addColorStop(1, skinLo);
+  ctx.fillStyle = neckGrad;
+  ctx.beginPath();
+  ctx.moveTo(66 + ox, neckY - 4);
+  ctx.lineTo(78 + ox, neckY - 4);
+  ctx.lineTo(80 + ox, neckY + 12);
+  ctx.lineTo(64 + ox, neckY + 12);
+  ctx.closePath();
+  ctx.fill();
+  // 颈侧阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillRect(76 + ox, neckY - 2, 3, 12);
+
+  // ============================================================
+  // 7. 头部(脸 + 五官)
+  // ============================================================
+  // 脸部渐变(左上受光,右下入影)
+  const faceGrad = ctx.createRadialGradient(headCX - 8, headCY - 10, 5, headCX, headCY, headR);
+  faceGrad.addColorStop(0, skinHi);
+  faceGrad.addColorStop(0.5, SKIN);
+  faceGrad.addColorStop(0.85, skinMid);
+  faceGrad.addColorStop(1, skinLo);
+  ctx.fillStyle = faceGrad;
+  ctx.beginPath();
+  ctx.ellipse(headCX, headCY, headR * 0.88, headR, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 右颊入影
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.beginPath();
+  ctx.ellipse(headCX + 10, headCY + 2, 10, 16, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 耳朵
+  ctx.fillStyle = SKIN;
+  ctx.beginPath();
+  ctx.ellipse(headCX - headR * 0.82, headCY, 4, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = skinLo;
+  ctx.beginPath();
+  ctx.ellipse(headCX + headR * 0.82, headCY, 4, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ---- 眉毛 ----
+  ctx.strokeStyle = HAIR;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(headCX - 16, headCY - 10);
+  ctx.quadraticCurveTo(headCX - 10, headCY - 13, headCX - 4, headCY - 11);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(headCX + 4, headCY - 11);
+  ctx.quadraticCurveTo(headCX + 10, headCY - 13, headCX + 16, headCY - 10);
+  ctx.stroke();
+
+  // ---- 眼睛 ----
+  if (blinking) {
+    // 闭眼:眼线
+    ctx.strokeStyle = EYE;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(headCX - 14, headCY - 2);
+    ctx.quadraticCurveTo(headCX - 10, headCY + 1, headCX - 6, headCY - 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(headCX + 6, headCY - 2);
+    ctx.quadraticCurveTo(headCX + 10, headCY + 1, headCX + 14, headCY - 2);
+    ctx.stroke();
+  } else {
+    // 左眼
+    ctx.fillStyle = EYE_WHITE;
+    ctx.beginPath();
+    ctx.ellipse(headCX - 10, headCY - 2, 5, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#5a3a28'; // 虹膜(棕色)
+    ctx.beginPath();
+    ctx.arc(headCX - 10 + eyeShift, headCY - 2, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = EYE; // 瞳孔
+    ctx.beginPath();
+    ctx.arc(headCX - 10 + eyeShift, headCY - 2, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff'; // 高光
+    ctx.beginPath();
+    ctx.arc(headCX - 11 + eyeShift, headCY - 3.5, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    // 上眼睑阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(headCX - 10, headCY - 6, 5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 右眼
+    ctx.fillStyle = EYE_WHITE;
+    ctx.beginPath();
+    ctx.ellipse(headCX + 10, headCY - 2, 5, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#5a3a28';
+    ctx.beginPath();
+    ctx.arc(headCX + 10 + eyeShift, headCY - 2, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = EYE;
+    ctx.beginPath();
+    ctx.arc(headCX + 10 + eyeShift, headCY - 2, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(headCX + 9 + eyeShift, headCY - 3.5, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(headCX + 10, headCY - 6, 5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ---- 鼻子 ----
+  ctx.fillStyle = 'rgba(0,0,0,0.1)';
+  ctx.beginPath();
+  ctx.ellipse(headCX + 2, headCY + 5, 2, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = skinHi;
+  ctx.beginPath();
+  ctx.ellipse(headCX - 1, headCY + 4, 1.5, 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ---- 嘴 ----
+  const lipGrad = ctx.createLinearGradient(headCX, headCY + 12, headCX, headCY + 17);
+  lipGrad.addColorStop(0, shade(MOUTH, 0.2));
+  lipGrad.addColorStop(0.5, MOUTH);
+  lipGrad.addColorStop(1, shade(MOUTH, -0.2));
+  ctx.fillStyle = lipGrad;
+  ctx.beginPath();
+  ctx.moveTo(headCX - 6, headCY + 12);
+  ctx.quadraticCurveTo(headCX, headCY + 10, headCX + 6, headCY + 12);
+  ctx.quadraticCurveTo(headCX, headCY + 16, headCX - 6, headCY + 12);
+  ctx.fill();
+  // 嘴唇高光
+  ctx.fillStyle = 'rgba(255,200,180,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(headCX, headCY + 11, 4, 1, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ---- 腮红 ----
+  ctx.fillStyle = 'rgba(230,161,132,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(headCX - 14, headCY + 6, 4, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(headCX + 14, headCY + 6, 4, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ============================================================
+  // 8. 头发(多层曲线 + 渐变)
+  // ============================================================
+  const hairGrad = ctx.createLinearGradient(headCX, headCY - headR, headCX, headCY);
+  hairGrad.addColorStop(0, HAIR_HI);
+  hairGrad.addColorStop(0.6, HAIR);
+  hairGrad.addColorStop(1, HAIR_SHADE);
+
+  // 后发(底层)
+  ctx.fillStyle = HAIR_SHADE;
+  ctx.beginPath();
+  ctx.ellipse(headCX, headCY - 5, headR + 2, headR + 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 主发层
+  ctx.fillStyle = hairGrad;
+  ctx.beginPath();
+  ctx.moveTo(headCX - headR, headCY - 8);
+  ctx.bezierCurveTo(headCX - headR - 2, headCY - headR - 5, headCX + headR + 2, headCY - headR - 5, headCX + headR, headCY - 8);
+  ctx.bezierCurveTo(headCX + headR + 3, headCY + 2, headCX + headR - 2, headCY + 10, headCX + headR - 5, headCY + 8);
+  ctx.bezierCurveTo(headCX + headR, headCY - 5, headCX + 10, headCY - headR + 2, headCX, headCY - headR + 2);
+  ctx.bezierCurveTo(headCX - 10, headCY - headR + 2, headCX - headR, headCY - 5, headCX - headR + 5, headCY + 8);
+  ctx.bezierCurveTo(headCX - headR + 2, headCY + 10, headCX - headR - 3, headCY + 2, headCX - headR, headCY - 8);
+  ctx.fill();
+
+  // 发丝高光
+  ctx.strokeStyle = HAIR_HI;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    const sx = headCX + i * 6 + hairFlutter;
+    ctx.moveTo(sx, headCY - headR + 2);
+    ctx.quadraticCurveTo(sx + 2, headCY - headR + 10, sx + 1, headCY - headR + 16);
+    ctx.stroke();
+  }
+
+  // 额前碎发
+  ctx.fillStyle = hairGrad;
+  ctx.beginPath();
+  ctx.moveTo(headCX - 18, headCY - 10);
+  ctx.quadraticCurveTo(headCX - 12, headCY - 18 + hairFlutter, headCX - 6, headCY - 12);
+  ctx.quadraticCurveTo(headCX, headCY - 16 + hairFlutter, headCX + 6, headCY - 12);
+  ctx.quadraticCurveTo(headCX + 12, headCY - 18 + hairFlutter, headCX + 18, headCY - 10);
+  ctx.quadraticCurveTo(headCX, headCY - 8, headCX - 18, headCY - 10);
+  ctx.fill();
+
+  // ---- 帽子 ----
+  drawHatReal(ctx, ox, oy, a);
+
+  // ============================================================
+  // 9. 伤势叠层
+  // ============================================================
   if (hpRatio < 0.5) {
-    P(5, 16, 2, 3, BANDAGE);                       // 左臂绷带
-    P(15, 7, 1, 1, BLOOD);                         // 脸颊擦伤
+    // 左臂绷带
+    ctx.fillStyle = BANDAGE;
+    ctx.fillRect(40 + ox + leftArmX, 105 + oy, 12, 6);
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(40 + ox + leftArmX, 108 + oy, 12, 1);
+    // 脸颊擦伤
+    ctx.fillStyle = BLOOD;
+    ctx.beginPath();
+    ctx.ellipse(headCX + 12, headCY + 2, 2, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
   if (hpRatio < 0.25) {
-    P(9, 17, 2, 2, BLOOD);                         // 袍上血渍
-    P(14, 18, 2, 1, BLOOD);
-    P(8, 25, 1, 1, BLOOD);
+    ctx.fillStyle = BLOOD;
+    ctx.beginPath();
+    ctx.ellipse(64 + ox, 110 + oy, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(82 + ox, 120 + oy, 4, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(60 + ox, 135 + oy, 2, 6);
+  }
+
+  ctx.restore();
+}
+
+/** 写实风格帽子绘制 */
+function drawHatReal(ctx, ox, oy, a) {
+  const style = a && a.hatStyle;
+  if (!style || style === 'none' || a.hideHat) return;
+  const c = a.hat || '#5a3f2a';
+  const hi = a.hatHi || shade(c, 0.25);
+  const lo = shade(c, -0.3);
+  const headCX = 72 + ox;
+  const headCY = 52 + oy;
+  const grad = ctx.createLinearGradient(headCX, headCY - 35, headCX, headCY - 18);
+  grad.addColorStop(0, hi);
+  grad.addColorStop(1, lo);
+
+  switch (style) {
+    case 'straw':
+      // 宽檐草帽
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.ellipse(headCX, headCY - 18, 30, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(headCX, headCY - 26, 15, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'cap':
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(headCX, headCY - 24, 16, 9, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(headCX - 16, headCY - 24, 32, 3);
+      break;
+    case 'feather':
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(headCX, headCY - 24, 16, 9, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(headCX - 16, headCY - 24, 32, 3);
+      // 羽毛
+      ctx.fillStyle = hi;
+      ctx.beginPath();
+      ctx.moveTo(headCX + 12, headCY - 28);
+      ctx.quadraticCurveTo(headCX + 22, headCY - 38, headCX + 18, headCY - 24);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'hood':
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(headCX - 22, headCY - 5);
+      ctx.bezierCurveTo(headCX - 24, headCY - 35, headCX + 24, headCY - 35, headCX + 22, headCY - 5);
+      ctx.lineTo(headCX + 18, headCY + 5);
+      ctx.lineTo(headCX - 18, headCY + 5);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'helm':
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(headCX, headCY - 18, 18, Math.PI, 0);
+      ctx.fill();
+      ctx.fillRect(headCX - 18, headCY - 18, 36, 5);
+      // 金属反光
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(headCX - 5, headCY - 26, 4, 6, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'crown':
+      ctx.fillStyle = grad;
+      ctx.fillRect(headCX - 16, headCY - 22, 32, 6);
+      // 尖齿
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(headCX + i * 7 - 3, headCY - 22);
+        ctx.lineTo(headCX + i * 7, headCY - 30);
+        ctx.lineTo(headCX + i * 7 + 3, headCY - 22);
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+    default:
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(headCX, headCY - 24, 16, 9, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(headCX - 16, headCY - 24, 32, 3);
   }
 }
 
@@ -478,18 +1084,55 @@ export class SceneView {
     this._charCtx = els.charCanvas ? els.charCanvas.getContext('2d') : null;
     this._envCtx = els.envCanvas ? els.envCanvas.getContext('2d') : null;
     this._mapCtx = els.mapCanvas ? els.mapCanvas.getContext('2d') : null;
-    if (this._charCtx) this._charCtx.imageSmoothingEnabled = false;
+    // 人物立绘:开启抗锯齿(写实风格)
+    if (this._charCtx) this._charCtx.imageSmoothingEnabled = true;
+    // 环境:像素风保持锐利
     if (this._envCtx) this._envCtx.imageSmoothingEnabled = false;
-    if (this._mapCtx) this._mapCtx.imageSmoothingEnabled = false;
+    // 地图立绘:开启抗锯齿
+    if (this._mapCtx) this._mapCtx.imageSmoothingEnabled = true;
+    // 动画状态
+    this._animParams = null;       // render() 传入的参数,供动画循环复用
+    this._mapAnimParams = null;    // 地图立绘参数
+    this._animId = null;           // requestAnimationFrame id
+    this._animating = false;
   }
 
-  /** 地区地图左下角的人物形象(与剧情界面同一套像素画法) */
+  /** 启动动画循环(若已运行则不重复启动) */
+  _startAnim() {
+    if (this._animating) return;
+    this._animating = true;
+    const loop = (t) => {
+      if (!this._animating) return;
+      if (this._animParams) {
+        const p = this._animParams;
+        drawCharacter(this._charCtx, 1, p.career && p.career.id, p.hpRatio, p.flagSet, p.appearance, t);
+      }
+      if (this._mapAnimParams) {
+        const p = this._mapAnimParams;
+        drawCharacter(this._mapCtx, 96 / 144, p.career && p.career.id, p.hpRatio, p.flagSet, p.appearance, t);
+      }
+      this._animId = requestAnimationFrame(loop);
+    };
+    this._animId = requestAnimationFrame(loop);
+  }
+
+  /** 停止动画循环 */
+  stopAnim() {
+    this._animating = false;
+    if (this._animId) cancelAnimationFrame(this._animId);
+    this._animId = null;
+  }
+
+  /** 地区地图左下角的人物形象(与剧情界面同一套写实画法) */
   renderMapPortrait({ career, player, flags, appearance }) {
     if (!this._mapCtx) return;
     const flagSet = new Set(flags || []);
     const hpRatio = player && player.maxHp ? Math.max(0, Math.min(1, player.hp / player.maxHp)) : 1;
-    drawCharacter(this._mapCtx, 4, career && career.id, hpRatio, flagSet, appearance);
+    this._mapAnimParams = { career, hpRatio, flagSet, appearance };
+    // 地图画布 96x128,逻辑 144x192,缩放 = 96/144 ≈ 0.667
+    drawCharacter(this._mapCtx, 96 / 144, career && career.id, hpRatio, flagSet, appearance, performance.now());
     if (this.els.mapCharName) this.els.mapCharName.textContent = career ? career.name : '无名少年';
+    this._startAnim();
   }
 
   render({ chapterId, nodeId, career, player, flags, appearance }) {
@@ -498,7 +1141,9 @@ export class SceneView {
     const hpRatio = player && player.maxHp ? Math.max(0, Math.min(1, player.hp / player.maxHp)) : 1;
 
     // ---- 人物 ----
-    drawCharacter(this._charCtx, 6, career && career.id, hpRatio, flagSet, appearance);
+    this._animParams = { career, hpRatio, flagSet, appearance };
+    // 主画布 144x192 = 逻辑尺寸,缩放 = 1
+    drawCharacter(this._charCtx, 1, career && career.id, hpRatio, flagSet, appearance, performance.now());
     const o = OUTFITS[career && career.id] || OUTFIT_DEFAULT;
     if (this.els.charName) this.els.charName.textContent = career ? career.name : '无名少年';
     if (this.els.charOutfit) this.els.charOutfit.textContent = (appearance && appearance.label) || o.outfit;
@@ -525,5 +1170,7 @@ export class SceneView {
     drawEnv(this._envCtx, 8, spec.theme, `${chapterId}:${nodeId}`);
     if (this.els.envName) this.els.envName.textContent = spec.name;
     if (this.els.envDesc) this.els.envDesc.textContent = THEME_DESC[spec.theme] || '';
+
+    this._startAnim();
   }
 }

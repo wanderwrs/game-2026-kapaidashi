@@ -11,31 +11,31 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20260930c';
-import { EventBus } from './eventbus.js?v=20260930c';
-import { AudioEngine } from './audio.js?v=20260930c';
-import { Player } from '../combat/entity.js?v=20260930c';
-import { Deck } from '../card/deck.js?v=20260930c';
-import { Battle } from '../combat/battle.js?v=20260930c';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260930c';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260930c';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260930c';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260930c';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260930c';
-import { jobsFor } from '../data/jobs.js?v=20260930c';
+import { RNG, seedFromString } from './rng.js?v=20260930f';
+import { EventBus } from './eventbus.js?v=20260930f';
+import { AudioEngine } from './audio.js?v=20260930f';
+import { Player } from '../combat/entity.js?v=20260930f';
+import { Deck } from '../card/deck.js?v=20260930f';
+import { Battle } from '../combat/battle.js?v=20260930f';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20260930f';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme } from '../data/items.js?v=20260930f';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20260930f';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20260930f';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260930f';
+import { jobsFor } from '../data/jobs.js?v=20260930f';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN,
-} from '../data/world.js?v=20260930c';
-import { NPCS } from '../data/npcs.js?v=20260930c';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260930c';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260930c';
-import { Economy } from './economy.js?v=20260930c';
-import { Travel } from './travel.js?v=20260930c';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260930c';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260930c';
-import { CAREERS } from '../narrative/careers.js?v=20260930c';
-import { UI } from '../ui/ui.js?v=20260930c';
+} from '../data/world.js?v=20260930f';
+import { NPCS } from '../data/npcs.js?v=20260930f';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260930f';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260930f';
+import { Economy } from './economy.js?v=20260930f';
+import { Travel } from './travel.js?v=20260930f';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260930f';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260930f';
+import { CAREERS } from '../narrative/careers.js?v=20260930f';
+import { UI } from '../ui/ui.js?v=20260930f';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -1191,7 +1191,15 @@ export class Game {
   }
 
   _useItem(id) {
-    const r = this.economy.useItem(id, this.player);
+    const r = this.economy.useItem(id, this.player, this.currentBattle);
+    this.ui.showToast(r.msg);
+    this._bagRefresh();
+    if (this.state === GameState.BATTLE && this.currentBattle) this.currentBattle._refresh();
+  }
+
+  /** 批量使用消耗品(药品 / 食品) */
+  _useItemAll(id) {
+    const r = this.economy.useItemBatch(id, this.player);
     this.ui.showToast(r.msg);
     this._bagRefresh();
     if (this.state === GameState.BATTLE && this.currentBattle) this.currentBattle._refresh();
@@ -1283,6 +1291,12 @@ export class Game {
   }
 
   // ===== 战斗 =====
+  /** 切换自动战斗模式 */
+  _toggleAutoBattle() {
+    if (!this.currentBattle) return;
+    this.currentBattle.setAutoMode(!this.currentBattle.autoMode);
+  }
+
   /** 剧情节点要求开战:按地区进度从敌人池中选取(小怪 → 首领),并叠加章节难度 */
   _startNarrativeBattle({ poolKey }) {
     if (!this.deck) {
@@ -1315,6 +1329,19 @@ export class Game {
   onBattleEnd(result) {
     // 途中遭遇战:不入战利品流程,胜利后继续赶路
     if (this._wildBattle) { this._onWildBattleEnd(result); return; }
+    // 逃跑:直接回到地图
+    if (result === 'escape') {
+      this.currentBattle = null;
+      // 剧情战斗逃跑:重置门控,允许重试
+      if (this.engine?._pendingBattle) {
+        this.engine._pendingBattle = null;
+        const seg = this.segment;
+        if (seg) this.engine.rearmGate(seg.chapterId, seg.nodeId);
+      }
+      this.ui.showToast('烟雾弥漫,你趁机脱离了战斗');
+      this._backToMap();
+      return;
+    }
     // 非剧情战斗(框架战斗):直接进结算
     if (!this.engine || !this.engine._pendingBattle) {
       this.transition(result === 'victory' ? GameState.VICTORY : GameState.DEFEAT);
@@ -1365,9 +1392,25 @@ export class Game {
   _onWildBattleEnd(result) {
     this._wildBattle = false;
     this.currentBattle = null;
+    if (result === 'escape') {
+      this.ui.showToast('烟雾弥漫,你趁机脱离了战斗');
+      if (this.travel?.active) {
+        this.transition(GameState.TRAVEL);
+        this.travel.resume();
+      } else {
+        this.transition(GameState.MAP);
+        this._renderMap();
+      }
+      return;
+    }
     if (result === 'victory') {
       const ch = this._chapterNum();
-      const gold = this._grantGold(5 + Math.floor(this.rng.next() * 5) + ch);
+      let baseGold = 5 + Math.floor(this.rng.next() * 5) + ch;
+      if (this.economy.goldLuckActive) {
+        baseGold *= 2;
+        this.economy.goldLuckActive = false;
+      }
+      const gold = this._grantGold(baseGold);
       let loot = null;
       if (this.rng.next() < 0.35) {
         loot = LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
@@ -1407,7 +1450,12 @@ export class Game {
   /** 胜利奖励:金币 + 概率掉落杂物 */
   _grantBattleRewards() {
     const ch = this._chapterNum();
-    const gold = this._grantGold(8 + Math.floor(this.rng.next() * 6) + ch * 2);
+    let baseGold = 8 + Math.floor(this.rng.next() * 6) + ch * 2;
+    if (this.economy.goldLuckActive) {
+      baseGold *= 2;
+      this.economy.goldLuckActive = false;
+    }
+    const gold = this._grantGold(baseGold);
     let loot = null;
     if (this.rng.next() < 0.5) {
       loot = LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
@@ -1547,6 +1595,7 @@ export class Game {
       if (this.engine?.currentNode?.next) this.engine.goto(this.engine.currentNode.next);
     });
     this.bus.on('ui:end-turn', () => this.currentBattle?.endPlayerTurn());
+    this.bus.on('ui:auto-battle', () => this._toggleAutoBattle());
     this.bus.on('ui:restart', () => this.startNewRun());
 
     // 地区地图
@@ -1592,6 +1641,7 @@ export class Game {
     this.bus.on('ui:market-sell', (id) => this._marketSell(id));
     this.bus.on('ui:venue-buy', (id) => this._venueBuy(id));
     this.bus.on('ui:bag-use', (id) => this._useItem(id));
+    this.bus.on('ui:bag-use-all', (id) => this._useItemAll(id));
     this.bus.on('ui:bag-equip', (id) => this._equipItem(id));
     this.bus.on('ui:bag-unequip', (slot) => this._unequipItem(slot));
     this.bus.on('ui:bag-drop', (id) => this._dropItem(id));

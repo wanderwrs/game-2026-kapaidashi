@@ -10,18 +10,18 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20260930c';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260930c';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260930c';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20260930c';
-import { cardMpCost } from '../data/data.js?v=20260930c';
-import { ENDINGS } from '../narrative/engine.js?v=20260930c';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260930c';
-import { SceneView } from './scene.js?v=20260930c';
-import { Minigame } from '../minigame/minigame.js?v=20260930c';
-import { MODE_LABELS } from '../data/jobs.js?v=20260930c';
-import { TERRAIN_CN } from '../data/world.js?v=20260930c';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260930c';
+import { GameState } from '../core/game.js?v=20260930f';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20260930f';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice } from '../data/items.js?v=20260930f';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20260930f';
+import { cardMpCost } from '../data/data.js?v=20260930f';
+import { ENDINGS } from '../narrative/engine.js?v=20260930f';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20260930f';
+import { SceneView } from './scene.js?v=20260930f';
+import { Minigame } from '../minigame/minigame.js?v=20260930f';
+import { MODE_LABELS } from '../data/jobs.js?v=20260930f';
+import { TERRAIN_CN } from '../data/world.js?v=20260930f';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20260930f';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -240,6 +240,7 @@ export class UI {
       discardCount: $('discard-count'),
       energy: $('energy-display'),
       btnEndTurn: $('btn-end-turn'),
+      btnAutoBattle: $('btn-auto-battle'),
       rewardGrid: $('reward-grid'),
       btnSkipReward: $('btn-skip-reward'),
       resultEyebrow: $('result-eyebrow'),
@@ -327,6 +328,7 @@ export class UI {
     if (this.el.btnMgStart) this.el.btnMgStart.addEventListener('click', () => this._startMinigame());
     if (this.el.btnMgRetry) this.el.btnMgRetry.addEventListener('click', () => this._startMinigame());
     if (this.el.btnEndTurn) this.el.btnEndTurn.addEventListener('click', () => this.bus.emit('ui:end-turn'));
+    if (this.el.btnAutoBattle) this.el.btnAutoBattle.addEventListener('click', () => this.bus.emit('ui:auto-battle'));
     if (this.el.btnSkipReward) this.el.btnSkipReward.addEventListener('click', () => this.bus.emit('ui:skip-reward'));
     // 地图 / 商店 / 背包 / 打工
     if (this.el.btnMapStory) this.el.btnMapStory.addEventListener('click', () => this.bus.emit('ui:map-story'));
@@ -1717,6 +1719,7 @@ export class UI {
       entries.forEach(([id, qty]) => {
         const it = ITEMS[id];
         if (!it) return;
+        const canBatch = it.effect && ['heal', 'mp', 'ap'].includes(it.effect.kind) && qty > 1;
         const row = document.createElement('div');
         row.className = 'item-row';
         row.innerHTML = `
@@ -1727,11 +1730,13 @@ export class UI {
           </div>
           <div class="item-actions">
             ${it.effect ? `<button class="btn btn-primary btn-sm" data-use="${id}">使用</button>` : ''}
+            ${canBatch ? `<button class="btn btn-ghost btn-sm" data-useall="${id}">全部</button>` : ''}
             ${it.equipment ? `<button class="btn btn-ghost btn-sm" data-equip="${id}">装备</button>` : ''}
             <button class="btn btn-ghost btn-sm" data-drop="${id}">丢弃</button>
           </div>
         `;
         row.querySelector('[data-use]')?.addEventListener('click', () => this.bus.emit('ui:bag-use', id));
+        row.querySelector('[data-useall]')?.addEventListener('click', () => this.bus.emit('ui:bag-use-all', id));
         row.querySelector('[data-equip]')?.addEventListener('click', () => this.bus.emit('ui:bag-equip', id));
         row.querySelector('[data-drop]')?.addEventListener('click', () => this.bus.emit('ui:bag-drop', id));
         box.appendChild(row);
@@ -1897,6 +1902,11 @@ export class UI {
     this.el.discardCount.textContent = snap.discardCount;
     this.el.energy.textContent = `${snap.player.energy}/${snap.player.energyMax} · ✦${snap.player.mp}`;
     this.el.btnEndTurn.disabled = snap.over;
+    if (this.el.btnAutoBattle) {
+      this.el.btnAutoBattle.textContent = this.battle?.autoMode ? '自动战斗 ▣' : '自动战斗';
+      this.el.btnAutoBattle.classList.toggle('is-active', !!this.battle?.autoMode);
+      this.el.btnAutoBattle.disabled = snap.over;
+    }
 
     // 能量脉动:能量回升时提示
     this.el.energy.classList.remove('pulse');
@@ -1918,7 +1928,7 @@ export class UI {
     this._lastPlayerHp = snap.player.hp;
   }
 
-  /** 战斗中可用的药品(恢复生命 / 魔力),点击即用 */
+  /** 战斗中可用的药品(恢复生命 / 魔力 / 战斗专用药剂),点击即用 */
   _renderBattleItems() {
     const box = this.el.battleItems;
     if (!box) return;
@@ -1926,7 +1936,8 @@ export class UI {
     if (!eco) { box.innerHTML = ''; return; }
     const usable = [...eco.bag.entries()].filter(([id]) => {
       const it = ITEMS[id];
-      return it?.effect && (it.effect.kind === 'heal' || it.effect.kind === 'mp');
+      if (!it?.effect) return false;
+      return ['heal', 'mp', 'cleanse', 'rage', 'block_potion', 'energy', 'escape'].includes(it.effect.kind);
     });
     if (!usable.length) { box.innerHTML = '<span class="battle-items-empty">无可用药品</span>'; return; }
     box.innerHTML = '';
@@ -1934,6 +1945,7 @@ export class UI {
       const it = ITEMS[id];
       const b = document.createElement('button');
       b.className = 'item-chip';
+      b.title = it.desc || '';
       b.textContent = `${it.icon || '🧪'} ${it.name} ×${qty}`;
       b.addEventListener('click', () => this.bus.emit('ui:bag-use', id));
       box.appendChild(b);

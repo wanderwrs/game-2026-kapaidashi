@@ -1048,7 +1048,8 @@ body {
   100% { transform: translateY(-90px) scale(1.05); opacity: 0; }
 }
 
-.battle-actions { display: flex; justify-content: flex-end; }
+.battle-actions { display: flex; justify-content: flex-end; gap: var(--sp-8); }
+.battle-actions .btn.is-active { background: var(--gold-bright); color: #1a1410; border-color: var(--gold-bright); }
 
 /* ============================================================
    战利品 / 奖励视图

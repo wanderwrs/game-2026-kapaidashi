@@ -66,6 +66,14 @@ export const ITEMS = {
   power_elixir:{ id: 'power_elixir',name: '战力药剂', category: 'potion', price: 70, icon: '💪', desc: '下一场战斗战力 +3。',      effect: { kind: 'power', amount: 3 } },
   phoenix_blood:{ id: 'phoenix_blood',name:'不死鸟之血', category: 'potion', price: 760, icon: '🩸', rare: true, desc: '传说一滴即续命。生命与魔力尽数回满。', effect: { kind: 'full', amount: 0 } },
 
+  // ===== 战斗专用药剂(仅战斗中可用) =====
+  antidote:    { id: 'antidote',    name: '解毒剂',   category: 'potion', price: 35, icon: '🌿', desc: '战斗中使用,清除自身易伤 / 虚弱 / 脆弱。', effect: { kind: 'cleanse', amount: 0 } },
+  rage_potion: { id: 'rage_potion', name: '狂怒药剂', category: 'potion', price: 65, icon: '🔥', desc: '战斗中使用,本场战斗获得 3 点力量。', effect: { kind: 'rage', amount: 3 } },
+  guard_potion:{ id: 'guard_potion',name: '护盾药剂', category: 'potion', price: 45, icon: '🛡️', desc: '战斗中使用,立即获得 10 点护甲。', effect: { kind: 'block_potion', amount: 10 } },
+  energy_drink:{ id: 'energy_drink',name: '能量饮',   category: 'potion', price: 50, icon: '⚡', desc: '战斗中使用,立即恢复 2 点能量。', effect: { kind: 'energy', amount: 2 } },
+  smoke_bomb:  { id: 'smoke_bomb',  name: '烟雾弹',   category: 'potion', price: 80, icon: '💨', desc: '战斗中使用,立即逃离当前战斗(剧情战斗可重试)。', effect: { kind: 'escape', amount: 0 } },
+  lucky_coin:  { id: 'lucky_coin',  name: '幸运币',   category: 'potion', price: 120, icon: '🪙', rare: true, desc: '下场战斗胜利时金币收益翻倍。', effect: { kind: 'gold_luck', amount: 1 } },
+
   // ===== 加速恢复(缩短休息 / 旅途的真实耗时) =====
   swift_incense:{ id: 'swift_incense', name: '醒神香', category: 'potion', price: 90,  icon: '🕯️', desc: '点上一支,下一次休息的耗时缩短至四分之一。', effect: { kind: 'rest_haste',   amount: 1 } },
   long_incense: { id: 'long_incense',  name: '长明香', category: 'potion', price: 160, icon: '🪔', desc: '能烧一整夜。接下来 2 次休息的耗时缩短至四分之一。', effect: { kind: 'rest_haste', amount: 2 } },
@@ -172,15 +180,15 @@ export function sellPrice(itemId) {
 
 /** 商店库存:按地区主题配置(买价 = ITEMS.price,可受服饰折扣影响) */
 export const SHOP_STOCK = {
-  village: ['hp_small', 'bread', 'hemp_shirt', 'patched_pants', 'cloth_shoes', 'straw_hat', 'old_horse'],
-  forest:  ['hp_small', 'dried_meat', 'mp_small', 'leather_cap', 'leather_boots', 'iron_sword', 'swift_horse'],
-  mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'iron_helm', 'iron_greaves', 'iron_boots', 'steel_blade', 'dragon_scale_mail', 'cart', 'snow_leopard'],
-  city:    ['hp_large', 'mp_large', 'power_elixir', 'swift_incense', 'wind_tonic', 'noble_robe', 'silk_pants', 'feather_cap', 'dancer_shoes', 'crown', 'merchant_vest', 'steel_blade', 'swift_horse', 'airship', 'emperor_new_clothes', 'emperor_new_pants', 'emperor_new_hat', 'emperor_new_boots'],
-  port:    ['hp_small', 'dried_meat', 'mp_large', 'wind_tonic', 'noble_robe', 'sailor_trousers', 'swift_boots', 'wind_coat', 'cart', 'skiff', 'steamship'],
-  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'swift_incense', 'long_incense', 'scholar_robe', 'scholar_hood', 'feather_cap', 'swift_horse', 'wind_glider', 'airship'],
-  ruins:   ['hp_small', 'dried_meat', 'leather_pants', 'pilgrim_mantle', 'bone_charm', 'cart'],
-  cliff:   ['hp_small', 'mp_small', 'iron_sword', 'swift_boots', 'wind_coat', 'swift_horse'],
-  camp:    ['hp_small', 'bread', 'patched_pants', 'straw_hat', 'iron_sword', 'old_horse'],
+  village: ['hp_small', 'bread', 'hemp_shirt', 'patched_pants', 'cloth_shoes', 'straw_hat', 'old_horse', 'antidote'],
+  forest:  ['hp_small', 'dried_meat', 'mp_small', 'leather_cap', 'leather_boots', 'iron_sword', 'swift_horse', 'antidote', 'guard_potion'],
+  mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'iron_helm', 'iron_greaves', 'iron_boots', 'steel_blade', 'dragon_scale_mail', 'cart', 'snow_leopard', 'rage_potion', 'guard_potion'],
+  city:    ['hp_large', 'mp_large', 'power_elixir', 'swift_incense', 'wind_tonic', 'noble_robe', 'silk_pants', 'feather_cap', 'dancer_shoes', 'crown', 'merchant_vest', 'steel_blade', 'swift_horse', 'airship', 'emperor_new_clothes', 'emperor_new_pants', 'emperor_new_hat', 'emperor_new_boots', 'antidote', 'rage_potion', 'energy_drink', 'smoke_bomb'],
+  port:    ['hp_small', 'dried_meat', 'mp_large', 'wind_tonic', 'noble_robe', 'sailor_trousers', 'swift_boots', 'wind_coat', 'cart', 'skiff', 'steamship', 'energy_drink'],
+  sky:     ['mp_large', 'honey_cake', 'power_elixir', 'swift_incense', 'long_incense', 'scholar_robe', 'scholar_hood', 'feather_cap', 'swift_horse', 'wind_glider', 'airship', 'energy_drink', 'smoke_bomb'],
+  ruins:   ['hp_small', 'dried_meat', 'leather_pants', 'pilgrim_mantle', 'bone_charm', 'cart', 'antidote', 'smoke_bomb'],
+  cliff:   ['hp_small', 'mp_small', 'iron_sword', 'swift_boots', 'wind_coat', 'swift_horse', 'guard_potion'],
+  camp:    ['hp_small', 'bread', 'patched_pants', 'straw_hat', 'iron_sword', 'old_horse', 'antidote'],
 };
 
 /** 可捡拾杂物池:战斗胜利后有小概率获得 */

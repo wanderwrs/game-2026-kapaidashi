@@ -10,8 +10,8 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20260930c';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260930c';
+import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20260930f';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260930f';
 
 const SLOTS = ['weapon', 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
 const OUTFIT_SLOTS = ['hat', 'top', 'bottom', 'shoes'];
@@ -26,6 +26,7 @@ export class Economy {
     this.pendingPower = 0;           // 战力药剂:下一场战斗生效
     this.hasteRest = 0;              // 剩余「缩短休息耗时」次数
     this.hasteTravel = 0;            // 剩余「缩短旅途耗时」次数
+    this.goldLuckActive = false;     // 幸运币:下场战斗金币翻倍
   }
 
   // ===== 背包 =====
@@ -281,9 +282,12 @@ export class Economy {
   // ===== 使用消耗品 =====
   /**
    * 使用物品。
+   * @param {string} id 物品ID
+   * @param {object} player 玩家实体
+   * @param {object} [battle] 当前战斗(战斗专用药剂需要)
    * @returns {{ok:boolean, msg:string}}
    */
-  useItem(id, player) {
+  useItem(id, player, battle) {
     const it = ITEMS[id];
     if (!it || !it.effect) return { ok: false, msg: '此物无法使用' };
     if (!this.has(id)) return { ok: false, msg: '背包里没有这件物品' };
@@ -331,11 +335,71 @@ export class Economy {
         msg = `之后 ${amount} 段旅途的耗时会减半`;
         break;
       }
+      // ===== 战斗专用药剂 =====
+      case 'cleanse': {
+        if (!battle) return { ok: false, msg: '仅能在战斗中使用' };
+        for (const s of ['vulnerable', 'weak', 'frail']) {
+          if (player.statuses[s]) delete player.statuses[s];
+        }
+        msg = '清除了所有负面状态';
+        break;
+      }
+      case 'rage': {
+        if (!battle) return { ok: false, msg: '仅能在战斗中使用' };
+        player.applyStatus('strength', amount);
+        msg = `本场战斗获得 ${amount} 点力量`;
+        break;
+      }
+      case 'block_potion': {
+        if (!battle) return { ok: false, msg: '仅能在战斗中使用' };
+        player.addBlock(amount);
+        msg = `获得 ${amount} 点护甲`;
+        break;
+      }
+      case 'energy': {
+        if (!battle) return { ok: false, msg: '仅能在战斗中使用' };
+        player.energy = Math.min(player.energyMax, player.energy + amount);
+        msg = `恢复 ${amount} 点能量`;
+        break;
+      }
+      case 'escape': {
+        if (!battle || !battle._escape) return { ok: false, msg: '仅能在战斗中使用' };
+        battle._escape();
+        msg = '烟雾弥漫,你趁机脱离了战斗';
+        break;
+      }
+      case 'gold_luck': {
+        this.goldLuckActive = true;
+        msg = '下场战斗胜利时金币收益翻倍';
+        break;
+      }
       default:
         return { ok: false, msg: '此物无法使用' };
     }
     this.removeItem(id, 1);
     return { ok: true, msg: `使用「${it.name}」,${msg}` };
+  }
+
+  /**
+   * 批量使用消耗品(直到满或用完)。
+   * 仅对 heal / mp / ap 类有效。
+   * @returns {{ok:boolean, msg:string, used:number}}
+   */
+  useItemBatch(id, player) {
+    const it = ITEMS[id];
+    if (!it || !it.effect) return { ok: false, msg: '此物无法批量使用', used: 0 };
+    const kind = it.effect.kind;
+    if (!['heal', 'mp', 'ap'].includes(kind)) {
+      return { ok: false, msg: '仅药品 / 食品可批量使用', used: 0 };
+    }
+    let used = 0;
+    while (this.has(id)) {
+      const r = this.useItem(id, player);
+      if (!r.ok) break;
+      used++;
+    }
+    if (used === 0) return { ok: false, msg: '无需使用', used: 0 };
+    return { ok: true, msg: `使用「${it.name}」×${used}`, used };
   }
 
   /** 开战时取出一次性战力加成(取后清零) */

@@ -2,10 +2,11 @@
  * Battle — 单场战斗的回合控制器。
  * 流程:开始回合(抽5/补能/清甲) -> 玩家出牌 -> 结束回合 -> 敌人行动 -> 下一回合。
  * 通过 bus 广播 snapshot,UI 据此渲染,无需反向耦合。
+ * 支持自动战斗模式:AI 自动选取最优卡牌并结束回合。
  */
 
-import { Enemy } from './entity.js?v=20260930c';
-import { cardMpCost } from '../data/data.js?v=20260930c';
+import { Enemy } from './entity.js?v=20260930f';
+import { cardMpCost } from '../data/data.js?v=20260930f';
 
 const STATUS_CN = {
   vulnerable: '易伤',
@@ -13,6 +14,9 @@ const STATUS_CN = {
   frail: '脆弱',
   strength: '力量',
 };
+
+/** 自动战斗每步延迟(毫秒),让玩家能看清动作 */
+const AUTO_STEP_DELAY = 650;
 
 export class Battle {
   constructor({ player, deck, enemyDef, rng, bus, bonusStrength = 0 }) {
@@ -26,6 +30,9 @@ export class Battle {
     this.over = false;
     this.result = null;
     this._fxQueue = [];   // 伤害飘字等特效,待 DOM 刷新后再广播
+    this.autoMode = false;        // 自动战斗开关
+    this._autoTimer = null;       // 自动战斗定时器
+    this._autoBusy = false;       // 防止自动逻辑重入
   }
 
   start() {
@@ -77,6 +84,16 @@ export class Battle {
     setTimeout(() => this._enemyTurn(), 350);
   }
 
+  /** 逃离战斗(仅遭遇战有效;由烟雾弹触发) */
+  _escape() {
+    if (this.over) return false;
+    this.over = true;
+    this.result = 'escape';
+    this.bus.emit('battle:end', 'escape');
+    this._refresh();
+    return true;
+  }
+
   _enemyTurn() {
     if (this.over) return;
     this.enemy.clearBlock();
@@ -106,6 +123,8 @@ export class Battle {
       this.player.clearBlock();
       this.deck.draw(5);
       this._refresh();
+      // 自动战斗:新回合开始后继续
+      if (this.autoMode) this._scheduleAutoStep();
     }
     this._flushFx();
   }
@@ -164,12 +183,133 @@ export class Battle {
     if (!this.enemy.isAlive()) {
       this.over = true;
       this.result = 'victory';
+      this._clearAutoTimer();
       this.bus.emit('battle:end', 'victory');
     } else if (!this.player.isAlive()) {
       this.over = true;
       this.result = 'defeat';
+      this._clearAutoTimer();
       this.bus.emit('battle:end', 'defeat');
     }
+  }
+
+  // ===== 自动战斗 =====
+  /** 开启 / 关闭自动战斗 */
+  setAutoMode(on) {
+    this.autoMode = !!on;
+    if (this.autoMode) {
+      this.bus.emit('battle:log', '自动战斗已开启');
+      this._scheduleAutoStep();
+    } else {
+      this.bus.emit('battle:log', '自动战斗已关闭');
+      this._clearAutoTimer();
+    }
+  }
+
+  _clearAutoTimer() {
+    if (this._autoTimer) { clearTimeout(this._autoTimer); this._autoTimer = null; }
+  }
+
+  _scheduleAutoStep() {
+    if (!this.autoMode || this.over || this._autoBusy) return;
+    this._clearAutoTimer();
+    this._autoTimer = setTimeout(() => this._autoStep(), AUTO_STEP_DELAY);
+  }
+
+  /** 自动战斗单步:选出最优牌打出,无牌可出则结束回合 */
+  _autoStep() {
+    if (!this.autoMode || this.over) return;
+    this._autoBusy = true;
+    try {
+      const card = this._pickAutoCard();
+      if (card) {
+        this.playCard(card);
+        this._scheduleAutoStep();
+      } else {
+        // 没有可出的牌 → 结束回合
+        this.endPlayerTurn();
+        // 结束回合后 _enemyTurn 会触发下一回合;在 _refresh 后再调度
+      }
+    } finally {
+      this._autoBusy = false;
+    }
+  }
+
+  /**
+   * AI 选牌策略:
+   * 1. 生命危险(<35%)且有治疗牌 → 优先治疗
+   * 2. 敌人意图高伤攻击 且 自身护甲不足 → 优先防御
+   * 3. 敌人有易伤 → 优先高伤攻击
+   * 4. 否则按「伤害/费用比」选攻击牌,其次防御牌
+   */
+  _pickAutoCard() {
+    const hand = this.deck.hand;
+    if (!hand.length) return null;
+    const energy = this.player.energy;
+    const mp = this.player.mp;
+
+    // 可出的牌(能量 + 魔力足够)
+    const playable = hand.filter((c) => {
+      const mpCost = cardMpCost(c);
+      return c.cost <= energy && mpCost <= mp;
+    });
+    if (!playable.length) return null;
+
+    const hpRatio = this.player.hp / this.player.maxHp;
+    const intent = this.enemy.intent;
+    const enemyVuln = this.enemy.getStatus('vulnerable') > 0;
+    const incomingDmg = intent?.kind === 'attack' ? intent.value : 0;
+    const effectiveIncoming = incomingDmg - this.player.block;
+
+    // 1) 危险时优先治疗
+    if (hpRatio < 0.35) {
+      const heal = this._bestByEffect(playable, 'heal');
+      if (heal) return heal;
+    }
+
+    // 2) 高伤来袭且护甲不足 → 优先防御
+    if (effectiveIncoming > this.player.maxHp * 0.25) {
+      const block = this._bestByEffect(playable, 'block');
+      if (block) return block;
+    }
+
+    // 3) 敌人易伤 → 优先高伤攻击
+    if (enemyVuln) {
+      const atk = this._bestAttack(playable);
+      if (atk) return atk;
+    }
+
+    // 4) 默认:选最高伤害攻击牌;没有则选防御;再没有则随便出
+    const atk = this._bestAttack(playable);
+    if (atk) return atk;
+    const block = this._bestByEffect(playable, 'block');
+    if (block) return block;
+    // 兜底:出第一张能出的牌
+    return playable[0];
+  }
+
+  /** 在可出的牌中找某类效果数值最高的牌 */
+  _bestByEffect(cards, kind) {
+    let best = null, bestVal = -1;
+    for (const c of cards) {
+      const eff = (c.effects || []).find((e) => e.kind === kind);
+      if (!eff) continue;
+      const val = eff.amount || 0;
+      if (val > bestVal) { bestVal = val; best = c; }
+    }
+    return best;
+  }
+
+  /** 在可出的牌中找总伤害最高的攻击牌 */
+  _bestAttack(cards) {
+    let best = null, bestDmg = -1;
+    for (const c of cards) {
+      const dmg = (c.effects || [])
+        .filter((e) => e.kind === 'damage')
+        .reduce((s, e) => s + (e.amount || 0), 0);
+      if (dmg > bestDmg) { bestDmg = dmg; best = c; }
+    }
+    return best;
   }
 
   _refresh() {
