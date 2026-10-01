@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261001b" />
+  <link rel="stylesheet" href="css/style.css?v=20261001d" />
 </head>
 <body>
   <!-- 游戏前 · 年龄限制与内容警告门(每次打开页面都需通过;需真人验证) -->
@@ -171,14 +171,15 @@
       <p id="map-hint" class="map-hint">—</p>
       <div id="map-stops" class="map-stops"></div>
       <div id="map-services" class="map-services"></div>
+      <!-- 本地人物:点击即交谈(主城 12~19 人,其余地区 1~7 人) -->
+      <div class="map-npcs-wrap">
+        <div id="map-npcs-title" class="map-npcs-title">本地人物(点击交谈)</div>
+        <div id="map-npcs" class="map-npcs"></div>
+      </div>
       <!-- 任务窗格:最多显示三项正在执行的任务 -->
       <div class="map-tasks-wrap">
         <div class="map-tasks-title">任 务(至多三件)</div>
         <div id="map-tasks" class="map-tasks"></div>
-      </div>
-      <div class="map-npcs-wrap">
-        <div class="map-npcs-title">本地人物(点击交谈)</div>
-        <div id="map-npcs" class="map-npcs"></div>
       </div>
       <div class="map-bottom">
         <!-- 左下角:人物形象(随换装变化);点击查看/更换装束 -->
@@ -902,6 +903,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20261001b"></script>
+  <script type="module" src="js/main.js?v=20261001d"></script>
 </body>
 </html>

@@ -10,6 +10,7 @@ export const CAREERS = [
   {
     id: 'swordsman',
     name: '剑术学徒',
+    root: '剑术',        // 职介晋升后与职衔后缀合成(如 剑术教授)
     title: '钢铁之誓',
     color: '#c0392b',
     icon: '⚔',
@@ -23,6 +24,7 @@ export const CAREERS = [
   {
     id: 'mage',
     name: '魔法学徒',
+    root: '魔法',
     title: '星图执笔',
     color: '#8e44ad',
     icon: '✦',
@@ -36,6 +38,7 @@ export const CAREERS = [
   {
     id: 'cavalier',
     name: '骑兵新兵',
+    root: '骑兵',
     title: '风行之蹄',
     color: '#27ae60',
     icon: '♞',
@@ -49,6 +52,7 @@ export const CAREERS = [
   {
     id: 'aviator',
     name: '飞行学徒',
+    root: '飞行',
     title: '云端之翼',
     color: '#3498db',
     icon: '✈',
@@ -62,6 +66,7 @@ export const CAREERS = [
   {
     id: 'mariner',
     name: '航海学徒',
+    root: '航海',
     title: '盐风之子',
     color: '#16a085',
     icon: '⚓',
@@ -75,6 +80,7 @@ export const CAREERS = [
   {
     id: 'theologian',
     name: '经典学徒',
+    root: '经典',
     title: '烛火之间',
     color: '#f1c40f',
     icon: '🕯',

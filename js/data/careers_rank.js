@@ -78,3 +78,30 @@ export function startsNewMajor(rankIndex) {
 export function rankExpBonus(rankIndex) {
   return 1 + Math.max(0, rankIndex) * 0.15;
 }
+
+const clamp0 = (i) => Math.max(0, Math.min(CAREER_RANKS.length - 1, i));
+
+/** 大职介 → 职衔后缀(与职业根名合成,如 魔法 + 教授 = 魔法教授) */
+export const MAJOR_SUFFIX = {
+  '学徒系': '学徒',
+  '学士系': '学士',
+  '执事系': '执事',
+  '教授系': '教授',
+  '祭司系': '祭司',
+  '和诗系': '和诗',
+};
+
+/** 某职介对应的大职介职衔后缀 */
+export function rankSuffix(rankIndex) {
+  return MAJOR_SUFFIX[CAREER_RANKS[clamp0(rankIndex)].major] || '';
+}
+
+/**
+ * 由职业根名与职业等级合成当前职业名(随职介晋升而改变)。
+ * 例:('魔法', 62) → '魔法教授'(62 级 → 高级教授 / 教授系)
+ * @param {string} root 职业根名(如 剑术 / 魔法)
+ * @param {number} level 职业等级 1~150
+ */
+export function careerTitleOf(root, level) {
+  return `${root || ''}${rankSuffix(rankIndexForLevel(level))}`;
+}

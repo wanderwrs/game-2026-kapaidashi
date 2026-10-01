@@ -17,6 +17,14 @@
  *           缺失时回落到 replies.local(因此 replies.local 要写得足够通用)。
  *   hint    可选。少数 NPC 会透露后段章节某宝箱的密码与位置:
  *           { chest: 宝箱 id(见 chests.js), text: 含密码与位置的一段话 }
+ *   event   可选。与部分 NPC 交谈时可能触发一次事件(见 core/game.js 的 _maybeNpcEvent):
+ *           { kind: 'gift' | 'battle' | 'clue',  赠物 / 翻脸开战 / 透露剧情线索
+ *             chance: 0.35,                       触发概率 0~1
+ *             topic: 'rumor',                     在哪个话题之后判定(默认 rumor)
+ *             once: true,                         整局只触发一次(默认 true)
+ *             item, qty,                           kind='gift' 时指定物品与数量(缺省随机补给)
+ *             text,                               事件台词 / 线索正文
+ *             flag }                               kind='clue' 时的线索唯一标记
  *   evolve  可选。剧情推进后改变「问法」与「回答」,为数组、按 from 依次累积:
  *           [{
  *             from: 6,                                   // 到达过第 6 章起生效
@@ -29,8 +37,9 @@
  * local 台词必须贴合「当前所处的场景类型」(村口 / 林间 / 山道 / 街巷 / 码头 /
  * 废墟 / 崖壁 / 营地 / 云上),不得点名具体地区名,以免出现在别处时答非所问。
  */
-import { NPCS_1 } from './npcs_1.js?v=20261001b';
-import { NPCS_2 } from './npcs_2.js?v=20261001b';
-import { NPCS_3 } from './npcs_3.js?v=20261001b';
+import { NPCS_1 } from './npcs_1.js?v=20261001d';
+import { NPCS_2 } from './npcs_2.js?v=20261001d';
+import { NPCS_3 } from './npcs_3.js?v=20261001d';
+import { NPCS_4 } from './npcs_4.js?v=20261001d';
 
-export const NPCS = [...NPCS_1, ...NPCS_2, ...NPCS_3];
+export const NPCS = [...NPCS_1, ...NPCS_2, ...NPCS_3, ...NPCS_4];

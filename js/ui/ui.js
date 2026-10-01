@@ -10,21 +10,21 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001b';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001b';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, socketsOf } from '../data/items.js?v=20261001b';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001b';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001b';
-import { cardMpCost } from '../data/data.js?v=20261001b';
-import { ENDINGS } from '../narrative/engine.js?v=20261001b';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001b';
-import { SceneView, paintCharacter } from './scene.js?v=20261001b';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001b';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001b';
-import { Minigame } from '../minigame/minigame.js?v=20261001b';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001b';
-import { TERRAIN_CN } from '../data/world.js?v=20261001b';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001b';
+import { GameState } from '../core/game.js?v=20261001d';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001d';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, socketsOf } from '../data/items.js?v=20261001d';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001d';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001d';
+import { cardMpCost } from '../data/data.js?v=20261001d';
+import { ENDINGS } from '../narrative/engine.js?v=20261001d';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001d';
+import { SceneView, paintCharacter } from './scene.js?v=20261001d';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001d';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001d';
+import { Minigame } from '../minigame/minigame.js?v=20261001d';
+import { MODE_LABELS } from '../data/jobs.js?v=20261001d';
+import { TERRAIN_CN } from '../data/world.js?v=20261001d';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001d';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -174,6 +174,7 @@ export class UI {
       btnMapBag: $('btn-map-bag'),
       btnMapWorld: $('btn-map-world'),
       mapNpcs: $('map-npcs'),
+      mapNpcsTitle: $('map-npcs-title'),
       mapCharCanvas: $('map-char-canvas'),
       mapCharName: $('map-char-name'),
       // 世界地图
@@ -1373,6 +1374,11 @@ export class UI {
     const box = this.el.mapNpcs;
     if (!box) return;
     const list = Array.isArray(npcs) ? npcs : [];
+    if (this.el.mapNpcsTitle) {
+      this.el.mapNpcsTitle.textContent = list.length
+        ? `本地人物 · ${list.length} 人(点击交谈)`
+        : '本地人物(点击交谈)';
+    }
     box.innerHTML = '';
     if (!list.length) {
       box.innerHTML = '<span class="npc-empty">此地没有可交谈的人。</span>';
@@ -1763,16 +1769,29 @@ export class UI {
 
   // ===== 情报(已知的宝箱密码与位置) =====
   /** list: [{ name, chapter, place, password, opened }], total: 全部宝箱数 */
-  showIntel(list, total = 0) {
+  showIntel(list, total = 0, clues = []) {
     const box = this.el.intel;
     if (!box) return;
     if (this.el.intelNote) {
-      this.el.intelNote.textContent = list.length
-        ? `已记下 ${list.length} / ${total} 条线索。凭密码可在对应地点开启宝箱。`
-        : '你还没有任何线索。遇见本地人时选「问问传闻」,或许有人知道些什么。';
+      this.el.intelNote.textContent = (list.length || clues.length)
+        ? `已记下宝箱情报 ${list.length} / ${total} 条、剧情线索 ${clues.length} 条。`
+        : '你还没有任何情报。遇见本地人时选「问问传闻」,或许有人知道些什么。';
     }
     if (this.el.intelList) {
       this.el.intelList.innerHTML = '';
+      clues.forEach((c) => {
+        const row = document.createElement('div');
+        row.className = 'intel-row is-clue';
+        row.innerHTML = `
+          <div class="intel-head">
+            <span class="intel-name">剧情线索</span>
+            <span class="intel-chapter">${this._escapeHtml(c.from || '')}</span>
+            <span class="intel-state">已记下</span>
+          </div>
+          <div class="intel-place">${this._escapeHtml(c.text || '')}</div>
+        `;
+        this.el.intelList.appendChild(row);
+      });
       list.forEach((it) => {
         const row = document.createElement('div');
         row.className = `intel-row${it.opened ? ' is-opened' : ''}`;
@@ -3026,7 +3045,7 @@ export class UI {
     ).join('');
     box.innerHTML = `
       <div class="cs-career-head">
-        <span class="cs-career-job">${this._escapeHtml(c.name)}</span>
+        <span class="cs-career-job">${this._escapeHtml(c.title || c.name)}</span>
         <span class="cs-career-lv">Lv.${c.level}<i>/${c.max}</i></span>
       </div>
       <div class="cs-career-rank">${this._escapeHtml(c.rankName)} · ${this._escapeHtml(c.major)}</div>

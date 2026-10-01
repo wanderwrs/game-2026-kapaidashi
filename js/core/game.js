@@ -11,41 +11,41 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261001b';
-import { EventBus } from './eventbus.js?v=20261001b';
-import { AudioEngine } from './audio.js?v=20261001b';
-import { Player } from '../combat/entity.js?v=20261001b';
-import { Deck } from '../card/deck.js?v=20261001b';
-import { Battle } from '../combat/battle.js?v=20261001b';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001b';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001b';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001b';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001b';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001b';
-import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001b';
-import { rankExpBonus, rankReward, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001b';
-import { majorSetIds } from '../data/extras.js?v=20261001b';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, armorId } from '../data/armor.js?v=20261001b';
-import { lookLabel } from '../data/looks.js?v=20261001b';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001b';
-import { TradeEngine } from './trade.js?v=20261001b';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001b';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001b';
-import { jobsFor } from '../data/jobs.js?v=20261001b';
+import { RNG, seedFromString } from './rng.js?v=20261001d';
+import { EventBus } from './eventbus.js?v=20261001d';
+import { AudioEngine } from './audio.js?v=20261001d';
+import { Player } from '../combat/entity.js?v=20261001d';
+import { Deck } from '../card/deck.js?v=20261001d';
+import { Battle } from '../combat/battle.js?v=20261001d';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001d';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001d';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001d';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001d';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001d';
+import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001d';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001d';
+import { majorSetIds } from '../data/extras.js?v=20261001d';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, armorId } from '../data/armor.js?v=20261001d';
+import { lookLabel } from '../data/looks.js?v=20261001d';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001d';
+import { TradeEngine } from './trade.js?v=20261001d';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001d';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001d';
+import { jobsFor } from '../data/jobs.js?v=20261001d';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261001b';
-import { NPCS } from '../data/npcs.js?v=20261001b';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001b';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001b';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001b';
-import { Economy } from './economy.js?v=20261001b';
-import { Travel } from './travel.js?v=20261001b';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001b';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001b';
-import { CAREERS } from '../narrative/careers.js?v=20261001b';
-import { UI } from '../ui/ui.js?v=20261001b';
+} from '../data/world.js?v=20261001d';
+import { NPCS } from '../data/npcs.js?v=20261001d';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001d';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001d';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001d';
+import { Economy } from './economy.js?v=20261001d';
+import { Travel } from './travel.js?v=20261001d';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001d';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001d';
+import { CAREERS } from '../narrative/careers.js?v=20261001d';
+import { UI } from '../ui/ui.js?v=20261001d';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -53,8 +53,10 @@ const MAIL_KEY = 'longji.mail.v1';
 /** 完整运行时存档:玩家数值 / 背包 / 剧情进度 / 地图状态 / RNG 种子 */
 const SAVE_KEY = 'longji.fullstate.v1';
 const SAVE_VERSION = 1;
-/** 途中遭遇可用的随机 NPC 上限(每次最多出现的候选数) */
-const MAX_STOP_NPCS = 3;
+/** 当地驻留的随机 NPC 数量区间 [最少, 最多]:普通地区 1~7 人 */
+const NPC_COUNT_RANGE = [1, 7];
+/** 主城人烟稠密:本地人物 12~19 人 */
+const NPC_COUNT_RANGE_CITY = [12, 19];
 /** 一次休息的真实耗时(秒);期间复用旅途界面,不可操作 */
 const REST_SECONDS = 300;
 /** 用了「醒神香」后休息耗时的倍率 */
@@ -182,6 +184,7 @@ export class Game {
     this._themeNpcCache = new Map(); // theme → 该主题的 NPC 池
     this._npcTalk = null;           // 当前交谈状态(话题 / 对话记录)
     this._intel = new Map();        // 已知宝箱情报 chestId → { chestId, text }
+    this._clues = new Map();        // 交谈中获得的剧情线索 flagId → { id, text, from }
     this._openedChests = new Set(); // 本局已开启的宝箱 id
     this._visited = new Set();      // 本局已到过的地区
     this._pois = [];                // 通关第一章后在世界地图随机出现的兴趣点
@@ -262,6 +265,7 @@ export class Game {
     this._themeNpcCache = new Map();
     this._npcTalk = null;
     this._intel = new Map();
+    this._clues = new Map();
     this._openedChests = new Set();
     this._visited = new Set([startChapter]);
     this._pois = [];
@@ -360,6 +364,7 @@ export class Game {
         openedChests: [...this._openedChests],
         visited: [...this._visited],
         intel: Object.fromEntries(this._intel),
+        clues: Object.fromEntries(this._clues),
       },
       run: {
         runStartChapter: this._runStartChapter,
@@ -426,6 +431,7 @@ export class Game {
       this._openedChests = new Set(data.map?.openedChests || []);
       this._visited = new Set(data.map?.visited || [this.regionId]);
       this._intel = new Map(Object.entries(data.map?.intel || {}));
+      this._clues = new Map(Object.entries(data.map?.clues || {}));
       this._runStartChapter = data.run?.runStartChapter ?? this.regionId;
       this._marketMode = data.run?.marketMode || 'market';
       this._venueCache = new Map();
@@ -997,17 +1003,20 @@ export class Game {
   }
 
   // ===== 随机 NPC(玩家可选话题的交谈) =====
-  /** 某地驻留的随机 NPC(每局固定,缓存) */
+  /** 某地驻留的随机 NPC(每局固定,缓存);主城人多,别处人少 */
   _npcsAt(regionId, stopIndex) {
     const key = `${regionId}:${stopIndex}`;
     if (this._npcCache.has(key)) return this._npcCache.get(key);
     const stop = REGIONS[regionId]?.stops?.[stopIndex];
     const theme = stop?.theme || REGIONS[regionId]?.theme || 'village';
-    const pool = this._npcsForTheme(theme);
+    // 主城最热闹:无论身处城中何种地界,都并入「城」里的人,才够 12~19 人
+    const pool = this._isCity(regionId) ? this._npcsForThemes(['city', theme]) : this._npcsForTheme(theme);
+    const [lo, hi] = this._isCity(regionId) ? NPC_COUNT_RANGE_CITY : NPC_COUNT_RANGE;
+    const want = Math.min(pool.length, lo + Math.floor(this.rng.next() * (hi - lo + 1)));
     const picked = [];
     const used = new Set();
     let guard = 0;
-    while (picked.length < MAX_STOP_NPCS && used.size < pool.length && guard++ < 200) {
+    while (picked.length < want && used.size < pool.length && guard++ < 600) {
       const n = pool[Math.floor(this.rng.next() * pool.length)];
       if (!n || used.has(n.id)) continue;
       used.add(n.id);
@@ -1023,6 +1032,20 @@ export class Game {
     const pool = NPCS.filter((n) => Array.isArray(n.where) && n.where.includes(theme));
     this._themeNpcCache.set(theme, pool);
     return pool;
+  }
+
+  /** 合并若干主题的 NPC 池(去重) */
+  _npcsForThemes(themes) {
+    const seen = new Set();
+    const out = [];
+    for (const t of new Set(themes)) {
+      for (const n of this._npcsForTheme(t)) {
+        if (seen.has(n.id)) continue;
+        seen.add(n.id);
+        out.push(n);
+      }
+    }
+    return out;
   }
 
   /**
@@ -1100,6 +1123,7 @@ export class Game {
       usedLines: new Set(),
       npcLineCount: 0,
       hintGiven: false, // 宝箱情报是否已透露(每段交谈一次)
+      eventDone: false, // 该 NPC 的交谈事件是否已触发(每次交谈重算)
     };
     this._renderNpcTalk();
   }
@@ -1141,7 +1165,69 @@ export class Game {
       st.npcLineCount++;
       this._learnIntel(st.npc.hint);
     }
+
+    // 交谈事件:部分 NPC 在特定话题后可能赠物 / 翻脸开战 / 透露线索
+    if (this._maybeNpcEvent(st, topicId)) return; // 已转入战斗,不再渲染对话框
     this._renderNpcTalk();
+  }
+
+  // ===== 交谈事件(物资赠予 / 冲突开战 / 剧情线索)=====
+  /** 当前地区的遭遇等级(NPC 翻脸时按此缩放敌人强度) */
+  _regionLevel() {
+    return WORLD[this.regionId]?.level ?? this._chapterNum();
+  }
+
+  /**
+   * 与 NPC 交谈时可能触发的一次事件(由 NPC 定义的 event 字段决定)。
+   * @returns {boolean} true 表示已转入战斗,调用方须立即返回
+   */
+  _maybeNpcEvent(st, topicId) {
+    const ev = st?.npc?.event;
+    if (!ev || st.eventDone) return false;
+    if ((ev.topic || 'rumor') !== topicId) return false;
+    if (this.rng.next() >= (ev.chance ?? 0.35)) return false;
+    if (ev.once !== false) st.eventDone = true;
+
+    if (ev.kind === 'battle') {
+      // 翻脸:先收起对话,再直接进入一场遭遇战
+      this._npcTalk = null;
+      this.ui.closeNpcDialog();
+      this.ui.showToast(ev.text ? `${st.npc.name}:${ev.text}` : `${st.npc.name}翻了脸,拦住你的去路`);
+      this._startWildBattle(this._regionLevel());
+      return true;
+    }
+
+    if (ev.kind === 'gift') {
+      const id = ev.item && ITEMS[ev.item] ? ev.item : LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
+      const qty = Math.max(1, Math.round(ev.qty || 1));
+      this.economy.addItem(id, qty);
+      const name = ITEMS[id]?.name || id;
+      st.transcript.push({ who: 'npc', text: ev.text || `这些你拿着 —— ${name}×${qty},路上用得上。` });
+      st.npcLineCount++;
+      this.ui.showToast(`获赠 ${name}×${qty}`);
+      this._bagRefresh();
+      this._syncUi();
+      this._autosave();
+      return false;
+    }
+
+    if (ev.kind === 'clue') {
+      this._learnClue({ id: ev.flag || `${st.npc.id}_clue`, text: ev.text, from: st.npc.name });
+      st.transcript.push({ who: 'npc', text: ev.text });
+      st.npcLineCount++;
+      return false;
+    }
+    return false;
+  }
+
+  /** 记下一条剧情线索(可在「情报」面板的线索栏查看) */
+  _learnClue({ id, text, from }) {
+    if (!id || !text) return;
+    const isNew = !this._clues.has(id);
+    this._clues.set(id, { id, text, from: from || '' });
+    this._syncUi();
+    this._autosave();
+    this.ui.showToast(isNew ? '记下一条剧情线索(可在「情报」查看)' : '这条线索你先前已听过了');
   }
 
   /** 记下一条宝箱情报(密码 / 位置);重复获得只提示一次 */
@@ -1212,7 +1298,7 @@ export class Game {
     this._autosave();
   }
 
-  /** 打开情报面板:列出已知的宝箱密码与位置 */
+  /** 打开情报面板:列出已知的宝箱密码与位置,以及交谈得来的剧情线索 */
   _openIntel() {
     const list = CHESTS
       .filter((c) => this._intel.has(c.id) || this._openedChests.has(c.id))
@@ -1223,7 +1309,7 @@ export class Game {
         password: c.password,
         opened: this._openedChests.has(c.id),
       }));
-    this.ui.showIntel(list, CHESTS.length);
+    this.ui.showIntel(list, CHESTS.length, [...this._clues.values()]);
   }
 
   _closeIntel() {
@@ -1960,6 +2046,8 @@ export class Game {
       career: {
         id: career?.id || null,
         name: career?.name || '无名少年',
+        // 随职介晋升合成的当前职业名(如 魔法学徒 → 魔法教授)
+        title: career?.root ? careerTitleOf(career.root, eco.careerLevel) : (career?.name || '无名少年'),
         level: eco.careerLevel,
         max: CAREER_MAX_LEVEL,
         freeMax: CAREER_FREE_MAX,

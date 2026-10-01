@@ -1196,10 +1196,15 @@ body {
 .map-services { display: flex; gap: var(--sp-12); justify-content: center; flex-wrap: wrap; }
 .panel-actions { display: flex; gap: var(--sp-12); justify-content: center; flex-wrap: wrap; margin-top: var(--sp-4); }
 
-/* 本地随机 NPC */
-.map-npcs-wrap { display: flex; flex-direction: column; gap: 6px; }
+/* 本地随机 NPC(主城人多,超出高度时本行内滚动) */
+.map-npcs-wrap { display: flex; flex-direction: column; gap: 6px; margin-top: var(--sp-12); }
 .map-npcs-title { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
-.map-npcs { display: flex; gap: var(--sp-8); flex-wrap: wrap; }
+.map-npcs {
+  display: flex; gap: var(--sp-8); flex-wrap: wrap;
+  max-height: 172px; overflow-y: auto;
+  align-content: flex-start;
+  scrollbar-width: thin;
+}
 .npc-chip {
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
   font: inherit; color: var(--text); background: var(--surface);
@@ -1526,6 +1531,10 @@ body {
   background: var(--surface-muted); padding: var(--sp-8) var(--sp-12);
 }
 .intel-row.is-opened { opacity: 0.6; }
+/* 交谈得来的剧情线索 */
+.intel-row.is-clue { border-color: var(--gold-line); background: rgba(201, 162, 39, 0.07); }
+.intel-row.is-clue .intel-name { color: var(--gold-bright); }
+.intel-row.is-clue .intel-place { line-height: 1.8; }
 .intel-head { display: flex; align-items: baseline; gap: var(--sp-8); }
 .intel-name { font-family: var(--font-display); font-size: 14px; letter-spacing: 1px; color: var(--text); }
 .intel-chapter { font-size: 11px; color: var(--text-muted); }

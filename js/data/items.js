@@ -25,10 +25,10 @@
  * sell 未填时按 price 的 50% 计算。
  */
 
-import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261001b';
-import { GEM_ITEMS } from './gems.js?v=20261001b';
-import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261001b';
-import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261001b';
+import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261001d';
+import { GEM_ITEMS } from './gems.js?v=20261001d';
+import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261001d';
+import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261001d';
 
 export const ITEM_CATEGORY_CN = {
   potion: '药品',
