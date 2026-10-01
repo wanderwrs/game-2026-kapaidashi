@@ -11,41 +11,41 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261001d';
-import { EventBus } from './eventbus.js?v=20261001d';
-import { AudioEngine } from './audio.js?v=20261001d';
-import { Player } from '../combat/entity.js?v=20261001d';
-import { Deck } from '../card/deck.js?v=20261001d';
-import { Battle } from '../combat/battle.js?v=20261001d';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001d';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001d';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001d';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001d';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001d';
-import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001d';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001d';
-import { majorSetIds } from '../data/extras.js?v=20261001d';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, armorId } from '../data/armor.js?v=20261001d';
-import { lookLabel } from '../data/looks.js?v=20261001d';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001d';
-import { TradeEngine } from './trade.js?v=20261001d';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001d';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001d';
-import { jobsFor } from '../data/jobs.js?v=20261001d';
+import { RNG, seedFromString } from './rng.js?v=20261001e';
+import { EventBus } from './eventbus.js?v=20261001e';
+import { AudioEngine } from './audio.js?v=20261001e';
+import { Player } from '../combat/entity.js?v=20261001e';
+import { Deck } from '../card/deck.js?v=20261001e';
+import { Battle } from '../combat/battle.js?v=20261001e';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001e';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001e';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001e';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001e';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001e';
+import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001e';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001e';
+import { majorSetIds } from '../data/extras.js?v=20261001e';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, armorId } from '../data/armor.js?v=20261001e';
+import { lookLabel } from '../data/looks.js?v=20261001e';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001e';
+import { TradeEngine } from './trade.js?v=20261001e';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001e';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001e';
+import { jobsFor } from '../data/jobs.js?v=20261001e';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261001d';
-import { NPCS } from '../data/npcs.js?v=20261001d';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001d';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001d';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001d';
-import { Economy } from './economy.js?v=20261001d';
-import { Travel } from './travel.js?v=20261001d';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001d';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001d';
-import { CAREERS } from '../narrative/careers.js?v=20261001d';
-import { UI } from '../ui/ui.js?v=20261001d';
+} from '../data/world.js?v=20261001e';
+import { NPCS } from '../data/npcs.js?v=20261001e';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001e';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001e';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001e';
+import { Economy } from './economy.js?v=20261001e';
+import { Travel } from './travel.js?v=20261001e';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001e';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001e';
+import { CAREERS } from '../narrative/careers.js?v=20261001e';
+import { UI } from '../ui/ui.js?v=20261001e';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -417,6 +417,8 @@ export class Game {
       this.engine.restore(data.engine);
       this.ui.bindEngine(this.engine);
       this.career = this.engine.career;
+      // 职业等级各记各的:告知存档当前是哪个职业(旧存档会在此归入该职业)
+      this.economy.setCareer(this.career?.id);
 
       // 牌组:按存档的卡牌 id 重建
       const cardIds = Array.isArray(data.deck) ? data.deck : [];
@@ -2031,8 +2033,10 @@ export class Game {
       outfitOptions[slot] = this._bagOf((id) => ITEMS[id]?.equipment?.slot === slot);
     }
     const unlocked = this.engine?.unlockedCareers || new Set();
+    // 各职业的等级互不相通,列表里一并标出各自的等级
     const careers = CAREERS.map((c) => ({
       id: c.id, name: c.name,
+      level: eco.careerLevelOf(c.id),
       unlocked: unlocked.has(c.id) || (career && career.id === c.id),
       active: career && career.id === c.id,
     }));
@@ -3087,6 +3091,7 @@ export class Game {
       const c = this.engine?.career;
       if (!c) return;
       this.career = c;
+      this.economy?.setCareer(c.id); // 职业等级互不相通:换职业即换档
       this.deck = new Deck(c.starterDeck.map((id) => CARDS[id]).filter(Boolean), this.rng);
       this._syncPlayerStats();
       this.player.hp = this.player.maxHp;

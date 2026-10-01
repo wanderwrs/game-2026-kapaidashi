@@ -2431,6 +2431,9 @@ body.is-gated #dock { pointer-events: none; }
 .cs-progress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--ember), var(--gold-bright)); }
 .cs-career-exp { font-size: 11px; color: var(--text-muted); }
 .cs-career-switch { display: flex; flex-wrap: wrap; gap: 6px; }
+/* 各职业等级互不相通,按钮内标出各自的等级 */
+.cs-career-btn i { font-style: normal; font-size: 10px; color: var(--text-faint); margin-left: 5px; }
+.cs-career-btn.is-active i { color: var(--gold); }
 .cs-career-btn {
   padding: 4px 12px; font-size: 12px; cursor: pointer;
   color: var(--text-muted); background: transparent;

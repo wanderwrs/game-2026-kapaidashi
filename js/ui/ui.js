@@ -10,21 +10,21 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001d';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001d';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, socketsOf } from '../data/items.js?v=20261001d';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001d';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001d';
-import { cardMpCost } from '../data/data.js?v=20261001d';
-import { ENDINGS } from '../narrative/engine.js?v=20261001d';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001d';
-import { SceneView, paintCharacter } from './scene.js?v=20261001d';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001d';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001d';
-import { Minigame } from '../minigame/minigame.js?v=20261001d';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001d';
-import { TERRAIN_CN } from '../data/world.js?v=20261001d';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001d';
+import { GameState } from '../core/game.js?v=20261001e';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001e';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, socketsOf } from '../data/items.js?v=20261001e';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001e';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001e';
+import { cardMpCost } from '../data/data.js?v=20261001e';
+import { ENDINGS } from '../narrative/engine.js?v=20261001e';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001e';
+import { SceneView, paintCharacter } from './scene.js?v=20261001e';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001e';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001e';
+import { Minigame } from '../minigame/minigame.js?v=20261001e';
+import { MODE_LABELS } from '../data/jobs.js?v=20261001e';
+import { TERRAIN_CN } from '../data/world.js?v=20261001e';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001e';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -3041,7 +3041,7 @@ export class UI {
     const pct = c.expMax > 0 ? Math.min(100, Math.round((c.exp / c.expMax) * 100)) : 100;
     const note = c.level >= c.max ? '已臻化境' : (c.level >= c.freeMax ? '逾百级需「星辉秘典」' : '');
     const switches = (d.careers || []).filter((x) => x.unlocked).map((x) =>
-      `<button class="cs-career-btn${x.active ? ' is-active' : ''}" type="button" data-career="${x.id}" ${x.active ? 'disabled' : ''}>${this._escapeHtml(x.name)}</button>`
+      `<button class="cs-career-btn${x.active ? ' is-active' : ''}" type="button" data-career="${x.id}" ${x.active ? 'disabled' : ''}>${this._escapeHtml(x.name)}<i>Lv.${x.level}</i></button>`
     ).join('');
     box.innerHTML = `
       <div class="cs-career-head">

@@ -11,13 +11,13 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261001d';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261001d';
-import { GEM_EFFECT } from '../data/gems.js?v=20261001d';
-import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261001d';
-import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, makeArmor } from '../data/armor.js?v=20261001d';
-import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261001d';
-import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261001d';
+import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261001e';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261001e';
+import { GEM_EFFECT } from '../data/gems.js?v=20261001e';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261001e';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, makeArmor } from '../data/armor.js?v=20261001e';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261001e';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261001e';
 
 /** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
 const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
@@ -64,9 +64,10 @@ export class Economy {
     this.skin = DEFAULT_SKIN;        // 5 种肤色
     this.lookChosen = false;         // 新玩家开局仅可免费定形一次
     this.nameChosen = false;         // 新玩家开局仅可免费改名一次
-    // ===== 职业等级(1~150,13 个职介)=====
-    this.careerLevel = 1;
-    this.careerExp = 0;
+    // ===== 职业等级(1~150,13 个职介);各职业独立记档,互不相通 =====
+    this.careerId = null;      // 当前职业 id(由 Game 随职业变动同步)
+    this.careerLevels = {};    // careerId → 等级
+    this.careerExps = {};      // careerId → 当前等级内的经验
     // ===== 宠物 =====
     this.pets = new Map();           // petId -> 拥有数量
     this.petActive = null;           // 出战宠物 id
@@ -87,51 +88,88 @@ export class Economy {
     return true;
   }
 
-  // ===== 职业等级 =====
-  careerRankIndex() { return rankIndexForLevel(this.careerLevel); }
-  careerRank() { return CAREER_RANKS[this.careerRankIndex()]; }
-  careerExpToNext() { return expToNext(this.careerLevel); }
+  // ===== 职业等级(各职业各记各的,互不相通)=====
+  /** 设定当前职业(职业分配 / 切换 / 读档时由 Game 调用) */
+  setCareer(careerId) {
+    if (!careerId) return;
+    // 旧存档迁移:此前职业等级是全局唯一的,直接归入当时的职业
+    if (this._legacyLevel != null && this.careerLevels[careerId] == null) {
+      this.careerLevels[careerId] = Math.max(1, Math.min(CAREER_MAX_LEVEL, this._legacyLevel));
+      this.careerExps[careerId] = Math.max(0, this._legacyExp || 0);
+    }
+    this._legacyLevel = null;
+    this._legacyExp = null;
+    this.careerId = careerId;
+  }
+
+  /** 计入档位的键(缺省取当前职业) */
+  _careerKey(careerId) { return careerId || this.careerId || ''; }
+
+  /** 某职业的等级(缺省当前职业) */
+  careerLevelOf(careerId) { return Math.max(1, this.careerLevels[this._careerKey(careerId)] || 1); }
+  /** 某职业当前等级内的经验(缺省当前职业) */
+  careerExpOf(careerId) { return Math.max(0, this.careerExps[this._careerKey(careerId)] || 0); }
+  /** 当前职业等级(只读) */
+  get careerLevel() { return this.careerLevelOf(this.careerId); }
+  /** 当前职业经验(只读) */
+  get careerExp() { return this.careerExpOf(this.careerId); }
+
+  careerRankIndex(careerId) { return rankIndexForLevel(this.careerLevelOf(careerId)); }
+  careerRank(careerId) { return CAREER_RANKS[this.careerRankIndex(careerId)]; }
+  careerExpToNext(careerId) { return expToNext(this.careerLevelOf(careerId)); }
+
+  /** 把某职业的等级 / 经验写回档位 */
+  _saveCareer(key, level, exp) {
+    this.careerLevels[key] = Math.max(1, Math.min(CAREER_MAX_LEVEL, level));
+    this.careerExps[key] = Math.max(0, exp);
+  }
 
   /**
-   * 增加职业经验,返回晋升信息 { level, ranks:[{index, major, newMajor}] }
+   * 增加当前职业的经验,返回晋升信息 { level, promotions }
    * @param {number} amount
    * @param {number} [bonus=1] 经验倍率(职介越高越多)
    */
   gainCareerExp(amount, bonus = 1) {
+    const key = this._careerKey();
     const gain = Math.max(0, Math.round(amount * bonus));
-    this.careerExp += gain;
+    let level = this.careerLevelOf(key);
+    let exp = this.careerExpOf(key) + gain;
     const promotions = [];
-    while (this.careerLevel < CAREER_MAX_LEVEL && this.careerExp >= expToNext(this.careerLevel)) {
-      this.careerExp -= expToNext(this.careerLevel);
-      this.careerLevel += 1;
-      const idx = rankIndexForLevel(this.careerLevel);
-      if (idx !== rankIndexForLevel(this.careerLevel - 1)) {
+    while (level < CAREER_MAX_LEVEL && exp >= expToNext(level)) {
+      exp -= expToNext(level);
+      level += 1;
+      const idx = rankIndexForLevel(level);
+      if (idx !== rankIndexForLevel(level - 1)) {
         promotions.push({ index: idx, rank: CAREER_RANKS[idx], newMajor: startsNewMajor(idx) });
       }
     }
-    if (this.careerLevel >= CAREER_MAX_LEVEL) this.careerExp = 0;
-    return { level: this.careerLevel, promotions };
+    if (level >= CAREER_MAX_LEVEL) exp = 0;
+    this._saveCareer(key, level, exp);
+    return { level, promotions };
   }
 
   /**
-   * 直接提升职业等级(职业药水 / 星辉秘典),不经过经验条。
+   * 直接提升当前职业的等级(职业药水 / 星辉秘典),不经过经验条。
    * @param {number} [n=1] 提升级数
    * @param {boolean} [byCodex=false] 是否由「星辉秘典」驱动(唯一能突破 100 级的手段)
    * @returns {{ level:number, promotions:Array, blocked:boolean }}
    */
   gainCareerLevels(n = 1, byCodex = false) {
+    const key = this._careerKey();
+    let level = this.careerLevelOf(key);
     const promotions = [];
     let blocked = false;
-    for (let k = 0; k < n && this.careerLevel < CAREER_MAX_LEVEL; k++) {
-      if (this.careerLevel >= CAREER_FREE_MAX && !byCodex) { blocked = true; break; }
-      const from = this.careerLevel;
-      this.careerLevel += 1;
-      const idx = rankIndexForLevel(this.careerLevel);
+    for (let k = 0; k < n && level < CAREER_MAX_LEVEL; k++) {
+      if (level >= CAREER_FREE_MAX && !byCodex) { blocked = true; break; }
+      const from = level;
+      level += 1;
+      const idx = rankIndexForLevel(level);
       if (idx !== rankIndexForLevel(from)) {
         promotions.push({ index: idx, rank: CAREER_RANKS[idx], newMajor: startsNewMajor(idx) });
       }
     }
-    return { level: this.careerLevel, promotions, blocked };
+    this._saveCareer(key, level, this.careerExpOf(key));
+    return { level, promotions, blocked };
   }
 
   // ===== 宠物 =====
@@ -783,8 +821,9 @@ export class Economy {
       skin: this.skin,
       lookChosen: this.lookChosen,
       nameChosen: this.nameChosen,
-      careerLevel: this.careerLevel,
-      careerExp: this.careerExp,
+      careerId: this.careerId,
+      careerLevels: { ...this.careerLevels },
+      careerExps: { ...this.careerExps },
       pets: Object.fromEntries(this.pets),
       petActive: this.petActive,
     };
@@ -840,8 +879,24 @@ export class Economy {
     eco.skin = data.skin || eco.skin;
     eco.lookChosen = !!data.lookChosen;
     eco.nameChosen = !!data.nameChosen;
-    eco.careerLevel = Math.max(1, Math.min(CAREER_MAX_LEVEL, Number(data.careerLevel ?? 1)));
-    eco.careerExp = Math.max(0, Number(data.careerExp ?? 0));
+    eco.careerId = data.careerId || null;
+    eco.careerLevels = {};
+    eco.careerExps = {};
+    if (data.careerLevels && typeof data.careerLevels === 'object') {
+      for (const [cid, lv] of Object.entries(data.careerLevels)) {
+        eco.careerLevels[cid] = Math.max(1, Math.min(CAREER_MAX_LEVEL, Number(lv) || 1));
+      }
+    }
+    if (data.careerExps && typeof data.careerExps === 'object') {
+      for (const [cid, ex] of Object.entries(data.careerExps)) {
+        eco.careerExps[cid] = Math.max(0, Number(ex) || 0);
+      }
+    }
+    // 旧存档:职业等级是全局唯一的,等 Game 告知当前职业后再归入该职业(setCareer)
+    if (data.careerLevel != null) {
+      eco._legacyLevel = Math.max(1, Math.min(CAREER_MAX_LEVEL, Number(data.careerLevel) || 1));
+      eco._legacyExp = Math.max(0, Number(data.careerExp) || 0);
+    }
     eco.pets = new Map();
     if (data.pets && typeof data.pets === 'object') {
       for (const [id, qty] of Object.entries(data.pets)) {
