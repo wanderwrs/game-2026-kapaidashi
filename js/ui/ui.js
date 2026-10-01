@@ -10,22 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001g';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001g';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001g';
-import { gradeOf } from '../data/grade.js?v=20261001g';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001g';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001g';
-import { cardMpCost } from '../data/data.js?v=20261001g';
-import { ENDINGS } from '../narrative/engine.js?v=20261001g';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001g';
-import { SceneView, paintCharacter } from './scene.js?v=20261001g';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001g';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001g';
-import { Minigame } from '../minigame/minigame.js?v=20261001g';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001g';
-import { TERRAIN_CN } from '../data/world.js?v=20261001g';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001g';
+import { GameState } from '../core/game.js?v=20261001h';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001h';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001h';
+import { gradeOf } from '../data/grade.js?v=20261001h';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261001h';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001h';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001h';
+import { cardMpCost } from '../data/data.js?v=20261001h';
+import { ENDINGS } from '../narrative/engine.js?v=20261001h';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001h';
+import { SceneView, paintCharacter } from './scene.js?v=20261001h';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001h';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001h';
+import { Minigame } from '../minigame/minigame.js?v=20261001h';
+import { MODE_LABELS } from '../data/jobs.js?v=20261001h';
+import { TERRAIN_CN } from '../data/world.js?v=20261001h';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001h';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -980,8 +981,9 @@ export class UI {
       .filter(([, v]) => v !== 0)
       .map(([k, v]) => `<span class="stat-chip">${STAT_LABELS[k] || k} ${v > 0 ? '+' : ''}${v}</span>`)
       .join('');
-    const careerChip = snap.career
-      ? `<span class="stat-chip is-career" style="background:${snap.career.color};color:#fff">${snap.career.icon} ${snap.career.name}</span>`
+    const cv = this._careerView(snap.career);
+    const careerChip = cv
+      ? `<span class="stat-chip is-career" style="background:${cv.color};color:#fff">${cv.icon} ${cv.title}</span>`
       : '';
     this.el.narrativeStats.innerHTML = careerChip + stats;
 
@@ -1018,7 +1020,7 @@ export class UI {
     this.scene.render({
       chapterId: snap.chapter,
       nodeId: node.id,
-      career: snap.career,
+      career: this._careerView(snap.career),
       player: this.engine?.player,
       flags: snap.flags,
       appearance: this.economy ? this.economy.appearance() : null,
@@ -1388,7 +1390,7 @@ export class UI {
     if (!this.scene) return;
     const snap = this.engine?.snapshot?.() || {};
     this.scene.renderMapPortrait({
-      career: this.engine?.career || snap.career,
+      career: this._careerView(this.engine?.career || snap.career),
       player: this.engine?.player,
       flags: snap.flags,
       appearance: this.economy ? this.economy.appearance() : null,
@@ -2889,8 +2891,20 @@ export class UI {
     });
   }
 
+  /**
+   * 职业的展示信息:title 为随职介晋升合成的职业名
+   * (魔法学徒 → 魔法学士 → 魔法执事 → 魔法教授 → 魔法祭司 → 魔法和诗)。
+   * @param {object} [career] 缺省取当前职业
+   */
+  _careerView(career = this.engine?.career) {
+    if (!career) return null;
+    const lv = this.economy ? this.economy.careerLevelOf(career.id) : 1;
+    return { ...career, level: lv, title: career.root ? careerTitleOf(career.root, lv) : career.name };
+  }
+
   _playerName() {
-    return this.engine?.career ? `${this.engine.career.name}` : '玩家';
+    const cv = this._careerView();
+    return cv ? cv.title : '玩家';
   }
 
   _handCardEl(card, snap) {

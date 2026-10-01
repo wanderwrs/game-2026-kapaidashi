@@ -890,7 +890,8 @@ export class SceneView {
     this._mapAnimParams = { career, hpRatio, flagSet, appearance };
     // 地图画布 96x128,逻辑 48x64,缩放 = 2
     drawCharacter(this._mapCtx, 2, career && career.id, hpRatio, flagSet, appearance, performance.now());
-    if (this.els.mapCharName) this.els.mapCharName.textContent = career ? career.name : '无名少年';
+    // 职业名随职介晋升变化(合成名由 ui.js 的 _careerView 给出)
+    if (this.els.mapCharName) this.els.mapCharName.textContent = career ? (career.title || career.name) : '无名少年';
     this._startAnim();
   }
 
@@ -904,7 +905,7 @@ export class SceneView {
     // 主画布 144x192,逻辑 48x64,缩放 = 3
     drawCharacter(this._charCtx, 3, career && career.id, hpRatio, flagSet, appearance, performance.now());
     const o = OUTFITS[career && career.id] || OUTFIT_DEFAULT;
-    if (this.els.charName) this.els.charName.textContent = career ? career.name : '无名少年';
+    if (this.els.charName) this.els.charName.textContent = career ? (career.title || career.name) : '无名少年';
     if (this.els.charOutfit) this.els.charOutfit.textContent = (appearance && appearance.label) || o.outfit;
 
     if (this.els.charStatus) {
