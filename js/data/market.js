@@ -9,7 +9,7 @@
  *   单次获得数量的平均值 = 平均货物售出价格的七分之一(TOKEN_AVG_YIELD)。
  */
 
-import { ITEMS, sellPrice, TOKEN_PER_GOLD } from './items.js?v=20261001k';
+import { ITEMS, sellPrice, TOKEN_PER_GOLD } from './items.js?v=20261001n';
 
 /** 市场每笔交易的额外管理费比例 */
 export const MARKET_FEE = 0.1;
@@ -31,6 +31,7 @@ export const MARKET_SELLERS = [
   { id: 'tailor',    name: '「细针」', title: '裁缝',     icon: '🧵', categories: ['outfit'] },
   { id: 'caravan',   name: '「远辙」', title: '车马行东家', icon: '🐎', categories: ['vehicle'] },
   { id: 'junker',    name: '「零碎」', title: '杂货摊主', icon: '🪙', categories: ['misc'] },
+  { id: 'bookseller',name: '「墨痕」', title: '书商',     icon: '📚', categories: ['relic'] },
 ];
 
 /** 市场全部摊位(每摊给出其货物 id 列表;不含交易币与绝世稀有) */

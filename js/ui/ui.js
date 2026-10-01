@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001k';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001k';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001k';
-import { gradeOf } from '../data/grade.js?v=20261001k';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261001k';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001k';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001k';
-import { cardMpCost } from '../data/data.js?v=20261001k';
-import { ENDINGS } from '../narrative/engine.js?v=20261001k';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261001k';
-import { SceneView, paintCharacter } from './scene.js?v=20261001k';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001k';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001k';
-import { Minigame } from '../minigame/minigame.js?v=20261001k';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001k';
-import { TERRAIN_CN } from '../data/world.js?v=20261001k';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001k';
+import { GameState } from '../core/game.js?v=20261001n';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001n';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001n';
+import { gradeOf } from '../data/grade.js?v=20261001n';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261001n';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001n';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001n';
+import { cardMpCost } from '../data/data.js?v=20261001n';
+import { ENDINGS } from '../narrative/engine.js?v=20261001n';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261001n';
+import { SceneView, paintCharacter } from './scene.js?v=20261001n';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001n';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001n';
+import { Minigame } from '../minigame/minigame.js?v=20261001n';
+import { MODE_LABELS } from '../data/jobs.js?v=20261001n';
+import { TERRAIN_CN } from '../data/world.js?v=20261001n';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001n';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -59,7 +59,7 @@ const BAG_TABS = [
   { key: 'vehicle',  label: '载具', match: (it) => it.category === 'vehicle' },
   { key: 'potion',   label: '药品', match: (it) => it.category === 'potion' || it.category === 'food' },
   { key: 'material', label: '材料', match: (it) => it.category === 'material' || it.category === 'gem' || it.category === 'blueprint' },
-  { key: 'misc',     label: '杂物', match: (it) => it.category === 'misc' || it.category === 'token' },
+  { key: 'misc',     label: '杂物', match: (it) => it.category === 'misc' || it.category === 'token' || it.category === 'relic' },
 ];
 /** 7 种形象的表情符号(仅用于选择面板) */
 const BODY_EMOJI = { cute: '🧒', dopey: '😴', genki: '😆', quiet: '😌', roguish: '😜', brave: '😤', gentle: '🥰' };
@@ -227,6 +227,11 @@ export class UI {
       chestHint: $('chest-hint'),
       chestInput: $('chest-input'),
       btnChestOpen: $('btn-chest-open'),
+      storySummary: $('story-summary'),
+      summaryChapter: $('summary-chapter'),
+      summaryText: $('summary-text'),
+      summaryRewards: $('summary-rewards'),
+      btnSummaryConfirm: $('btn-summary-confirm'),
       intel: $('intel'),
       intelList: $('intel-list'),
       intelNote: $('intel-note'),
@@ -421,6 +426,11 @@ export class UI {
       });
     }
     if (this.el.btnChestOpen) this.el.btnChestOpen.addEventListener('click', () => this._submitChest());
+    // 记忆之书 · 剧情简介弹窗
+    document.querySelectorAll('[data-summary-close]').forEach((b) => {
+      b.addEventListener('click', () => this._closeStorySummary());
+    });
+    if (this.el.btnSummaryConfirm) this.el.btnSummaryConfirm.addEventListener('click', () => this._confirmStorySummary());
     if (this.el.chestInput) {
       this.el.chestInput.addEventListener('input', () => {
         this.el.chestInput.value = this.el.chestInput.value.replace(/\D/g, '').slice(0, 3);
@@ -1365,10 +1375,10 @@ export class UI {
     if (this.el.btnMapStory) {
       const can = objectiveIndex >= 0 && currentIndex === objectiveIndex;
       if (!isStoryRegion) {
-        // 不在剧情地区:按钮改为「去世界地图」并保持可点(由 Game 引导启程)
-        this.el.btnMapStory.disabled = false;
-        this.el.btnMapStory.textContent = '去 世 界 地 图';
+        // 不在剧情地区:隐藏主按钮,避免与旁边的「世界地图」按钮重复
+        this.el.btnMapStory.hidden = true;
       } else {
+        this.el.btnMapStory.hidden = false;
         this.el.btnMapStory.disabled = !can;
         this.el.btnMapStory.textContent = can ? '开 始 剧 情' : (obj ? `前往「${obj.name}」` : '暂无剧情');
       }
@@ -1856,6 +1866,46 @@ export class UI {
   _submitChest() {
     const code = this.el.chestInput ? this.el.chestInput.value : '';
     this.bus.emit('ui:chest-submit', { id: this._chestId, code });
+  }
+
+  // ===== 记忆之书 · 剧情简介弹窗 =====
+  /**
+   * 展示跳过某大章后的剧情简介与所得奖励。
+   * @param {{chapter:number,title:string,summary:string,rewards:object,onConfirm:function}} info
+   */
+  showStorySummary(info) {
+    const box = this.el.storySummary;
+    if (!box) { if (info.onConfirm) info.onConfirm(); return; }
+    this._summaryOnConfirm = info.onConfirm || null;
+    if (this.el.summaryChapter) this.el.summaryChapter.textContent = `第 ${info.chapter} 章 · ${info.title || ''}`;
+    if (this.el.summaryText) this.el.summaryText.textContent = info.summary || '';
+    if (this.el.summaryRewards && info.rewards) {
+      const labels = { courage: '勇气', reason: '理性', mercy: '悲悯', wild: '野性' };
+      const parts = Object.entries(info.rewards)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${labels[k] || k} +${v}`);
+      this.el.summaryRewards.innerHTML = parts.length
+        ? `<span class="summary-rewards-label">本章奖励:</span> ${parts.join('　')}`
+        : '';
+    }
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._summaryOpen = true;
+  }
+
+  _closeStorySummary() {
+    const box = this.el.storySummary;
+    this._summaryOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._summaryOpen) box.hidden = true; }, 200);
+  }
+
+  _confirmStorySummary() {
+    const cb = this._summaryOnConfirm;
+    this._summaryOnConfirm = null;
+    this._closeStorySummary();
+    if (cb) cb();
   }
 
   // ===== 情报(已知的宝箱密码与位置) =====

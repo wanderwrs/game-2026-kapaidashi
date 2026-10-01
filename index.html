@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261001k" />
+  <link rel="stylesheet" href="css/style.css?v=20261001n" />
 </head>
 <body>
   <!-- 游戏前 · 年龄限制与内容警告门(每次打开页面都需通过;需真人验证) -->
@@ -505,6 +505,25 @@
     </section>
   </div>
 
+  <!-- 记忆之书 · 剧情简介(跳过章节后展示该章故事与奖励) -->
+  <div id="story-summary" class="modal" hidden>
+    <div class="modal-backdrop" data-summary-close></div>
+    <section class="modal-panel summary-panel" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+      <header class="modal-head">
+        <h2 id="summary-title" class="modal-title">剧 情 简 介</h2>
+        <button class="modal-close" type="button" data-summary-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <p id="summary-chapter" class="summary-chapter">—</p>
+        <p id="summary-text" class="summary-text">—</p>
+        <div id="summary-rewards" class="summary-rewards"></div>
+        <div class="panel-actions">
+          <button id="btn-summary-confirm" class="btn btn-primary" type="button">继 续 旅 程</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
   <!-- 情报:已知的宝箱密码与位置 -->
   <div id="intel" class="modal" hidden>
     <div class="modal-backdrop" data-intel-close></div>
@@ -923,6 +942,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20261001k"></script>
+  <script type="module" src="js/main.js?v=20261001n"></script>
 </body>
 </html>
