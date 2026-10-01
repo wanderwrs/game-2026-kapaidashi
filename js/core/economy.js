@@ -15,8 +15,12 @@ import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=2026
 import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261001a';
 import { GEM_EFFECT } from '../data/gems.js?v=20261001a';
 import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261001a';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, makeArmor } from '../data/armor.js?v=20261001a';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261001a';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261001a';
 
-const SLOTS = ['weapon', 'armor', 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
+/** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
+const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
 const OUTFIT_SLOTS = ['hat', 'top', 'bottom', 'shoes'];
 
 /** 背包初始格数 / 每次扩展格数 / 扩展基准价(每 70 格 ×1.25) */
@@ -39,7 +43,8 @@ export class Economy {
     this.apMax = apMax;
     this.ap = apMax;
     this.bag = new Map();            // itemId -> qty
-    this.equipped = { weapon: null, armor: null, hat: null, top: null, bottom: null, shoes: null, vehicle: null };
+    this.equipped = { weapon: null, hat: null, top: null, bottom: null, shoes: null, vehicle: null };
+    for (const s of ARMOR_SLOTS) this.equipped[s] = null;
     this.pendingPower = 0;           // 战力药剂:下一场战斗生效
     this.hasteRest = 0;              // 剩余「缩短休息耗时」次数
     this.hasteTravel = 0;            // 剩余「缩短旅途耗时」次数
@@ -53,7 +58,92 @@ export class Economy {
     this.shelfUpgrades = 0;          // 已扩容次数(用于算价)
     this.listings = [];              // 挂单:[{ id, itemId, price, at }]
     this._listingSeq = 0;
+    // ===== 角色(名字 / 形象 / 肤色)=====
+    this.playerName = '无名少年';
+    this.body = DEFAULT_BODY;        // 7 种形象
+    this.skin = DEFAULT_SKIN;        // 5 种肤色
+    this.lookChosen = false;         // 新玩家开局仅可免费定形一次
+    this.nameChosen = false;         // 新玩家开局仅可免费改名一次
+    // ===== 职业等级(1~150,13 个职介)=====
+    this.careerLevel = 1;
+    this.careerExp = 0;
+    // ===== 宠物 =====
+    this.pets = new Map();           // petId -> 拥有数量
+    this.petActive = null;           // 出战宠物 id
   }
+
+  // ===== 角色名 / 形象 =====
+  setName(name) {
+    const n = String(name || '').trim().slice(0, 12);
+    if (!n) return false;
+    this.playerName = n;
+    return true;
+  }
+
+  /** 更换形象(美梦药水 / 开局定形) */
+  setLook(body, skin) {
+    if (body) this.body = body;
+    if (skin) this.skin = skin;
+    return true;
+  }
+
+  // ===== 职业等级 =====
+  careerRankIndex() { return rankIndexForLevel(this.careerLevel); }
+  careerRank() { return CAREER_RANKS[this.careerRankIndex()]; }
+  careerExpToNext() { return expToNext(this.careerLevel); }
+
+  /**
+   * 增加职业经验,返回晋升信息 { level, ranks:[{index, major, newMajor}] }
+   * @param {number} amount
+   * @param {number} [bonus=1] 经验倍率(职介越高越多)
+   */
+  gainCareerExp(amount, bonus = 1) {
+    const gain = Math.max(0, Math.round(amount * bonus));
+    this.careerExp += gain;
+    const promotions = [];
+    while (this.careerLevel < CAREER_MAX_LEVEL && this.careerExp >= expToNext(this.careerLevel)) {
+      this.careerExp -= expToNext(this.careerLevel);
+      this.careerLevel += 1;
+      const idx = rankIndexForLevel(this.careerLevel);
+      if (idx !== rankIndexForLevel(this.careerLevel - 1)) {
+        promotions.push({ index: idx, rank: CAREER_RANKS[idx], newMajor: startsNewMajor(idx) });
+      }
+    }
+    if (this.careerLevel >= CAREER_MAX_LEVEL) this.careerExp = 0;
+    return { level: this.careerLevel, promotions };
+  }
+
+  /**
+   * 直接提升职业等级(职业药水 / 星辉秘典),不经过经验条。
+   * @param {number} [n=1] 提升级数
+   * @param {boolean} [byCodex=false] 是否由「星辉秘典」驱动(唯一能突破 100 级的手段)
+   * @returns {{ level:number, promotions:Array, blocked:boolean }}
+   */
+  gainCareerLevels(n = 1, byCodex = false) {
+    const promotions = [];
+    let blocked = false;
+    for (let k = 0; k < n && this.careerLevel < CAREER_MAX_LEVEL; k++) {
+      if (this.careerLevel >= CAREER_FREE_MAX && !byCodex) { blocked = true; break; }
+      const from = this.careerLevel;
+      this.careerLevel += 1;
+      const idx = rankIndexForLevel(this.careerLevel);
+      if (idx !== rankIndexForLevel(from)) {
+        promotions.push({ index: idx, rank: CAREER_RANKS[idx], newMajor: startsNewMajor(idx) });
+      }
+    }
+    return { level: this.careerLevel, promotions, blocked };
+  }
+
+  // ===== 宠物 =====
+  hasPet(id) { return this.pets.has(id) && this.pets.get(id) > 0; }
+  addPet(id, qty = 1) { this.pets.set(id, (this.pets.get(id) || 0) + qty); return true; }
+  petCount(id) { return this.pets.get(id) || 0; }
+  setActivePet(id) {
+    if (id && !this.hasPet(id)) return false;
+    this.petActive = id || null;
+    return true;
+  }
+  petList() { return [...this.pets.entries()]; }
 
   // ===== 背包格数 =====
   /** 当前占用的格数(每个物品种类一格;镶嵌武器等动态物品各占一格) */
@@ -239,6 +329,27 @@ export class Economy {
   }
 
   /**
+   * 给防具镶嵌宝石:每颗 +10 级(上限 150);镶嵌过的防具不可出售。
+   * @returns {string|null} 新的防具 id
+   */
+  socketArmorGem(armorId, gemId) {
+    const a = ITEMS[armorId];
+    const gem = ITEMS[gemId];
+    if (!a || a.category !== 'armor' || !gem || gem.category !== 'gem') return null;
+    if (!this.has(armorId, 1) || !this.has(gemId, 1)) return null;
+    if (socketsOf(armorId) <= 0) return null;
+    const lv = Math.min(ARMOR_MAX_LEVEL, (a.level || 1) + ARMOR_GEM_STEP);
+    const gems = [...(a.gems || []), gemId];
+    const def = makeArmor(a.armorSlot || 'body', lv, null, gems);
+    if (!def) return null;
+    const created = this.registerCustom(def);
+    this.removeItem(armorId, 1);
+    this.removeItem(gemId, 1);
+    this.addItem(created.id, 1);
+    return created.id;
+  }
+
+  /**
    * 取下最后一颗宝石(武器须在背包)。有几率把宝石打碎成碎片。
    * @returns {{ weaponId:string, gemId:string, shattered:boolean }|null}
    */
@@ -316,10 +427,19 @@ export class Economy {
   // ===== 装备 =====
   isEquipped(id) { return SLOTS.some((s) => this.equipped[s] === id); }
 
+  /** 武器必须符合当前职业;防具 / 服饰 / 载具无职业限制 */
+  canEquip(id, careerId) {
+    const it = ITEMS[id];
+    if (!it || !it.equipment) return false;
+    if (it.category === 'weapon' && it.career && careerId && it.career !== careerId) return false;
+    return true;
+  }
+
   equip(id) {
     const it = ITEMS[id];
     if (!it || !it.equipment) return false;
     const slot = it.equipment.slot;
+    if (!SLOTS.includes(slot)) return false;
     if (!this.removeItem(id, 1)) return false;      // 从背包取出
     const prev = this.equipped[slot];
     this.equipped[slot] = id;
@@ -374,7 +494,19 @@ export class Economy {
       hat: null, hatHi: null, hatStyle: null,
       hideTop: false, hideBottom: false, hideShoes: false, hideHat: false,
       label: null,
+      body: this.body,          // 7 种小男孩形象
+      skin: this.skin,          // 5 种肤色
     };
+    // 形象参数(发型 / 眼型 / 肤色)交由 scene.js 绘制
+    const bodyDef = BODY_MAP[this.body] || BODY_MAP[DEFAULT_BODY];
+    const skinDef = SKIN_MAP[this.skin] || SKIN_MAP[DEFAULT_SKIN];
+    a.skinCol = skinDef.skin;
+    a.skinShade = skinDef.shade;
+    a.hair = bodyDef.hairColor;
+    a.hairStyle = bodyDef.hairStyle;
+    a.eyeStyle = bodyDef.eyeStyle;
+    a.blush = bodyDef.blush;
+    a.bodyAcc = bodyDef.accessory;
     const top = ITEMS[this.equipped.top];
     if (top) {
       if (top.hide) a.hideTop = true;
@@ -470,6 +602,7 @@ export class Economy {
     if (!this.has(id)) return { ok: false, msg: '背包里没有这件物品' };
     const { kind, amount } = it.effect;
     let msg = '';
+    let promotions = [];
     switch (kind) {
       case 'heal': {
         if (player.hp >= player.maxHp) return { ok: false, msg: '生命已满,无需用药' };
@@ -550,11 +683,34 @@ export class Economy {
         msg = '下场战斗胜利时金币收益翻倍';
         break;
       }
+      // ===== 改名 / 换形象(交由角色弹窗处理,此处不消耗) =====
+      case 'rename': {
+        return { ok: true, prompt: 'rename', msg: '' };
+      }
+      case 'dream': {
+        return { ok: true, prompt: 'dream', msg: '' };
+      }
+      // ===== 职业等级药水 / 星辉秘典 =====
+      case 'career_exp': {
+        if (this.careerLevel >= CAREER_MAX_LEVEL) return { ok: false, msg: '职业等级已达上限 150' };
+        if (this.careerLevel >= CAREER_FREE_MAX) return { ok: false, msg: '职业等级已超过 100,需用「星辉秘典」才能继续提升' };
+        const r = this.gainCareerLevels(1, false);
+        promotions = r.promotions;
+        msg = `职业等级 +1,现为 Lv.${r.level}`;
+        break;
+      }
+      case 'career_levelup': {
+        if (this.careerLevel >= CAREER_MAX_LEVEL) return { ok: false, msg: '职业等级已达上限 150' };
+        const r = this.gainCareerLevels(1, true);
+        promotions = r.promotions;
+        msg = `星辉融汇,职业等级 +1,现为 Lv.${r.level}`;
+        break;
+      }
       default:
         return { ok: false, msg: '此物无法使用' };
     }
     this.removeItem(id, 1);
-    return { ok: true, msg: `使用「${it.name}」,${msg}` };
+    return { ok: true, msg: `使用「${it.name}」,${msg}`, promotions };
   }
 
   /**
@@ -621,6 +777,16 @@ export class Economy {
       shelfUpgrades: this.shelfUpgrades,
       listings: this.listings.map((l) => ({ ...l })),
       listingSeq: this._listingSeq,
+      // 角色 / 职业 / 宠物
+      playerName: this.playerName,
+      body: this.body,
+      skin: this.skin,
+      lookChosen: this.lookChosen,
+      nameChosen: this.nameChosen,
+      careerLevel: this.careerLevel,
+      careerExp: this.careerExp,
+      pets: Object.fromEntries(this.pets),
+      petActive: this.petActive,
     };
   }
 
@@ -647,7 +813,8 @@ export class Economy {
       }
     }
     // 装备
-    eco.equipped = { weapon: null, armor: null, hat: null, top: null, bottom: null, shoes: null, vehicle: null };
+    eco.equipped = { weapon: null, hat: null, top: null, bottom: null, shoes: null, vehicle: null };
+    for (const s of ARMOR_SLOTS) eco.equipped[s] = null;
     if (data.equipped) {
       for (const slot of SLOTS) {
         const id = data.equipped[slot];
@@ -667,6 +834,21 @@ export class Economy {
     eco.listings = Array.isArray(data.listings)
       ? data.listings.filter((l) => l && l.itemId && ITEMS[l.itemId]).map((l) => ({ ...l }))
       : [];
+    // 角色 / 职业 / 宠物
+    eco.playerName = typeof data.playerName === 'string' && data.playerName ? data.playerName : eco.playerName;
+    eco.body = data.body || eco.body;
+    eco.skin = data.skin || eco.skin;
+    eco.lookChosen = !!data.lookChosen;
+    eco.nameChosen = !!data.nameChosen;
+    eco.careerLevel = Math.max(1, Math.min(CAREER_MAX_LEVEL, Number(data.careerLevel ?? 1)));
+    eco.careerExp = Math.max(0, Number(data.careerExp ?? 0));
+    eco.pets = new Map();
+    if (data.pets && typeof data.pets === 'object') {
+      for (const [id, qty] of Object.entries(data.pets)) {
+        if (Number(qty) > 0) eco.pets.set(id, Math.floor(Number(qty)));
+      }
+    }
+    eco.petActive = eco.pets.has(data.petActive) ? data.petActive : null;
     return eco;
   }
 }

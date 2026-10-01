@@ -18,7 +18,9 @@ import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001a';
 import { cardMpCost } from '../data/data.js?v=20261001a';
 import { ENDINGS } from '../narrative/engine.js?v=20261001a';
 import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001a';
-import { SceneView } from './scene.js?v=20261001a';
+import { SceneView, paintCharacter } from './scene.js?v=20261001a';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001a';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001a';
 import { Minigame } from '../minigame/minigame.js?v=20261001a';
 import { MODE_LABELS } from '../data/jobs.js?v=20261001a';
 import { TERRAIN_CN } from '../data/world.js?v=20261001a';
@@ -43,6 +45,11 @@ const TYPE_LABELS = {
   skill: '技能',
   power: '能力',
 };
+
+/** 服饰四部位的显示名 */
+const OUTFIT_CN = { hat: '帽子', top: '上衣', bottom: '裤子', shoes: '鞋子' };
+/** 7 种形象的表情符号(仅用于选择面板) */
+const BODY_EMOJI = { cute: '🧒', dopey: '😴', genki: '😆', quiet: '😌', roguish: '😜', brave: '😤', gentle: '🥰' };
 
 /** 逐段渐显节奏:段间基础间隔(ms) + 按段长加权 */
 const PARA_BASE_MS = 380;
@@ -78,6 +85,13 @@ export class UI {
     this._mgJob = null;           // 当前打工项
     this._mgTier = null;          // 当前难度档
     this._mgTierIndex = -1;       // 当前难度档下标
+    this._charOpen = false;       // 角色弹窗是否打开
+    this._csData = null;          // 角色弹窗数据
+    this._csMode = null;          // 'look' | 'rename' | null
+    this._csPick = null;          // 当前选取的部位 { kind, slot }
+    this._csSelBody = null;       // 形象选择暂存
+    this._csSelSkin = null;       // 肤色选择暂存
+    this._csCtx = null;           // 角色弹窗画布上下文
     this._worldSelected = null;   // 世界地图上选中的地区 id
     this._worldPoiSelected = null; // 世界地图上选中的 POI id
     this._worldState = null;      // 最近一次世界地图数据
@@ -96,6 +110,7 @@ export class UI {
       mapCanvas: this.el.mapCharCanvas,
       mapCharName: this.el.mapCharName,
     });
+    if (this.el.csCanvas) this._csCtx = this.el.csCanvas.getContext('2d');
     this._bindStaticButtons();
     this._bindBus();
     this._bindKeyboard();
@@ -301,6 +316,26 @@ export class UI {
       resultTitle: $('result-title'),
       resultDesc: $('result-desc'),
       resultStats: $('result-stats'),
+      // 任务窗格 / 角色弹窗
+      mapTasks: $('map-tasks'),
+      charsheet: $('character-sheet'),
+      csCanvas: $('cs-canvas'),
+      csName: $('cs-name'),
+      csLook: $('cs-look'),
+      csCareer: $('cs-career'),
+      csOutfits: $('cs-outfits'),
+      csLookpanel: $('cs-lookpanel'),
+      csPets: $('cs-pets'),
+      csPicker: $('cs-picker'),
+      csSlots: {
+        head: document.querySelector('.cs-area-head'),
+        body: document.querySelector('.cs-area-body'),
+        hands: document.querySelector('.cs-area-hands'),
+        legs: document.querySelector('.cs-area-legs'),
+        feet: document.querySelector('.cs-area-feet'),
+        ring: document.querySelector('.cs-area-ring'),
+        earring: document.querySelector('.cs-area-earring'),
+      },
     };
   }
 
@@ -406,6 +441,16 @@ export class UI {
     if (this.el.btnGemshopBack) this.el.btnGemshopBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnJewelerBack) this.el.btnJewelerBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnBagExpand) this.el.btnBagExpand.addEventListener('click', () => this.bus.emit('ui:bag-expand'));
+    // 角色弹窗:点击角色形象打开,[data-char-close] 关闭
+    document.querySelectorAll('[data-char-open]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:open-character'));
+      b.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.bus.emit('ui:open-character'); }
+      });
+    });
+    document.querySelectorAll('[data-char-close]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:char-close'));
+    });
     // 点击剧情文本区域:正在打字则跳过,否则推进
     if (this.el.narrativeText) this.el.narrativeText.addEventListener('click', () => this._onTextAreaClick());
   }
@@ -465,6 +510,10 @@ export class UI {
       // 小游戏自行处理方向键 / 跳跃键,这里仅响应 Esc 退出
       if (this._mgOpen) {
         if (e.key === 'Escape') { e.preventDefault(); this.bus.emit('ui:minigame-close'); }
+        return;
+      }
+      if (this._charOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.bus.emit('ui:char-close'); }
         return;
       }
 
@@ -1266,6 +1315,9 @@ export class UI {
     // 本地随机 NPC:点击即交谈
     this._renderMapNpcs(npcs);
 
+    // 任务窗格(至多三项)
+    this._renderMapTasks(state.tasks);
+
     if (this.el.btnMapStory) {
       const can = objectiveIndex >= 0 && currentIndex === objectiveIndex;
       if (!isStoryRegion) {
@@ -1279,6 +1331,29 @@ export class UI {
     }
     this.renderResources(economy);
     this._renderMapPortrait();
+  }
+
+  /**
+   * 任务窗格:最多显示三项正在执行的任务。
+   * @param {Array<{title:string, detail:string, tag?:string}>} tasks
+   */
+  _renderMapTasks(tasks) {
+    const box = this.el.mapTasks;
+    if (!box) return;
+    const list = Array.isArray(tasks) ? tasks.slice(0, 3) : [];
+    if (!list.length) {
+      box.innerHTML = '<div class="map-task is-empty">暂无任务</div>';
+      return;
+    }
+    box.innerHTML = list.map((t) => `
+      <div class="map-task">
+        <span class="map-task-dot" aria-hidden="true"></span>
+        <span class="map-task-body">
+          <b>${this._escapeHtml(t.title || '')}</b>
+          <i>${this._escapeHtml(t.detail || '')}</i>
+        </span>
+        ${t.tag ? `<span class="map-task-tag">${this._escapeHtml(t.tag)}</span>` : ''}
+      </div>`).join('');
   }
 
   /** 地图左下角的人物形象(随换装变化) */
@@ -1750,11 +1825,14 @@ export class UI {
   }
 
   // ===== 商店 =====
-  renderShop({ stock, economy, fee = 0.03 }) {
+  renderShop({ stock, economy, fee = 0.03, priceMul = 1, isCity = false }) {
     const box = this.el.shopList;
     if (!box) return;
     const nav = this.el.shopCats;
-    if (this.el.shopNote) this.el.shopNote.textContent = `买入所需,卖出冗余(手续费 ${Math.round(fee * 100)}%)`;
+    if (this.el.shopNote) {
+      const cityNote = isCity ? ' · 主城货全价低' : '';
+      this.el.shopNote.textContent = `买入所需,卖出冗余(手续费 ${Math.round(fee * 100)}%)${cityNote}`;
+    }
     const disc = economy.shopDiscount ? economy.shopDiscount() : 0;
 
     const byCat = new Map();
@@ -1801,12 +1879,13 @@ export class UI {
         (byCat.get(this._shopCat) || []).forEach((id) => {
           const it = ITEMS[id];
           if (!it) return;
-          const price = economy.itemPrice ? economy.itemPrice(id) : it.price;
+          const price = Math.max(1, Math.round((economy.itemPrice ? economy.itemPrice(id) : it.price) * priceMul));
           const afford = economy.gold >= price;
-          const priceTxt = disc > 0 && price < it.price
+          const priceTxt = (disc > 0 || priceMul !== 1) && price < it.price
             ? `🪙 ${price} <s class="item-was">${it.price}</s>`
             : `🪙 ${price}`;
-          box.appendChild(this._shopRow(it, afford, priceTxt, '买入', 'data-buy', () => this.bus.emit('ui:shop-buy', id)));
+          const tag = it.rare ? '<span class="item-tag-rare">★绝世</span>' : '';
+          box.appendChild(this._shopRow(it, afford, priceTxt, '买入', 'data-buy', () => this.bus.emit('ui:shop-buy', id), 0, tag));
         });
       }
     };
@@ -1836,7 +1915,7 @@ export class UI {
   // ===== 市场(玩家集市:多商家 + 宝石 + 镶嵌武器 + 玩家货架) =====
   renderMarket(data = {}) {
     const {
-      stalls, wares = [], gems = [], listings = [], economy,
+      stalls, wares = [], gems = [], pets = [], listings = [], economy,
       fee = 0, festival = false, trade = null,
       shelfCount = 0, shelfMax = 0, shelfCost = -1, nextTickMs = 0, sellFloor = 0.45,
     } = data;
@@ -1866,6 +1945,7 @@ export class UI {
     const cats = [...byCat.entries()].map(([key, arr]) => ({ key, label: ITEM_CATEGORY_CN[key] || key, count: arr.length }));
     if (gems.length) cats.push({ key: '__gem', label: '宝石', icon: '💎', count: gems.length });
     if (wares.length) cats.push({ key: '__ware', label: '镶嵌武器', icon: '🗡️', count: wares.length });
+    if (pets.length) cats.push({ key: '__pet', label: '宠物摊', icon: '🐾', count: pets.length });
     cats.push({ key: '__shelf', label: '我的货架', icon: '🧺', count: listings.length });
     if (sellables.length) cats.push({ key: '__sell', label: '出售(背包)', icon: '🪙', count: sellables.length });
 
@@ -1877,6 +1957,7 @@ export class UI {
       const key = this._marketCat;
       if (key === '__gem') this._renderMarketGems(box, gems, economy, fee);
       else if (key === '__ware') this._renderMarketWares(box, wares, economy);
+      else if (key === '__pet') this._renderMarketPets(box, pets, economy, fee);
       else if (key === '__shelf') this._renderMarketShelf(box, { economy, trade, fee, listings, shelfCount, shelfMax, shelfCost, sellFloor });
       else if (key === '__sell') this._renderMarketSell(box, economy, fee, 'ui:market-sell', trade);
       else {
@@ -1937,6 +2018,34 @@ export class UI {
           <button class="btn btn-primary btn-sm" data-buy ${afford ? '' : 'disabled'}>买入</button>
         </div>`;
       if (afford) row.querySelector('[data-buy]')?.addEventListener('click', () => this.bus.emit('ui:market-buy-ware', w.key));
+      box.appendChild(row);
+    });
+  }
+
+  /** 市场:宠物摊(常规常驻;稀有/神话概率出现) */
+  _renderMarketPets(box, pets, economy, fee) {
+    const head = document.createElement('div');
+    head.className = 'market-stall-head';
+    head.innerHTML = '<span class="stall-icon">🐾</span><span class="stall-name">「阿禾」</span><span class="stall-title">驯兽人 · 宠物摊</span>';
+    box.appendChild(head);
+    pets.forEach((p) => {
+      const price = Math.max(1, Math.round(p.price * (1 + fee)));
+      const afford = economy.gold >= price;
+      const tag = `<span class="item-cat">${this._escapeHtml(p.rarity)}</span>`;
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <div class="item-icon">${p.icon}</div>
+        <div class="item-body">
+          <div class="item-name">${this._escapeHtml(p.name)}${tag}</div>
+          <div class="item-desc">${this._escapeHtml(p.desc || '')}</div>
+          <div class="item-sub">技能:${this._escapeHtml(p.skill || '无')}</div>
+        </div>
+        <div class="item-actions">
+          <span class="item-price${afford ? '' : ' is-poor'}">🪙 ${price}</span>
+          <button class="btn btn-primary btn-sm" data-buy ${afford ? '' : 'disabled'}>买入</button>
+        </div>`;
+      if (afford) row.querySelector('[data-buy]')?.addEventListener('click', () => this.bus.emit('ui:market-buy-pet', p.id));
       box.appendChild(row);
     });
   }
@@ -2814,6 +2923,220 @@ export class UI {
       .map((f) => `<span class="stat-chip">${f}</span>`)
       .join('');
     this.el.resultStats.innerHTML = stats + flags;
+  }
+
+  // ===== 角色弹窗:形象居中 · 七格防具环绕 · 服饰 / 职业 / 形象 =====
+  openCharacterSheet() {
+    this._charOpen = true;
+    if (this.el.charsheet) { this.el.charsheet.hidden = false; this.el.charsheet.classList.add('is-open'); }
+  }
+
+  closeCharacterSheet() {
+    this._charOpen = false;
+    this._csPick = null;
+    if (this.el.charsheet) { this.el.charsheet.hidden = true; this.el.charsheet.classList.remove('is-open'); }
+  }
+
+  /**
+   * 渲染角色弹窗。
+   * @param {object} data 由 Game 组装的视图数据
+   * @param {'look'|'rename'|null} [mode] 特殊入口(为 null 时正常展示)
+   */
+  renderCharacterSheet(data, mode = null) {
+    if (!this.el.charsheet || !data) return;
+    this._csData = data;
+    this._csMode = mode;
+    this._csPick = null;
+    this._csSelBody = data.body;
+    this._csSelSkin = data.skin;
+    if (this.el.csName) this.el.csName.textContent = data.name;
+    this._paintCs();
+    this._renderCsSlots();
+    this._renderCsCareer();
+    this._renderCsOutfits();
+    this._renderCsLook();
+    this._renderCsPets();
+    this._renderCsPicker();
+    this.openCharacterSheet();
+  }
+
+  /** 绘制形象预览(采用当前暂选的形象 / 肤色) */
+  _paintCs() {
+    const d = this._csData;
+    if (!this._csCtx || !d) return;
+    const body = BODY_MAP[this._csSelBody] || BODY_MAP[d.body];
+    const skin = SKIN_MAP[this._csSelSkin] || SKIN_MAP[d.skin];
+    const look = Object.assign({}, d.appearance, {
+      skinCol: skin.skin, skinShade: skin.shade,
+      hair: body.hairColor, hairStyle: body.hairStyle, eyeStyle: body.eyeStyle,
+      blush: body.blush, bodyAcc: body.accessory,
+    });
+    paintCharacter(this._csCtx, 5, d.career && d.career.id, look);
+    if (this.el.csLook) this.el.csLook.textContent = lookLabel(this._csSelBody, this._csSelSkin);
+  }
+
+  /** 七格防具 */
+  _renderCsSlots() {
+    const d = this._csData; if (!d) return;
+    for (const slot of ARMOR_SLOTS) {
+      const box = this.el.csSlots[slot];
+      if (!box) continue;
+      const it = d.armor[slot];
+      const cnt = (d.armorOptions[slot] || []).length;
+      box.classList.toggle('is-empty', !it);
+      box.innerHTML = `
+        <div class="cs-slot-label">${ARMOR_SLOT_CN[slot]}</div>
+        <div class="cs-slot-body">
+          <span class="cs-slot-icon">${it ? it.icon : '＋'}</span>
+          <span class="cs-slot-text">
+            <b>${it ? this._escapeHtml(it.name) : '未装备'}</b>
+            <i>${it ? `Lv.${it.level}` : (cnt ? `可换 ${cnt} 件` : '背包无货')}</i>
+          </span>
+        </div>`;
+      box.onclick = () => { this._csPick = { kind: 'armor', slot }; this._renderCsPicker(); };
+    }
+  }
+
+  /** 服饰四件 */
+  _renderCsOutfits() {
+    const d = this._csData; const box = this.el.csOutfits;
+    if (!box || !d) return;
+    box.innerHTML = '';
+    for (const slot of ['hat', 'top', 'bottom', 'shoes']) {
+      const it = d.outfits[slot];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `cs-outfit${it ? '' : ' is-empty'}`;
+      b.innerHTML = `<span class="cs-outfit-icon">${it ? it.icon : '＋'}</span>
+        <span class="cs-outfit-text"><i>${OUTFIT_CN[slot]}</i><b>${it ? this._escapeHtml(it.name) : '未装备'}</b></span>`;
+      b.addEventListener('click', () => { this._csPick = { kind: 'outfit', slot }; this._renderCsPicker(); });
+      box.appendChild(b);
+    }
+  }
+
+  /** 职业面板 */
+  _renderCsCareer() {
+    const d = this._csData; const box = this.el.csCareer;
+    if (!box || !d) return;
+    const c = d.career;
+    const pct = c.expMax > 0 ? Math.min(100, Math.round((c.exp / c.expMax) * 100)) : 100;
+    const note = c.level >= c.max ? '已臻化境' : (c.level >= c.freeMax ? '逾百级需「星辉秘典」' : '');
+    const switches = (d.careers || []).filter((x) => x.unlocked).map((x) =>
+      `<button class="cs-career-btn${x.active ? ' is-active' : ''}" type="button" data-career="${x.id}" ${x.active ? 'disabled' : ''}>${this._escapeHtml(x.name)}</button>`
+    ).join('');
+    box.innerHTML = `
+      <div class="cs-career-head">
+        <span class="cs-career-job">${this._escapeHtml(c.name)}</span>
+        <span class="cs-career-lv">Lv.${c.level}<i>/${c.max}</i></span>
+      </div>
+      <div class="cs-career-rank">${this._escapeHtml(c.rankName)} · ${this._escapeHtml(c.major)}</div>
+      <div class="cs-progress"><i style="width:${pct}%"></i></div>
+      <div class="cs-career-exp">职业经验 ${c.exp} / ${c.expMax}${note ? ` · ${note}` : ''}</div>
+      ${switches ? `<div class="cs-sub-label">已解锁职业</div><div class="cs-career-switch">${switches}</div>` : ''}
+    `;
+    box.querySelectorAll('[data-career]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:char-career', b.dataset.career));
+    });
+  }
+
+  /** 形象 / 肤色 / 改名 */
+  _renderCsLook() {
+    const d = this._csData; const box = this.el.csLookpanel;
+    if (!box || !d) return;
+    const lookFree = !d.lookChosen;
+    const nameFree = !d.nameChosen;
+    const canLook = lookFree || d.hasDream;
+    const canName = nameFree || d.hasRename;
+    const bodyBtns = BODY_STYLES.map((b) => `
+      <button class="cs-look-btn${b.id === this._csSelBody ? ' is-active' : ''}" type="button" data-body="${b.id}" ${canLook ? '' : 'disabled'} title="${this._escapeHtml(b.tag)}">
+        <span class="cs-look-emoji">${BODY_EMOJI[b.id] || '🧒'}</span>
+        <span class="cs-look-name">${b.name}</span>
+      </button>`).join('');
+    const skinBtns = SKIN_TONES.map((s) => `
+      <button class="cs-skin-btn${s.id === this._csSelSkin ? ' is-active' : ''}" type="button" data-skin="${s.id}" ${canLook ? '' : 'disabled'} title="${s.name}" style="--sw:${s.skin}"></button>`).join('');
+    box.innerHTML = `
+      <div class="cs-sub-label">形象(7 种)${lookFree ? ' · 初次可免费定形' : (d.hasDream ? ' · 有美梦药水' : ' · 需美梦药水')}</div>
+      <div class="cs-body-grid">${bodyBtns}</div>
+      <div class="cs-sub-label">肤色(5 种)</div>
+      <div class="cs-skin-row">${skinBtns}</div>
+      <div class="cs-look-actions">
+        <button class="btn btn-primary cs-apply" type="button" ${canLook ? '' : 'disabled'}>${lookFree ? '确认形象' : '用美梦药水换形象'}</button>
+      </div>
+      <div class="cs-sub-label">改名${nameFree ? ' · 初次可免费改名' : (d.hasRename ? ' · 有改名卡' : ' · 需改名卡')}</div>
+      <div class="cs-rename-row">
+        <input class="cs-rename-input" type="text" maxlength="12" value="${this._escapeHtml(d.name)}" ${canName ? '' : 'disabled'} placeholder="新名字" />
+        <button class="btn ${nameFree ? 'btn-primary' : 'btn-ghost'} cs-rename-btn" type="button" ${canName ? '' : 'disabled'}>${nameFree ? '确认改名' : '用改名卡'}</button>
+      </div>
+    `;
+    box.querySelectorAll('[data-body]').forEach((b) => b.addEventListener('click', () => { this._csSelBody = b.dataset.body; this._renderCsSelection(); }));
+    box.querySelectorAll('[data-skin]').forEach((b) => b.addEventListener('click', () => { this._csSelSkin = b.dataset.skin; this._renderCsSelection(); }));
+    box.querySelector('.cs-apply')?.addEventListener('click', () => this.bus.emit('ui:char-look', { body: this._csSelBody, skin: this._csSelSkin }));
+    box.querySelector('.cs-rename-btn')?.addEventListener('click', () => {
+      const input = box.querySelector('.cs-rename-input');
+      this.bus.emit('ui:char-rename', input ? input.value : '');
+    });
+  }
+
+  /** 宠物:展示已拥有宠物并指定出战 */
+  _renderCsPets() {
+    const d = this._csData; const box = this.el.csPets;
+    if (!box || !d) return;
+    const list = d.pets || [];
+    if (!list.length) {
+      box.innerHTML = '<div class="cs-picker-empty">还没有宠物,可在市场购买,或由剧情赠送</div>';
+      return;
+    }
+    box.innerHTML = `<div class="cs-pet-grid">${list.map((p) => `
+      <button class="cs-pet${p.active ? ' is-active' : ''}" type="button" ${p.active ? 'disabled' : `data-pet="${p.id}"`}>
+        <span class="cs-pet-icon">${p.icon}</span>
+        <span class="cs-pet-text"><b>${this._escapeHtml(p.name)}</b><i>${this._escapeHtml(p.rarity)}${p.count > 1 ? ` ×${p.count}` : ''}</i></span>
+        <span class="cs-pet-skill">${this._escapeHtml(p.skill || '')}</span>
+      </button>`).join('')}</div>
+      ${list.some((p) => p.active) ? '<button class="btn btn-ghost cs-pet-rest" type="button">取 消 出 战</button>' : ''}`;
+    box.querySelectorAll('[data-pet]').forEach((b) => {
+      if (!b.dataset.pet) return;
+      b.addEventListener('click', () => this.bus.emit('ui:char-pet', b.dataset.pet));
+    });
+    box.querySelector('.cs-pet-rest')?.addEventListener('click', () => this.bus.emit('ui:char-pet', null));
+  }
+
+  /** 仅更新形象 / 肤色选中态并重绘预览(保留输入框内容) */
+  _renderCsSelection() {
+    const box = this.el.csLookpanel; if (!box) return;
+    box.querySelectorAll('[data-body]').forEach((b) => b.classList.toggle('is-active', b.dataset.body === this._csSelBody));
+    box.querySelectorAll('[data-skin]').forEach((b) => b.classList.toggle('is-active', b.dataset.skin === this._csSelSkin));
+    this._paintCs();
+  }
+
+  /** 部位更换浮层 */
+  _renderCsPicker() {
+    const box = this.el.csPicker; if (!box) return;
+    const d = this._csData;
+    if (!d || !this._csPick) { box.hidden = true; box.innerHTML = ''; return; }
+    const { kind, slot } = this._csPick;
+    const isArmor = kind === 'armor';
+    const opts = (isArmor ? d.armorOptions : d.outfitOptions)[slot] || [];
+    const cur = isArmor ? d.armor[slot] : d.outfits[slot];
+    const label = isArmor ? ARMOR_SLOT_CN[slot] : OUTFIT_CN[slot];
+    box.hidden = false;
+    box.innerHTML = `
+      <div class="cs-picker-head">
+        <span>更换「${label}」</span>
+        <button class="cs-picker-close" type="button" aria-label="关闭">✕</button>
+      </div>
+      <div class="cs-picker-list">
+        ${opts.length ? opts.map((o) => `
+          <button class="cs-picker-item${cur && cur.id === o.id ? ' is-active' : ''}" type="button" data-id="${o.id}">
+            <span class="cs-picker-icon">${o.icon}</span>
+            <span class="cs-picker-name">${this._escapeHtml(o.name)}</span>
+            <span class="cs-picker-meta">${o.level ? `Lv.${o.level}` : ''}</span>
+          </button>`).join('') : '<div class="cs-picker-empty">背包里没有可更换的物件</div>'}
+      </div>
+      ${cur ? '<button class="btn btn-ghost cs-picker-unequip" type="button">卸 下</button>' : ''}
+    `;
+    box.querySelector('.cs-picker-close')?.addEventListener('click', () => { this._csPick = null; this._renderCsPicker(); });
+    box.querySelectorAll('.cs-picker-item').forEach((b) => b.addEventListener('click', () => this.bus.emit('ui:char-equip', b.dataset.id)));
+    box.querySelector('.cs-picker-unequip')?.addEventListener('click', () => this.bus.emit('ui:char-unequip', slot));
   }
 
   /** 顶部提示 toast(2 秒后淡出) */

@@ -9,10 +9,9 @@
 /* ============================================================
    调色板
    ============================================================ */
-const SKIN = '#e0aa80';
-const SKIN_SHADE = '#bd8760';
-const HAIR = '#3b2a22';
-const HAIR_HI = '#544034';
+const BASE_SKIN = '#e0aa80';
+const BASE_SKIN_SHADE = '#bd8760';
+const BASE_HAIR = '#3b2a22';
 const EYE = '#241b16';
 const MOUTH = '#a4553f';
 const PANTS = '#2e3542';
@@ -27,9 +26,9 @@ const BLOOD = '#8e2119';
 const OUTLINE = '#16110d';
 /** 眼睛高光 / 白 */
 const EYE_WHITE = '#efe9dc';
-const HAIR_SHADE = '#2a1d17';
+const BASE_HAIR_SHADE = '#2a1d17';
 /** 腮红(小男孩的红润脸颊) */
-const BLUSH = '#e6a184';
+const BASE_BLUSH = '#e6a184';
 
 /** 颜色明暗调整:amt>0 变亮,amt<0 变暗;用于给平面色块加体积感 */
 function shade(hex, amt) {
@@ -142,6 +141,15 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
 
   const base = OUTFITS[careerId] || OUTFIT_DEFAULT;
   const a = look || {};
+  // ---- 形象参数(肤色 / 发色 / 发型 / 眼型 / 腮红),由角色弹窗与美梦药水决定 ----
+  const SKIN = a.skinCol || BASE_SKIN;
+  const SKIN_SHADE = a.skinShade || BASE_SKIN_SHADE;
+  const HAIR = a.hair || BASE_HAIR;
+  const HAIR_HI = shade(HAIR, 0.24);
+  const HAIR_SHADE = shade(HAIR, -0.3);
+  const BLUSH = a.blush === false ? null : BASE_BLUSH;
+  const eyeStyle = a.eyeStyle || 'round';
+  const hairStyle = a.hairStyle || 'bob';
   const o = {
     cloth: a.cloth || base.cloth,
     cloth2: a.cloth2 || base.cloth2,
@@ -352,26 +360,37 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   P(25, 8, 4, 1, HAIR);
   P(26, 8, 3, 1, HAIR_SHADE);
 
-  // 眼睛(眨眼 / 扫视)
-  if (blinking) {
-    P(19, 11, 4, 1, EYE);
-    P(25, 11, 4, 1, EYE);
-    P(20, 10, 1, 1, skinMid);
-    P(26, 10, 1, 1, skinMid);
-  } else {
-    // 左眼
-    P(19, 10, 4, 3, EYE_WHITE);
-    P(20 + eyeShift, 11, 2, 2, '#5a3a28');
-    P(20 + eyeShift, 11, 1, 1, EYE);
-    P(19 + eyeShift, 10, 1, 1, '#fff');
-    P(19, 13, 4, 1, skinMid);
-    // 右眼
-    P(25, 10, 4, 3, EYE_WHITE);
-    P(26 + eyeShift, 11, 2, 2, '#5a3a28');
-    P(26 + eyeShift, 11, 1, 1, EYE);
-    P(25 + eyeShift, 10, 1, 1, '#fff');
-    P(25, 13, 4, 1, skinMid);
-  }
+  // 眼睛(眨眼 / 扫视 · 眼型随形象变化)
+  const drawEye = (x, y) => {
+    if (blinking) { P(x, y + 1, 4, 1, EYE); P(x + 1, y, 1, 1, skinMid); return; }
+    const px = x + eyeShift;
+    if (eyeStyle === 'droopy') {            // 呆萌 / 文静:半垂眼
+      P(x, y + 1, 4, 2, EYE_WHITE);
+      P(x, y + 1, 4, 1, skinMid);
+      P(px + 1, y + 2, 2, 1, '#5a3a28');
+    } else if (eyeStyle === 'sharp') {      // 英气:细长上挑
+      P(x, y + 1, 4, 2, EYE_WHITE);
+      P(x, y + 1, 4, 1, skinLo);
+      P(px + 1, y + 1, 2, 2, '#3a2a20');
+    } else if (eyeStyle === 'sly') {        // 顽皮:斜眼
+      P(x, y + 1, 4, 2, EYE_WHITE);
+      P(x, y + 1, 4, 1, skinMid);
+      P(px + 2, y + 1, 2, 2, '#3a2a20');
+    } else if (eyeStyle === 'bright') {     // 元气 / 温柔:圆亮
+      P(x, y, 4, 3, EYE_WHITE);
+      P(px + 1, y + 1, 2, 2, '#5a3a28');
+      P(px, y, 1, 1, '#fff');
+      P(x, y + 3, 4, 1, skinMid);
+    } else {                                // 可爱:圆眼大瞳
+      P(x, y, 4, 3, EYE_WHITE);
+      P(px + 1, y + 1, 2, 2, '#5a3a28');
+      P(px + 1, y + 1, 1, 1, EYE);
+      P(px, y, 1, 1, '#fff');
+      P(x, y + 3, 4, 1, skinMid);
+    }
+  };
+  drawEye(19, 10);
+  drawEye(25, 10);
 
   // 鼻子
   P(23, 13, 1, 2, skinMid);
@@ -384,9 +403,11 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   P(25, 16, 1, 1, shade(MOUTH, 0.15));
   P(23, 15, 2, 1, shade(MOUTH, 0.2));
 
-  // 腮红
-  P(18, 14, 2, 1, BLUSH);
-  P(28, 14, 2, 1, BLUSH);
+  // 腮红(部分形象无)
+  if (BLUSH) {
+    P(18, 14, 2, 1, BLUSH);
+    P(28, 14, 2, 1, BLUSH);
+  }
 
   // ============================================================
   // 8. 头发(精细像素层次)
@@ -415,6 +436,19 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   // 发梢细节
   P(17, 12, 1, 2, HAIR);
   P(30, 12, 1, 2, HAIR_SHADE);
+
+  // ---- 发型差异 ----
+  if (hairStyle === 'spiky') {           // 元气 / 顽皮:炸毛
+    Ph(17, 0, 2, 2, HAIR); Ph(20, -1, 2, 2, HAIR); Ph(24, -1, 2, 2, HAIR); Ph(27, 0, 2, 2, HAIR);
+    P(20, 0, 1, 1, HAIR_HI);
+  } else if (hairStyle === 'side') {     // 文静 / 英气:偏分
+    Ph(17, 5, 8, 2, HAIR);
+    P(26, 5, 1, 1, skinHi);
+    P(30, 5, 1, 4, HAIR_SHADE);
+  }
+  // ---- 形象头饰 ----
+  if (a.bodyAcc === 'band') { P(16, 4, 16, 1, '#c0392b'); P(16, 4, 16, 1, shade('#c0392b', 0.15)); }
+  else if (a.bodyAcc === 'leaf') { P(29, 2, 3, 2, '#4f7a3a'); P(30, 1, 1, 1, '#7fb05e'); }
 
   // ---- 帽子 ----
   drawHatPixel(P, a);
@@ -814,4 +848,18 @@ export class SceneView {
 
     this._startAnim();
   }
+}
+
+/**
+ * 供外部(角色弹窗)使用:把某个形象画到任意 canvas 上。
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} scale 缩放倍率(逻辑画布 48×64)
+ * @param {string} careerId 职业(决定服饰主色)
+ * @param {object} appearance economy.appearance() 的返回值
+ * @param {number} [time] 动画时刻(默认静止)
+ */
+export function paintCharacter(ctx, scale, careerId, appearance, time = 0) {
+  if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
+  drawCharacter(ctx, scale, careerId, 1, new Set(), appearance || {}, time);
 }

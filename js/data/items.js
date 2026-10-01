@@ -27,6 +27,8 @@
 
 import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261001a';
 import { GEM_ITEMS } from './gems.js?v=20261001a';
+import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261001a';
+import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261001a';
 
 export const ITEM_CATEGORY_CN = {
   potion: '药品',
@@ -124,10 +126,10 @@ export const ITEMS = {
 
   // ===== 防具(与服装独立:不影响外观,纯防御增益) =====
   // equipment.slot: armor 独立护甲栏位
-  padded_armor:  { id: 'padded_armor',  name: '棉甲',     category: 'armor', price: 50,  icon: '🧥', desc: '生命 +6。软甲,轻便但挡得住割伤。', equipment: { slot: 'armor', stats: { maxHp: 6 } } },
-  chain_mail:    { id: 'chain_mail',    name: '锁子甲',   category: 'armor', price: 130, icon: '🛡️', desc: '生命 +14,战力 +1。铁环相扣,刀枪难入。', equipment: { slot: 'armor', stats: { maxHp: 14, atkPower: 1 } } },
-  plate_armor:   { id: 'plate_armor',   name: '板甲',     category: 'armor', price: 260, icon: '🛡️', desc: '生命 +22,战力 +2。重铠,刀枪不入。', equipment: { slot: 'armor', stats: { maxHp: 22, atkPower: 2 } } },
-  mithril_mail:  { id: 'mithril_mail',  name: '秘银锁甲', category: 'armor', price: 480, icon: '💠', desc: '生命 +30,战力 +3,魔力 +2。秘银所铸,轻若无物。', equipment: { slot: 'armor', stats: { maxHp: 30, atkPower: 3, maxMp: 2 } } },
+  padded_armor:  { id: 'padded_armor',  name: '棉甲',     category: 'armor', level: 6,  price: 50,  icon: '🧥', desc: '生命 +6。软甲,轻便但挡得住割伤。', equipment: { slot: 'body', stats: { maxHp: 6 } } },
+  chain_mail:    { id: 'chain_mail',    name: '锁子甲',   category: 'armor', level: 14, price: 130, icon: '🛡️', desc: '生命 +14,战力 +1。铁环相扣,刀枪难入。', equipment: { slot: 'body', stats: { maxHp: 14, atkPower: 1 } } },
+  plate_armor:   { id: 'plate_armor',   name: '板甲',     category: 'armor', level: 22, price: 260, icon: '🛡️', desc: '生命 +22,战力 +2。重铠,刀枪不入。', equipment: { slot: 'body', stats: { maxHp: 22, atkPower: 2 } } },
+  mithril_mail:  { id: 'mithril_mail',  name: '秘银锁甲', category: 'armor', level: 30, price: 480, icon: '💠', desc: '生命 +30,战力 +3,魔力 +2。秘银所铸,轻若无物。', equipment: { slot: 'body', stats: { maxHp: 30, atkPower: 3, maxMp: 2 } } },
 
   // ===== 服饰(可自由搭配:帽子 / 衣服 / 裤子 / 鞋子 四个部位各一件) =====
   // equipment.slot: hat 帽子 / top 衣服 / bottom 裤子 / shoes 鞋子
@@ -216,6 +218,9 @@ Object.assign(ITEMS, MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS, GEM_ITEMS);
 // 图纸不可买卖(仅用于解锁配方)
 for (const id of Object.keys(BLUEPRINT_ITEMS)) ITEMS[id].noTrade = true;
 
+// ===== 并入扩充内容:特殊消耗品 / 大职介套装 / 扩充服饰武器 / 防具目录 =====
+Object.assign(ITEMS, EXTRA_ITEMS, buildMajorSets(), EXTRA_GEAR, buildArmorCatalog());
+
 /** 某物品是否可在商店 / 市场买卖 */
 export function isTradeable(id) {
   const it = ITEMS[id];
@@ -225,8 +230,22 @@ export function isTradeable(id) {
 /** 某武器的宝石槽数(普通武器默认 1,需显式 sockets 覆盖) */
 export function socketsOf(id) {
   const it = ITEMS[id];
-  if (!it || it.category !== 'weapon') return 0;
-  return Number.isFinite(it.sockets) ? it.sockets : 1;
+  if (!it) return 0;
+  if (it.category === 'weapon') return Number.isFinite(it.sockets) ? it.sockets : 1;
+  if (it.category === 'armor') return Number.isFinite(it.sockets) ? it.sockets : ARMOR_MAX_GEMS;
+  return 0;
+}
+
+/** 某防具属于哪个防具槽位(非防具返回 null) */
+export function armorSlotOf(id) {
+  const it = ITEMS[id];
+  return it && it.category === 'armor' ? (it.armorSlot || 'body') : null;
+}
+
+/** 防具当前等级(非防具返回 0) */
+export function armorLevelOf(id) {
+  const it = ITEMS[id];
+  return it && it.category === 'armor' ? (it.level || 1) : 0;
 }
 
 /** 出售价:未显式给出则取买价的 50%(向下取整) */

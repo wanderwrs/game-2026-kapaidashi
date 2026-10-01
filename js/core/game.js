@@ -18,11 +18,16 @@ import { Player } from '../combat/entity.js?v=20261001a';
 import { Deck } from '../card/deck.js?v=20261001a';
 import { Battle } from '../combat/battle.js?v=20261001a';
 import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001a';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice } from '../data/items.js?v=20261001a';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001a';
 import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001a';
 import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001a';
 import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001a';
-import { SELL_FLOOR, SHELF, FEES, priceMul, msToNextTick, pct } from '../data/trade.js?v=20261001a';
+import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001a';
+import { rankExpBonus, rankReward, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001a';
+import { majorSetIds } from '../data/extras.js?v=20261001a';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, armorId } from '../data/armor.js?v=20261001a';
+import { lookLabel } from '../data/looks.js?v=20261001a';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001a';
 import { TradeEngine } from './trade.js?v=20261001a';
 import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001a';
 import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001a';
@@ -543,13 +548,63 @@ export class Game {
       })(),
       tokens: this.economy.tokens(),
       stalls: this._stallsHere(),
+      tasks: this._mapTasks({ region, isStoryRegion, objectiveIndex, chest }),
       economy: this.economy,
     };
+  }
+
+  /**
+   * 主页面任务窗格:复用现有进度汇总,至多三项。
+   * @returns {Array<{title:string, detail:string, tag?:string}>}
+   */
+  _mapTasks({ region, isStoryRegion, objectiveIndex, chest }) {
+    const out = [];
+    const storyRegion = REGIONS[this.storyRegionId];
+    // 1) 主线
+    if (isStoryRegion && objectiveIndex >= 0) {
+      const s = region.stops[objectiveIndex];
+      out.push({
+        title: `主线 · 第${this._chapterNum()}章`,
+        detail: `前往「${s.name}」${s.npc ? `找到「${s.npc}」` : '开启剧情'}`,
+        tag: '剧情',
+      });
+    } else if (storyRegion && this.storyRegionId !== this.regionId) {
+      out.push({ title: '主线 · 赶赴剧情地', detail: `前往「${storyRegion.name}」`, tag: '世界地图' });
+    } else if (this.engine?.pendingGate) {
+      out.push({ title: '主线 · 待启剧情', detail: '在此地开启剧情', tag: '开始剧情' });
+    }
+    // 2) 职业成长
+    const eco = this.economy;
+    const rank = eco.careerRank();
+    if (eco.careerLevel >= CAREER_MAX_LEVEL) {
+      out.push({ title: `职业 · ${rank.name}`, detail: '已至职业之巅(150 级)', tag: rank.major });
+    } else {
+      const nextStart = Math.min(CAREER_MAX_LEVEL, (eco.careerRankIndex() + 1) * 7 + 1);
+      out.push({
+        title: `职业 · ${rank.name} Lv.${eco.careerLevel}`,
+        detail: eco.careerLevel >= CAREER_FREE_MAX
+          ? '逾百级需「星辉秘典」方能提升'
+          : `再升 ${Math.max(0, nextStart - eco.careerLevel)} 级晋升下一职介`,
+        tag: rank.major,
+      });
+    }
+    // 3) 宝箱 / 宠物
+    if (chest && !chest.opened) {
+      out.push({ title: '宝箱 · 未开启', detail: chest.known ? '已得密码,可去开箱' : '向本地人打听密码', tag: '探索' });
+    } else if (eco.pets.size > 0 && !eco.petActive) {
+      out.push({ title: '宠物 · 未出战', detail: '在角色弹窗指定出战宠物', tag: '养成' });
+    }
+    return out.slice(0, 3);
   }
 
   _renderMap() {
     this.ui.renderMap(this._mapState());
     this._syncUi();
+    // 新玩家初次落图:弹出角色弹窗,免费定形 / 改名一次(仅一次)
+    if ((!this.economy.lookChosen || !this.economy.nameChosen) && !this._lookPrompted) {
+      this._lookPrompted = true;
+      this._openCharacterSheet('look');
+    }
   }
 
   /** 根据当前地区主题切换背景音乐(不同主城/地形有不同音乐) */
@@ -1282,9 +1337,49 @@ export class Game {
   // ===== 商店 =====
   _openShop() {
     const theme = this._currentTheme();
-    this.ui.renderShop({ theme, stock: SHOP_STOCK[theme] || SHOP_STOCK.village, economy: this.economy, fee: FEES.shop });
-    this._syncUi();
+    this._shopMul = this._isCity(this.regionId) ? 0.85 : 1;
+    this._shopStockCache = this._rollShopStock(theme);
+    this._renderShop();
     this.transition(GameState.SHOP);
+  }
+
+  /** 按地区刷新货架(主城货全价低;非主城随机不同,极低概率出绝世) */
+  _rollShopStock(theme) {
+    const isCity = this._isCity(this.regionId);
+    const base = [...(SHOP_STOCK[theme] || SHOP_STOCK.village)];
+    if (!isCity) {
+      // 不同地图:随机剔除约 1/4 的常备货,营造「各店不同」
+      for (let i = base.length - 1; i >= 0; i--) {
+        if (this.rng.next() < 0.25) base.splice(i, 1);
+      }
+    }
+    const levels = isCity ? ARMOR_SHOP_LEVELS : ARMOR_SHOP_LEVELS.filter((_, i) => i % 2 === 0);
+    for (const slot of ARMOR_SLOTS) {
+      for (const lv of levels) {
+        if (!isCity && this.rng.next() < 0.4) continue; // 非主城:各类防具随机不全
+        base.push(armorId(slot, lv));
+      }
+    }
+    // 非主城:0.001% 出现一件「绝世」商品(仅此处可售)
+    if (!isCity && this.rng.next() < 0.00001) {
+      const pool = ['starfall_blade', 'dragon_fang', 'void_scepter', 'scripture', 'leviathan_hook', 'falcon_blade', 'dragon_piercer']
+        .filter((id) => ITEMS[id]);
+      if (pool.length) base.push(pool[Math.floor(this.rng.next() * pool.length)]);
+    }
+    return base;
+  }
+
+  _renderShop() {
+    const theme = this._currentTheme();
+    this.ui.renderShop({
+      theme,
+      stock: this._shopStockCache || this._rollShopStock(theme),
+      economy: this.economy,
+      fee: FEES.shop,
+      priceMul: this._shopMul || 1,
+      isCity: this._isCity(this.regionId),
+    });
+    this._syncUi();
   }
 
   _buy(id) {
@@ -1292,7 +1387,7 @@ export class Game {
     if (!it) return;
     if (!isTradeable(id)) { this.ui.showToast('此物不出售'); return; }
     const base = this.economy.itemPrice(id);
-    const price = Math.max(1, Math.round(base * (1 + FEES.shop)));
+    const price = Math.max(1, Math.round(base * (this._shopMul || 1) * (1 + FEES.shop)));
     if (this.economy.gold < price) { this.ui.showToast('金币不足'); return; }
     if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
     this.economy.gold -= price;
@@ -1325,9 +1420,7 @@ export class Game {
   }
 
   _openShopRefresh() {
-    const theme = this._currentTheme();
-    this.ui.renderShop({ theme, stock: SHOP_STOCK[theme] || SHOP_STOCK.village, economy: this.economy, fee: FEES.shop });
-    this._syncUi();
+    this._renderShop();
   }
 
   // ===== 市场(玩家集市:浮动定价 + 手续费 + 玩家货架) =====
@@ -1343,6 +1436,7 @@ export class Game {
         price: this.trade ? this.trade.marketAvg(g.id) : g.price,
         trend: this.trade ? this.trade.priceTrend(g.id) : 1,
       })),
+      pets: this._marketPets(),
       listings: this.economy.listings,
       economy: this.economy,
       fee,
@@ -1385,6 +1479,43 @@ export class Game {
       wares.push({ key: `ware_${i}`, def, price });
     }
     return wares;
+  }
+
+  /** 市场宠物摊:本次刷新上架的宠物(常规常驻,稀有/神话概率出现) */
+  _marketPets() {
+    if (!this.trade) return [];
+    const tick = this.trade.tick;
+    const seed = this.rng.seed;
+    let i = 0;
+    const flip = () => hash01(`pet:${seed}:${tick}:${i++}`); // 稳定 0~1(同一轮次同一盘货)
+    const stock = rollPetStock(flip);
+    const ids = [...stock.common, ...stock.rare, ...stock.mythic];
+    return ids.map((id) => {
+      const p = PETS[id];
+      return {
+        id, name: p.name, icon: p.icon,
+        rarity: PET_RARITY[p.rarity] || p.rarity,
+        price: p.price, desc: p.desc,
+        skill: petSkills(p).map(petSkillText).join('、'),
+      };
+    });
+  }
+
+  /** 买入宠物(价格随稀有度;到手即可在角色弹窗指定出战) */
+  _marketPetBuy(id) {
+    const p = PETS[id];
+    if (!p) return;
+    const fee = this.trade ? this.trade.feeFor('market').fee : MARKET_FEE;
+    const price = Math.max(1, Math.round(p.price * (1 + fee)));
+    if (this.economy.gold < price) { this.ui.showToast(`金币不足(需 ${price})`); return; }
+    this.economy.gold -= price;
+    this.economy.addPet(id, 1);
+    const first = !this.economy.petActive;
+    if (first) this.economy.setActivePet(id);
+    this.ui.showToast(`🐾 领回了「${p.name}」${first ? '(已随行)' : ''}`);
+    this._openMarketRefreshOnly();
+    this._syncUi();
+    this._autosave();
   }
 
   _openMarket() {
@@ -1760,7 +1891,10 @@ export class Game {
 
   _useItem(id) {
     const r = this.economy.useItem(id, this.player, this.currentBattle);
+    // 改名卡 / 美梦药水:交由角色弹窗处理(此处不消耗)
+    if (r.ok && r.prompt) { this._openCharacterSheet(r.prompt); return; }
     this.ui.showToast(r.msg);
+    if (r.promotions?.length) this._applyCareerPromotions(r.promotions);
     this._bagRefresh();
     if (this.state === GameState.BATTLE && this.currentBattle) this.currentBattle._refresh();
     this._autosave();
@@ -1773,6 +1907,158 @@ export class Game {
     this._bagRefresh();
     if (this.state === GameState.BATTLE && this.currentBattle) this.currentBattle._refresh();
     this._autosave();
+  }
+
+  // ===== 角色弹窗(防具 / 服饰 / 形象 / 职业) =====
+  /** 背包物品 → 视图条目 */
+  _csItem(id) {
+    const it = ITEMS[id];
+    if (!it) return null;
+    return { id, name: it.name, icon: it.icon || '❔', level: it.level || 0 };
+  }
+
+  /** 背包里满足条件的物品(按等级降序) */
+  _bagOf(pred) {
+    const out = [];
+    for (const [id, qty] of this.economy.bag.entries()) {
+      if (!pred(id)) continue;
+      const it = this._csItem(id);
+      if (it) { it.qty = qty; out.push(it); }
+    }
+    out.sort((a, b) => (b.level || 0) - (a.level || 0));
+    return out;
+  }
+
+  /** 组装角色弹窗数据 */
+  _characterSheetData() {
+    const eco = this.economy;
+    const career = this.engine?.career || this.career || { id: null, name: '无名少年' };
+    const rank = eco.careerRank();
+    const armor = {}; const armorOptions = {};
+    for (const slot of ARMOR_SLOTS) {
+      armor[slot] = eco.equipped[slot] ? this._csItem(eco.equipped[slot]) : null;
+      armorOptions[slot] = this._bagOf((id) => armorSlotOf(id) === slot);
+    }
+    const outfits = {}; const outfitOptions = {};
+    for (const slot of ['hat', 'top', 'bottom', 'shoes']) {
+      outfits[slot] = eco.equipped[slot] ? this._csItem(eco.equipped[slot]) : null;
+      outfitOptions[slot] = this._bagOf((id) => ITEMS[id]?.equipment?.slot === slot);
+    }
+    const unlocked = this.engine?.unlockedCareers || new Set();
+    const careers = CAREERS.map((c) => ({
+      id: c.id, name: c.name,
+      unlocked: unlocked.has(c.id) || (career && career.id === c.id),
+      active: career && career.id === c.id,
+    }));
+    return {
+      name: eco.playerName,
+      body: eco.body,
+      skin: eco.skin,
+      lookLabel: lookLabel(eco.body, eco.skin),
+      appearance: eco.appearance(),
+      armor, armorOptions, outfits, outfitOptions,
+      career: {
+        id: career?.id || null,
+        name: career?.name || '无名少年',
+        level: eco.careerLevel,
+        max: CAREER_MAX_LEVEL,
+        freeMax: CAREER_FREE_MAX,
+        rankName: rank?.name || '',
+        major: rank?.major || '',
+        exp: eco.careerExp,
+        expMax: eco.careerExpToNext(),
+      },
+      careers,
+      pets: eco.petList().map(([id, count]) => {
+        const p = PETS[id];
+        return {
+          id,
+          name: p?.name || id,
+          icon: p?.icon || '🐾',
+          rarity: p ? (PET_RARITY[p.rarity] || p.rarity) : '',
+          skill: p ? petSkills(p).map(petSkillText).join('、') : '',
+          count,
+          active: eco.petActive === id,
+        };
+      }),
+      hasRename: eco.has('rename_card'),
+      hasDream: eco.has('dream_potion'),
+      lookChosen: eco.lookChosen,
+      nameChosen: eco.nameChosen,
+    };
+  }
+
+  /** 打开角色弹窗(prompt: 'look' | 'rename' | null) */
+  _openCharacterSheet(prompt = null) {
+    this.ui.renderCharacterSheet(this._characterSheetData(), prompt);
+  }
+
+  /** 换装(防具 / 服饰;武器受职业限制) */
+  _charEquip(id) {
+    if (!this.economy.canEquip(id, this.engine?.career?.id)) {
+      this.ui.showToast('此武器与你的职业不符,无法使用');
+      return;
+    }
+    if (!this.economy.equip(id)) { this.ui.showToast('无法装备'); return; }
+    this._syncPlayerStats?.();
+    this._syncUi();
+    this._autosave();
+    this._openCharacterSheet();
+  }
+
+  _charUnequip(slot) {
+    if (!this.economy.unequip(slot)) return;
+    this._syncPlayerStats?.();
+    this._syncUi();
+    this._autosave();
+    this._openCharacterSheet();
+  }
+
+  /** 在角色弹窗内切换职业(须已解锁) */
+  _charSwitchCareer(id) {
+    if (!this.engine?.switchCareer) return;
+    if (!this.engine.switchCareer(id)) { this.ui.showToast('该职业尚未解锁'); return; }
+    this._syncUi();
+    this._autosave();
+    this._openCharacterSheet();
+  }
+
+  /** 改名(初次免费;此后消耗改名卡) */
+  _charRename(name) {
+    const eco = this.economy;
+    const free = !eco.nameChosen;
+    if (!free && !eco.has('rename_card')) { this.ui.showToast('需要「改名卡」'); return; }
+    const n = String(name || '').trim();
+    if (!n) { this.ui.showToast('名字不能为空'); return; }
+    if (!eco.setName(n)) { this.ui.showToast('这个名字用不得'); return; }
+    if (free) eco.nameChosen = true;
+    else eco.removeItem('rename_card', 1);
+    this.ui.showToast(`你自此名为「${eco.playerName}」`);
+    this._bagRefresh?.();
+    this._autosave();
+    this._openCharacterSheet();
+  }
+
+  /** 指定 / 取消出战宠物(null 表示收回) */
+  _charPet(id) {
+    if (!this.economy.setActivePet(id)) { this.ui.showToast('尚未拥有这只宠物'); return; }
+    this.ui.showToast(id ? `带上「${PETS[id]?.name || id}」同行` : '宠物已收回');
+    this._autosave();
+    this._openCharacterSheet();
+  }
+
+  /** 换形象(初次免费;此后消耗美梦药水) */
+  _charLook({ body, skin } = {}) {
+    const eco = this.economy;
+    const free = !eco.lookChosen;
+    if (!free && !eco.has('dream_potion')) { this.ui.showToast('需要「美梦药水」'); return; }
+    eco.setLook(body, skin);
+    if (free) eco.lookChosen = true;
+    else eco.removeItem('dream_potion', 1);
+    this.ui.showToast(`一梦醒来,你成了${lookLabel(eco.body, eco.skin)}的模样`);
+    this._bagRefresh?.();
+    this._autosave();
+    this._openCharacterSheet();
   }
 
   _equipItem(id) {
@@ -1895,11 +2181,20 @@ export class Game {
       rng: this.rng,
       bus: this.bus,
       bonusStrength,
+      pet: this._activePet(),
     });
     this.ui.bindBattle(this.currentBattle);
     this.transition(GameState.BATTLE);
     this.currentBattle.start();
     this._applyBattleStartBlock();
+  }
+
+  /** 出战宠物(供战斗使用) */
+  _activePet() {
+    const id = this.economy?.petActive;
+    const p = id ? PETS[id] : null;
+    if (!p) return null;
+    return { id: p.id, name: p.name, icon: p.icon, skills: petSkills(p) };
   }
 
   /** 战斗开始时的装备增益(勇敢宝石 → 初始护甲) */
@@ -1964,6 +2259,7 @@ export class Game {
       rng: this.rng,
       bus: this.bus,
       bonusStrength,
+      pet: this._activePet(),
     });
     this.ui.bindBattle(this.currentBattle);
     this.transition(GameState.BATTLE);
@@ -2005,6 +2301,7 @@ export class Game {
         drops.material ? `${ITEMS[drops.material.id]?.name}×${drops.material.qty}` : '',
         drops.gem ? `${ITEMS[drops.gem.id]?.name}×${drops.gem.qty}` : '',
       ].filter(Boolean).join('、');
+      this._gainCareerFromBattle(6 + ch * 3);
       this._syncUi();
       this.ui.showToast(`击退拦路者,拾得 ${gold} 金币${loot ? `与「${ITEMS[loot]?.name || loot}」` : ''}${dropTxt ? `,另得 ${dropTxt}` : ''}`);
       if (this.travel?.active) {
@@ -2038,6 +2335,51 @@ export class Game {
     this._autosave();
   }
 
+  // ===== 职业等级 / 晋升 =====
+  /** 战斗胜利累积职业经验(随职介提高倍率);返回本次结果 */
+  _gainCareerFromBattle(base) {
+    const bonus = rankExpBonus(this.economy.careerRankIndex());
+    const r = this.economy.gainCareerExp(base, bonus);
+    if (r.promotions?.length) this._applyCareerPromotions(r.promotions);
+    return r;
+  }
+
+  /**
+   * 结算晋升:发放金币 / 材料 / 宝石奖励;进入新的大职介时整套赠送服饰。
+   * @param {Array<{index:number, rank:{name:string, major:string}, newMajor:boolean}>} promotions
+   */
+  _applyCareerPromotions(promotions) {
+    if (!promotions || !promotions.length) return;
+    const gemPool = ['gem_strength', 'gem_magic', 'gem_brave', 'gem_life'];
+    const matLow = ['mat_iron', 'mat_wood', 'mat_leather'];
+    const matHigh = ['mat_crystal', 'mat_scale', 'mat_meteor'];
+    for (const p of promotions) {
+      const rw = rankReward(p.index);
+      const gold = Math.round(rw.gold);
+      this.economy.gold += gold;
+      const parts = [`${gold} 金币`];
+      if (rw.material) {
+        const pool = p.index >= 6 ? matHigh : matLow;
+        const mid = pool[Math.floor(this.rng.next() * pool.length)];
+        this.economy.addItem(mid, rw.material);
+        parts.push(`${ITEMS[mid]?.name || mid}×${rw.material}`);
+      }
+      if (rw.gem) {
+        const gid = gemPool[Math.floor(this.rng.next() * gemPool.length)];
+        this.economy.addItem(gid, rw.gem);
+        parts.push(`${ITEMS[gid]?.name || gid}×${rw.gem}`);
+      }
+      if (p.newMajor) {
+        const ids = majorSetIds(p.rank.major);
+        for (const sid of ids) if (ITEMS[sid]) this.economy.addItem(sid, 1);
+        parts.push(`一整套「${p.rank.major}」服饰`);
+      }
+      this.ui.showToast(`✦ 晋升「${p.rank.name}」!获赐 ${parts.join('、')}`);
+    }
+    this._syncPlayerStats?.();
+    this._bagRefresh?.();
+  }
+
   /** 胜利奖励:金币 + 概率掉落杂物 + 材料 / 宝石 */
   _grantBattleRewards() {
     const ch = this._chapterNum();
@@ -2054,6 +2396,8 @@ export class Game {
     }
     const drops = this._rollBattleDrops();
     this._lastBattleReward = { gold, loot, drops };
+    // 职业经验:随章节提升
+    this._lastBattleReward.career = this._gainCareerFromBattle(12 + ch * 5);
     this._syncUi();
   }
 
@@ -2592,6 +2936,16 @@ export class Game {
     this.bus.on('ui:venue-buy', (id) => this._venueBuy(id));
     this.bus.on('ui:bag-use', (id) => this._useItem(id));
     this.bus.on('ui:bag-use-all', (id) => this._useItemAll(id));
+    // 角色弹窗
+    this.bus.on('ui:open-character', () => this._openCharacterSheet());
+    this.bus.on('ui:char-close', () => this.ui.closeCharacterSheet());
+    this.bus.on('ui:char-equip', (id) => this._charEquip(id));
+    this.bus.on('ui:char-unequip', (slot) => this._charUnequip(slot));
+    this.bus.on('ui:char-career', (id) => this._charSwitchCareer(id));
+    this.bus.on('ui:char-rename', (name) => this._charRename(name));
+    this.bus.on('ui:char-look', (p) => this._charLook(p));
+    this.bus.on('ui:char-pet', (id) => this._charPet(id));
+    this.bus.on('ui:market-buy-pet', (id) => this._marketPetBuy(id));
     this.bus.on('ui:bag-equip', (id) => this._equipItem(id));
     this.bus.on('ui:bag-unequip', (slot) => this._unequipItem(slot));
     this.bus.on('ui:bag-drop', (id) => this._dropItem(id));

@@ -125,7 +125,7 @@
     <!-- 剧情视图 -->
     <section id="view-narrative" class="view view-narrative">
       <!-- 左:人物状态 / 服饰 / 装扮(像素图) -->
-      <aside id="scene-character" class="scene-panel scene-character" aria-hidden="true">
+      <aside id="scene-character" class="scene-panel scene-character" data-char-open role="button" tabindex="0" title="查看角色 · 更换防具与服饰">
         <div class="scene-panel-title">人 物</div>
         <div class="scene-frame">
           <canvas id="scene-char-canvas" class="scene-canvas scene-canvas-char" width="144" height="192"></canvas>
@@ -171,15 +171,21 @@
       <p id="map-hint" class="map-hint">—</p>
       <div id="map-stops" class="map-stops"></div>
       <div id="map-services" class="map-services"></div>
+      <!-- 任务窗格:最多显示三项正在执行的任务 -->
+      <div class="map-tasks-wrap">
+        <div class="map-tasks-title">任 务(至多三件)</div>
+        <div id="map-tasks" class="map-tasks"></div>
+      </div>
       <div class="map-npcs-wrap">
         <div class="map-npcs-title">本地人物(点击交谈)</div>
         <div id="map-npcs" class="map-npcs"></div>
       </div>
       <div class="map-bottom">
-        <!-- 左下角:人物形象(随换装变化) -->
-        <div class="map-portrait" aria-hidden="true">
+        <!-- 左下角:人物形象(随换装变化);点击查看/更换装束 -->
+        <div class="map-portrait" data-char-open role="button" tabindex="0" title="查看角色 · 更换防具与服饰">
           <canvas id="map-char-canvas" class="scene-canvas scene-canvas-map" width="96" height="128"></canvas>
           <div id="map-char-name" class="map-portrait-name">—</div>
+          <div class="map-portrait-hint">点击查看角色</div>
         </div>
         <div class="panel-actions map-actions">
           <button id="btn-map-story" class="btn btn-primary">开 始 剧 情</button>
@@ -762,6 +768,59 @@
             </li>
           </ul>
         </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 角色弹窗:居中形象 + 七格防具环绕 + 服饰 / 职业 / 形象 -->
+  <div id="character-sheet" class="modal charsheet" hidden>
+    <div class="modal-backdrop" data-char-close></div>
+    <section class="modal-panel modal-panel-wide charsheet-panel" role="dialog" aria-modal="true" aria-labelledby="cs-title">
+      <header class="modal-head">
+        <h2 id="cs-title" class="modal-title">角 色</h2>
+        <button class="modal-close" type="button" data-char-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body charsheet-body">
+        <!-- 左:形象居中,防具窗格环绕四周 -->
+        <div class="cs-stage">
+          <div class="cs-slot cs-area-head" data-slot="head"></div>
+          <div class="cs-slot cs-area-hands" data-slot="hands"></div>
+          <div class="cs-slot cs-area-ring" data-slot="ring"></div>
+          <div class="cs-figure">
+            <div class="cs-frame">
+              <canvas id="cs-canvas" class="scene-canvas cs-canvas" width="240" height="320"></canvas>
+            </div>
+            <div id="cs-name" class="cs-name">—</div>
+            <div id="cs-look" class="cs-sub">—</div>
+          </div>
+          <div class="cs-slot cs-area-earring" data-slot="earring"></div>
+          <div class="cs-slot cs-area-body" data-slot="body"></div>
+          <div class="cs-slot cs-area-legs" data-slot="legs"></div>
+          <div class="cs-slot cs-area-feet" data-slot="feet"></div>
+        </div>
+        <!-- 右:职业 / 服饰 / 形象 -->
+        <div class="cs-side">
+          <div class="cs-card">
+            <h3 class="cs-card-title">职 业</h3>
+            <div id="cs-career" class="cs-career"></div>
+          </div>
+          <div class="cs-card">
+            <h3 class="cs-card-title">服 饰</h3>
+            <div id="cs-outfits" class="cs-outfits"></div>
+          </div>
+          <div class="cs-card">
+            <h3 class="cs-card-title">形 象 · 改 名</h3>
+            <div id="cs-lookpanel" class="cs-lookpanel"></div>
+          </div>
+          <div class="cs-card">
+            <h3 class="cs-card-title">宠 物</h3>
+            <div id="cs-pets" class="cs-pets"></div>
+          </div>
+          <div id="cs-picker" class="cs-picker" hidden></div>
+        </div>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-ghost" type="button" data-char-close>关 闭</button>
       </div>
     </section>
   </div>

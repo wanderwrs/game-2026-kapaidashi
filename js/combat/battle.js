@@ -19,13 +19,14 @@ const STATUS_CN = {
 const AUTO_STEP_DELAY = 650;
 
 export class Battle {
-  constructor({ player, deck, enemyDef, rng, bus, bonusStrength = 0 }) {
+  constructor({ player, deck, enemyDef, rng, bus, bonusStrength = 0, pet = null }) {
     this.player = player;
     this.deck = deck;
     this.enemy = new Enemy(enemyDef, rng);
     this.rng = rng;
     this.bus = bus;
     this.bonusStrength = bonusStrength;   // 装备战力 + 战力药剂
+    this.pet = pet;                       // 出战宠物 { name, icon, skills:[{kind,amount}] }
     this.turn = 0;
     this.over = false;
     this.result = null;
@@ -46,7 +47,34 @@ export class Battle {
     this.enemy.rollIntent();
     this.deck.draw(5);
     this.turn = 1;
+    if (this.pet) {
+      for (const sk of this.pet.skills || []) {
+        if (sk.kind === 'atk_up') this.player.applyStatus('strength', sk.amount);
+      }
+      this.bus.emit('battle:log', `【${this.pet.name}】随你出战`);
+      this._petTurnStart();
+      this._checkEnd();
+    }
     this._refresh();
+    this._flushFx();
+  }
+
+  /** 宠物每回合开始的效果:回血 / 回蓝 / 自动攻击 */
+  _petTurnStart() {
+    if (!this.pet || this.over) return;
+    for (const sk of this.pet.skills || []) {
+      if (sk.kind === 'heal') {
+        const before = this.player.hp;
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + sk.amount);
+        if (this.player.hp > before) this._queueFx({ target: 'player', kind: 'heal', value: this.player.hp - before });
+      } else if (sk.kind === 'mp_regen') {
+        this.player.mp = Math.min(this.player.maxMp, this.player.mp + sk.amount);
+      } else if (sk.kind === 'auto_attack') {
+        const dealt = this.enemy.takeDamage(sk.amount);
+        this._queueFx({ target: 'enemy', kind: 'damage', value: dealt });
+        this.bus.emit('battle:log', `${this.pet.name} 扑上去,造成 ${dealt} 伤害`);
+      }
+    }
   }
 
   /** 玩家打出一张手牌 */
@@ -122,6 +150,8 @@ export class Battle {
       this.player.resetEnergy();
       this.player.clearBlock();
       this.deck.draw(5);
+      this._petTurnStart();
+      this._checkEnd();
       this._refresh();
       // 自动战斗:新回合开始后继续
       if (this.autoMode) this._scheduleAutoStep();
@@ -340,6 +370,7 @@ export class Battle {
         intent: this.enemy.intent ? { ...this.enemy.intent } : null,
         statuses: { ...this.enemy.statuses },
       },
+      pet: this.pet ? { name: this.pet.name, icon: this.pet.icon, skills: (this.pet.skills || []).slice() } : null,
       hand: this.deck.hand.slice(),
       drawCount: this.deck.drawPile.length,
       discardCount: this.deck.discardPile.length,
