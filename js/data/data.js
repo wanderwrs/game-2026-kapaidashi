@@ -92,8 +92,16 @@ export const ENEMIES = {
     { name: '码头恶棍', hp: 36, actions: [{ kind: 'attack', value: 9 }, { kind: 'block', value: 6 }] },
     { name: '继父爪牙', hp: 30, actions: [{ kind: 'attack', value: 8 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
   ],
+  ch04b: [
+    { name: '私盐帮众', hp: 32, actions: [{ kind: 'attack', value: 8 }, { kind: 'block', value: 5 }] },
+    { name: '滩涂蟹妖', hp: 34, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 6 }, { kind: 'block', value: 4 }] },
+  ],
   ch05: [
     { name: '幼年黑龙', hp: 55, actions: [{ kind: 'attack', value: 11 }, { kind: 'attack', value: 8 }, { kind: 'block', value: 6 }] },
+  ],
+  ch05b: [
+    { name: '雪岭劫商', hp: 36, actions: [{ kind: 'attack', value: 10 }, { kind: 'attack', value: 7 }] },
+    { name: '垭口雪魈', hp: 40, actions: [{ kind: 'attack', value: 9 }, { kind: 'block', value: 7 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
   ],
   ch06: [
     { name: '野林狼', hp: 22, actions: [{ kind: 'attack', value: 5 }, { kind: 'attack', value: 5 }, { kind: 'buff', name: 'strength', stacks: 1 }] },

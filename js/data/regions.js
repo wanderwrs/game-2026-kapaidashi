@@ -71,12 +71,38 @@ export const REGIONS = {
       { key: 'reef', name: '港外礁岸', theme: 'port', npc: null, node: 'n06', hint: '顺潮声走向港外礁岸,了结旧账。', services: { job: true, rest: true } },
     ],
   },
+  // ===== 第四章 · 支线地区「潮生镇」(沿海盐镇,风土:赶潮市 / 晒盐 / 放海灯) =====
+  // 37% 交叉:5 个地点中 2 个复用前三章(官道驿站 ch03、旧友宅邸 ch03),
+  //           5 个关键人物中 2 个复用前三章(驿丞 ch02、同路人·林 ch02)。
+  ch04b: {
+    name: '潮生镇', theme: 'port',
+    stops: [
+      { key: 'post', name: '官道驿站', theme: 'village', npc: '驿丞', node: 'n01', hint: '沿官道南下,先在这处驿站歇脚,向驿丞打听潮生镇。', services: { shop: true, rest: true } },
+      { key: 'tide', name: '退潮市', theme: 'port', npc: '潮生', node: 'n03', hint: '等潮水退尽,赶海人的集市才在滩上支起来。', services: { shop: true, job: true, rest: true } },
+      { key: 'salt', name: '白盐田', theme: 'port', npc: '晒盐婆', node: 'n05', hint: '镇北的白盐田里,守着盐畦的老妇知道海上的旧事。', services: { job: true, rest: true } },
+      { key: 'wreck', name: '沉船滩', theme: 'port', npc: '同路人·林', node: 'n07', hint: '退潮后沉船的残骸露出滩面——有人约你在那里碰头。', services: { rest: true } },
+      { key: 'manor', name: '旧友宅邸', theme: 'port', npc: '老管家', node: 'n09', hint: '循着银坠上的印记,找到那处临海的旧友宅邸。', services: { rest: true } },
+    ],
+  },
   ch05: {
     name: '圣心坛外围', theme: 'mountain',
     stops: [
       { key: 'camp', name: '雪线营地', theme: 'mountain', npc: null, node: 'n01', hint: '在雪线扎营,准备潜入圣心坛。', services: { shop: true, job: true, rest: true } },
       { key: 'pass', name: '坛外密道', theme: 'cliff', npc: null, node: 'n02', hint: '沿冰隙摸进坛外密道。', services: { rest: true } },
       { key: 'steps', name: '坛前石阶', theme: 'mountain', npc: '幼年黑龙', node: 'n05', hint: '登上坛前石阶,直面那头幼龙。', services: { rest: true } },
+    ],
+  },
+  // ===== 第五章 · 支线地区「雪脊商驿」(翻山商道,风土:煨桑 / 换命绳 / 雪盲哨铃) =====
+  // 37% 交叉:5 个地点中 2 个复用前三章(山道哨卡 ch03、山脚哨站 ch01),
+  //           5 个关键人物中 2 个复用前三章(哨兵 ch01、同路人·林 ch02)。
+  ch05b: {
+    name: '雪脊商驿', theme: 'mountain',
+    stops: [
+      { key: 'check', name: '山道哨卡', theme: 'mountain', npc: '哨兵', node: 'n01', hint: '翻过山脊的第一道哨卡,守卡的老兵认得这条路。', services: { shop: true, rest: true } },
+      { key: 'sang', name: '煨桑垭口', theme: 'cliff', npc: '煨桑僧', node: 'n03', hint: '垭口上终年煨着松柏枝——商队过关前都要添一把。', services: { rest: true } },
+      { key: 'bell', name: '雪盲哨', theme: 'mountain', npc: '铃婆', node: 'n05', hint: '雪雾最浓处挂着引路的铜铃,摇铃的老妇守在那里。', services: { rest: true } },
+      { key: 'rope', name: '换命栈', theme: 'mountain', npc: '商队头人', node: 'n07', hint: '换命栈上,翻山的人互换绳结,互为担保。', services: { job: true, rest: true } },
+      { key: 'foot', name: '山脚哨站', theme: 'mountain', npc: '同路人·林', node: 'n09', hint: '下了垭口,山脚的旧哨站里有人在等你。', services: { shop: true, job: true, rest: true } },
     ],
   },
   ch06: {

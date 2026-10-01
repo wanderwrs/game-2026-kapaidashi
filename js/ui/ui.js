@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001j';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001j';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001j';
-import { gradeOf } from '../data/grade.js?v=20261001j';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261001j';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001j';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001j';
-import { cardMpCost } from '../data/data.js?v=20261001j';
-import { ENDINGS } from '../narrative/engine.js?v=20261001j';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001j';
-import { SceneView, paintCharacter } from './scene.js?v=20261001j';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001j';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001j';
-import { Minigame } from '../minigame/minigame.js?v=20261001j';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001j';
-import { TERRAIN_CN } from '../data/world.js?v=20261001j';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001j';
+import { GameState } from '../core/game.js?v=20261001k';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001k';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001k';
+import { gradeOf } from '../data/grade.js?v=20261001k';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261001k';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001k';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001k';
+import { cardMpCost } from '../data/data.js?v=20261001k';
+import { ENDINGS } from '../narrative/engine.js?v=20261001k';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261001k';
+import { SceneView, paintCharacter } from './scene.js?v=20261001k';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001k';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001k';
+import { Minigame } from '../minigame/minigame.js?v=20261001k';
+import { MODE_LABELS } from '../data/jobs.js?v=20261001k';
+import { TERRAIN_CN } from '../data/world.js?v=20261001k';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001k';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -108,6 +108,7 @@ export class UI {
     this._worldSelected = null;   // 世界地图上选中的地区 id
     this._worldPoiSelected = null; // 世界地图上选中的 POI id
     this._worldState = null;      // 最近一次世界地图数据
+    this._worldZoom = 1;          // 世界地图缩放倍率(0.6~3)
     this._lastEnemyHp = null;    // 用于计算伤害飘字
     this._lastPlayerHp = null;
     this._cache();
@@ -192,6 +193,7 @@ export class UI {
       mapCharName: $('map-char-name'),
       // 世界地图
       worldMap: $('world-map'),
+      worldCanvas: $('world-canvas'),
       worldPanel: $('world-panel'),
       worldList: $('world-list'),
       worldNote: $('world-note'),
@@ -444,6 +446,18 @@ export class UI {
     if (this.el.btnMapBag) this.el.btnMapBag.addEventListener('click', () => this.bus.emit('ui:map-bag'));
     if (this.el.btnMapWorld) this.el.btnMapWorld.addEventListener('click', () => this.bus.emit('ui:map-world'));
     if (this.el.btnWorldBack) this.el.btnWorldBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    // 世界地图缩放:按钮 + Ctrl/⌘ + 滚轮(不劫持普通滚动)
+    const zoomBy = (mul) => this._setWorldZoom(this._worldZoom * mul);
+    document.getElementById('wm-zoom-in')?.addEventListener('click', () => zoomBy(1.25));
+    document.getElementById('wm-zoom-out')?.addEventListener('click', () => zoomBy(1 / 1.25));
+    document.getElementById('wm-zoom-reset')?.addEventListener('click', () => this._setWorldZoom(1));
+    if (this.el.worldMap) {
+      this.el.worldMap.addEventListener('wheel', (e) => {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        e.preventDefault();
+        zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12);
+      }, { passive: false });
+    }
     if (this.el.btnNpcClose) this.el.btnNpcClose.addEventListener('click', () => this.bus.emit('ui:npc-close'));
     if (this.el.btnTutorialClose) this.el.btnTutorialClose.addEventListener('click', () => this.bus.emit('ui:tutorial-close'));
     if (this.el.btnShopBack) this.el.btnShopBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
@@ -668,7 +682,7 @@ export class UI {
     if (!engine) return;
     const id = engine.currentChapterId;
     const chapter = engine.chapters?.[id];
-    const idx = CHAPTER_ORDER.indexOf(id);
+    const idx = chapterProgressIndex(id);
     const total = CHAPTER_ORDER.length;
     this.el.chapterTitle.textContent = chapter?.title || '—';
     const pct = idx >= 0 ? Math.round(((idx + 1) / total) * 100) : 0;
@@ -1441,6 +1455,13 @@ export class UI {
   }
 
   // ===== 世界地图(全部地区总览) =====
+  /** 设置世界地图缩放倍率(0.6~3 倍,围绕中心缩放) */
+  _setWorldZoom(z) {
+    this._worldZoom = Math.max(0.6, Math.min(3, z));
+    const c = this.el.worldCanvas;
+    if (c) c.style.transform = `scale(${this._worldZoom.toFixed(3)})`;
+  }
+
   renderWorld(state) {
     if (!state?.regions) return;
     this._worldState = state;
@@ -1449,7 +1470,7 @@ export class UI {
     const pois = state.pois || [];
 
     // 地图上的地区标记(位置即世界坐标)
-    const map = this.el.worldMap;
+    const map = this.el.worldCanvas;
     if (map) {
       map.innerHTML = '';
       regions.forEach((r) => {

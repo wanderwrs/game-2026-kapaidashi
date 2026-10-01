@@ -11,41 +11,41 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261001j';
-import { EventBus } from './eventbus.js?v=20261001j';
-import { AudioEngine } from './audio.js?v=20261001j';
-import { Player } from '../combat/entity.js?v=20261001j';
-import { Deck } from '../card/deck.js?v=20261001j';
-import { Battle } from '../combat/battle.js?v=20261001j';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001j';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001j';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001j';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001j';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001j';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261001j';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001j';
-import { majorSetIds } from '../data/extras.js?v=20261001j';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261001j';
-import { lookLabel } from '../data/looks.js?v=20261001j';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001j';
-import { TradeEngine } from './trade.js?v=20261001j';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001j';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001j';
-import { jobsFor } from '../data/jobs.js?v=20261001j';
+import { RNG, seedFromString } from './rng.js?v=20261001k';
+import { EventBus } from './eventbus.js?v=20261001k';
+import { AudioEngine } from './audio.js?v=20261001k';
+import { Player } from '../combat/entity.js?v=20261001k';
+import { Deck } from '../card/deck.js?v=20261001k';
+import { Battle } from '../combat/battle.js?v=20261001k';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001k';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001k';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001k';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001k';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001k';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261001k';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001k';
+import { majorSetIds } from '../data/extras.js?v=20261001k';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261001k';
+import { lookLabel } from '../data/looks.js?v=20261001k';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001k';
+import { TradeEngine } from './trade.js?v=20261001k';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001k';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001k';
+import { jobsFor } from '../data/jobs.js?v=20261001k';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261001j';
-import { NPCS } from '../data/npcs.js?v=20261001j';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001j';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001j';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001j';
-import { Economy } from './economy.js?v=20261001j';
-import { Travel } from './travel.js?v=20261001j';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001j';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001j';
-import { CAREERS } from '../narrative/careers.js?v=20261001j';
-import { UI } from '../ui/ui.js?v=20261001j';
+} from '../data/world.js?v=20261001k';
+import { NPCS } from '../data/npcs.js?v=20261001k';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001k';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001k';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001k';
+import { Economy } from './economy.js?v=20261001k';
+import { Travel } from './travel.js?v=20261001k';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001k';
+import { CHAPTERS, chapterNumber } from '../narrative/chapters/index.js?v=20261001k';
+import { CAREERS } from '../narrative/careers.js?v=20261001k';
+import { UI } from '../ui/ui.js?v=20261001k';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -491,9 +491,9 @@ export class Game {
     return g;
   }
 
+  /** 大章序号:支线地区(ch04b/ch05b)与所属大章同号 */
   _chapterNum(chapterId = this.regionId) {
-    const i = CHAPTER_ORDER.indexOf(chapterId);
-    return i >= 0 ? i + 1 : 1;
+    return chapterNumber(chapterId) || 1;
   }
 
   /** 依据职业与装备同步玩家上限(生命 / 魔力 / 战力) */
@@ -1070,7 +1070,7 @@ export class Game {
   _storyStage() {
     let max = this._chapterNum();
     for (const id of this._visited) {
-      const n = CHAPTER_ORDER.indexOf(id) + 1;
+      const n = chapterNumber(id);
       if (n > max) max = n;
     }
     return max;
@@ -2734,7 +2734,7 @@ export class Game {
   /** 通关第一章后,在世界地图随机生成 POI_COUNT 个兴趣点 */
   _generatePois() {
     if (this._pois.length > 0) return; // 已生成过则不重复
-    this._pois = generatePois(() => this.rng.next());
+    this._pois = generatePois(this.rng);
     this.ui.showToast(`✦ 世界地图上出现了 ${POI_COUNT} 处新的驻足之地(餐厅 / 酒店 / 商市)`);
   }
 

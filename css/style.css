@@ -1283,6 +1283,27 @@ body {
   background-size: 10% 10%;
   pointer-events: none;
 }
+/* 可缩放层:所有地区 / POI 标记都在这一层,缩放围绕地图中心 */
+.wm-canvas {
+  position: absolute; inset: 0; z-index: 2;
+  transform-origin: 50% 50%;
+  transition: transform 0.18s var(--ease);
+}
+/* 世界地图右下角的缩放控件 */
+.wm-zoom {
+  position: absolute; right: 8px; bottom: 8px; z-index: 6;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.wm-zoom button {
+  width: 26px; height: 26px; padding: 0; cursor: pointer;
+  font: inherit; font-size: 14px; line-height: 1;
+  color: #4a3018; background: rgba(255, 244, 220, 0.92);
+  border: 1px solid #8b6914; border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(90, 60, 20, 0.35);
+  touch-action: manipulation;
+}
+.wm-zoom button:hover { background: #fff6de; }
+.wm-zoom button:active { transform: translateY(1px); }
 .wm-marker {
   position: absolute; transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; gap: 3px;

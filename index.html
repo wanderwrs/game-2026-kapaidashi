@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261001j" />
+  <link rel="stylesheet" href="css/style.css?v=20261001k" />
 </head>
 <body>
   <!-- 游戏前 · 年龄限制与内容警告门(每次打开页面都需通过;需真人验证) -->
@@ -208,6 +208,12 @@
       <div class="world-layout">
         <div id="world-map" class="world-map">
           <div class="wm-grid" aria-hidden="true"></div>
+          <div id="world-canvas" class="wm-canvas"></div>
+          <div class="wm-zoom" role="group" aria-label="地图缩放">
+            <button type="button" id="wm-zoom-in" title="放大">＋</button>
+            <button type="button" id="wm-zoom-out" title="缩小">－</button>
+            <button type="button" id="wm-zoom-reset" title="复位">⤢</button>
+          </div>
         </div>
         <div class="world-side">
           <div id="world-panel" class="world-panel"></div>
@@ -917,6 +923,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20261001j"></script>
+  <script type="module" src="js/main.js?v=20261001k"></script>
 </body>
 </html>
