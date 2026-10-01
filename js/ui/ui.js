@@ -1296,6 +1296,7 @@ export class UI {
     this._worldState = state;
     const { regions, currentId, economy } = state;
     const cur = regions.find((r) => r.id === currentId) || null;
+    const pois = state.pois || [];
 
     // 地图上的地区标记(位置即世界坐标)
     const map = this.el.worldMap;
@@ -1331,7 +1332,6 @@ export class UI {
       });
 
       // POI 标记(餐厅 / 酒店 / 商市)
-      const pois = state.pois || [];
       pois.forEach((p) => {
         const b = document.createElement('button');
         b.type = 'button';
