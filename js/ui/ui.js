@@ -78,6 +78,7 @@ export class UI {
     this._mgTier = null;          // 当前难度档
     this._mgTierIndex = -1;       // 当前难度档下标
     this._worldSelected = null;   // 世界地图上选中的地区 id
+    this._worldPoiSelected = null; // 世界地图上选中的 POI id
     this._worldState = null;      // 最近一次世界地图数据
     this._lastEnemyHp = null;    // 用于计算伤害飘字
     this._lastPlayerHp = null;
@@ -123,6 +124,10 @@ export class UI {
         battle: $('view-battle'),
         reward: $('view-reward'),
         result: $('view-result'),
+        restaurant: $('view-restaurant'),
+        hotel: $('view-hotel'),
+        market_poi: $('view-market-poi'),
+        merchant: $('view-merchant'),
       },
       careerGrid: $('career-grid'),
       chapterSelect: $('chapter-select'),
@@ -230,6 +235,29 @@ export class UI {
       jobRes: $('job-res'),
       jobList: $('job-list'),
       btnJobBack: $('btn-job-back'),
+      // POI:餐厅 / 酒店 / 商市 / 商人
+      restaurantTitle: $('restaurant-title'),
+      restaurantRes: $('restaurant-res'),
+      restaurantNote: $('restaurant-note'),
+      restaurantList: $('restaurant-list'),
+      btnRestaurantDine: $('btn-restaurant-dine'),
+      btnRestaurantBack: $('btn-restaurant-back'),
+      hotelTitle: $('hotel-title'),
+      hotelRes: $('hotel-res'),
+      hotelNote: $('hotel-note'),
+      hotelRooms: $('hotel-rooms'),
+      hotelOutfits: $('hotel-outfits'),
+      btnHotelBack: $('btn-hotel-back'),
+      marketpoiTitle: $('marketpoi-title'),
+      marketpoiRes: $('marketpoi-res'),
+      marketpoiNote: $('marketpoi-note'),
+      marketpoiList: $('marketpoi-list'),
+      btnMarketpoiBack: $('btn-marketpoi-back'),
+      merchantTitle: $('merchant-title'),
+      merchantRes: $('merchant-res'),
+      merchantNote: $('merchant-note'),
+      merchantList: $('merchant-list'),
+      btnMerchantBack: $('btn-merchant-back'),
       battleItems: $('battle-items'),
       rewardSub: $('reward-sub'),
       enemyZone: $('enemy-zone'),
@@ -341,6 +369,12 @@ export class UI {
     if (this.el.btnMarketBack) this.el.btnMarketBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnBagBack) this.el.btnBagBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     if (this.el.btnJobBack) this.el.btnJobBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    // POI:餐厅 / 酒店 / 商市 / 商人
+    if (this.el.btnRestaurantDine) this.el.btnRestaurantDine.addEventListener('click', () => this.bus.emit('ui:restaurant-dine'));
+    if (this.el.btnRestaurantBack) this.el.btnRestaurantBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    if (this.el.btnHotelBack) this.el.btnHotelBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    if (this.el.btnMarketpoiBack) this.el.btnMarketpoiBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    if (this.el.btnMerchantBack) this.el.btnMerchantBack.addEventListener('click', () => this.bus.emit('ui:back-map'));
     // 点击剧情文本区域:正在打字则跳过,否则推进
     if (this.el.narrativeText) this.el.narrativeText.addEventListener('click', () => this._onTextAreaClick());
   }
@@ -482,6 +516,10 @@ export class UI {
     else if (state === GameState.BATTLE) target = this.el.views.battle;
     else if (state === GameState.REWARD) target = this.el.views.reward;
     else if (state === GameState.VICTORY || state === GameState.DEFEAT) target = this.el.views.result;
+    else if (state === GameState.RESTAURANT) target = this.el.views.restaurant;
+    else if (state === GameState.HOTEL) target = this.el.views.hotel;
+    else if (state === GameState.MARKET_POI) target = this.el.views.market_poi;
+    else if (state === GameState.MERCHANT) target = this.el.views.merchant;
     if (target) target.classList.add('is-active');
 
     if (state === GameState.VICTORY) this._renderResult(true);
@@ -506,7 +544,8 @@ export class UI {
         chips += `<span class="res-chip is-token" title="${this._escapeHtml(t.name)}">${t.icon} ${t.qty}</span>`;
       }
     }
-    for (const el of [this.el.mapRes, this.el.shopRes, this.el.marketRes, this.el.bagRes, this.el.jobRes]) {
+    for (const el of [this.el.mapRes, this.el.shopRes, this.el.marketRes, this.el.bagRes, this.el.jobRes,
+      this.el.restaurantRes, this.el.hotelRes, this.el.marketpoiRes, this.el.merchantRes]) {
       if (el) el.innerHTML = chips;
     }
   }
@@ -526,10 +565,26 @@ export class UI {
 
   // ===== 主菜单:两大章入口 =====
   /** 渲染主菜单的大章卡片(含通关 / 锁定状态);锁定卡片点击给出提示 */
-  renderChapterSelect(entries) {
+  renderChapterSelect(entries, opts = {}) {
     const box = this.el.chapterSelect;
     if (!box) return;
     box.innerHTML = '';
+    // 继续上一局(存在运行时存档时显示)
+    if (opts.hasSave) {
+      const cont = document.createElement('button');
+      cont.type = 'button';
+      cont.className = 'chapter-entry is-continue';
+      cont.innerHTML = `
+        <div class="chapter-entry-head">
+          <span class="chapter-entry-badge">继续旅程</span>
+          <span class="chapter-entry-state">${opts.saveSummary ? this._escapeHtml(opts.saveSummary) : '未完成的旅程'}</span>
+        </div>
+        <div class="chapter-entry-title">接续上一局进度</div>
+        <div class="chapter-entry-sub">从上次离开的地方继续,角色、背包、剧情进度均已保留</div>
+      `;
+      cont.addEventListener('click', () => this.bus.emit('ui:continue-save'));
+      box.appendChild(cont);
+    }
     (entries || []).forEach((e) => {
       const card = document.createElement('button');
       card.type = 'button';
@@ -1268,6 +1323,34 @@ export class UI {
         `;
         b.addEventListener('click', () => {
           this._worldSelected = r.id;
+          this._worldPoiSelected = null;
+          this.renderWorld(this._worldState);
+          this.renderResources(economy);
+        });
+        map.appendChild(b);
+      });
+
+      // POI 标记(餐厅 / 酒店 / 商市)
+      const pois = state.pois || [];
+      pois.forEach((p) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = [
+          'wm-marker', 'wm-poi',
+          `poi-${p.type}`,
+          p.current ? 'is-current' : '',
+          this._worldPoiSelected === p.id ? 'is-selected' : '',
+        ].filter(Boolean).join(' ');
+        b.style.left = `${p.x}%`;
+        b.style.top = `${p.y}%`;
+        b.title = `${p.icon} ${p.name} · ${p.typeCn}`;
+        b.innerHTML = `
+          <span class="wm-dot wm-poi-dot">${p.icon}</span>
+          <span class="wm-label">${this._escapeHtml(p.name)}</span>
+        `;
+        b.addEventListener('click', () => {
+          this._worldPoiSelected = p.id;
+          this._worldSelected = null;
           this.renderWorld(this._worldState);
           this.renderResources(economy);
         });
@@ -1275,9 +1358,11 @@ export class UI {
       });
     }
 
-    // 右侧详情:选中的地区(默认当前所在地)
+    // 右侧详情:选中的地区或 POI
+    const selPoi = pois.find((p) => p.id === this._worldPoiSelected);
     const sel = regions.find((r) => r.id === this._worldSelected) || cur;
-    this._renderWorldPanel(sel, cur, state);
+    if (selPoi) this._renderWorldPoiPanel(selPoi, state);
+    else this._renderWorldPanel(sel, cur, state);
 
     // 全部地点清单(含里程 / 耗时 / 穿梭费用)
     const list = this.el.worldList;
@@ -1294,6 +1379,25 @@ export class UI {
         `;
         row.addEventListener('click', () => {
           this._worldSelected = r.id;
+          this._worldPoiSelected = null;
+          this.renderWorld(this._worldState);
+          this.renderResources(economy);
+        });
+        list.appendChild(row);
+      });
+      // POI 清单
+      pois.forEach((p) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = `world-row is-poi poi-${p.type}${p.current ? ' is-current' : ''}`;
+        row.innerHTML = `
+          <span class="wr-name">${p.icon} ${this._escapeHtml(p.name)}</span>
+          <span class="wr-meta"><span class="wr-terrain">${p.typeCn}</span></span>
+          <span class="wr-dist">${p.current ? '所在地' : `${p.dist} 里 · 约 ${this._fmtDuration(p.seconds)}`}</span>
+        `;
+        row.addEventListener('click', () => {
+          this._worldPoiSelected = p.id;
+          this._worldSelected = null;
           this.renderWorld(this._worldState);
           this.renderResources(economy);
         });
@@ -1350,6 +1454,42 @@ export class UI {
     box.querySelector('[data-act="depart"]')?.addEventListener('click', () => this.bus.emit('ui:world-depart', sel.id));
     box.querySelector('[data-act="shuttle"]')?.addEventListener('click', () => this.bus.emit('ui:world-shuttle', sel.id));
     box.querySelector('[data-act="local"]')?.addEventListener('click', () => this.bus.emit('ui:back-map'));
+  }
+
+  /** 世界地图右侧:选中 POI 的详情面板 */
+  _renderWorldPoiPanel(poi, state) {
+    const box = this.el.worldPanel;
+    if (!box) return;
+    const here = poi.current;
+    box.innerHTML = `
+      <div class="wp-head">
+        <h3 class="wp-name">${poi.icon} ${this._escapeHtml(poi.name)}</h3>
+        <div class="wp-tags">
+          <span class="wp-tag wp-tag-poi">${poi.typeCn}</span>
+          ${here ? '<span class="wp-tag wp-tag-here">所在地</span>' : ''}
+        </div>
+      </div>
+      <dl class="wp-stats">
+        <div><dt>类型</dt><dd>${poi.typeCn}</dd></div>
+        <div><dt>里程</dt><dd>${here ? '—' : `${poi.dist} 里`}</dd></div>
+        <div><dt>预计耗时</dt><dd>${here ? '—' : this._fmtDuration(poi.seconds)}</dd></div>
+        <div><dt>行动力</dt><dd>${here ? '—' : `⚡ ${poi.ap}`}</dd></div>
+      </dl>
+      <p class="wp-note">${this._poiDesc(poi.type)}</p>
+      <div class="wp-actions">
+        <button class="btn btn-primary" data-act="poi-depart" ${here ? 'disabled' : ''}>${here ? '已在此地' : '启 程 前 往'}</button>
+        <button class="btn btn-ghost" data-act="poi-enter" ${here ? '' : 'disabled'}>进 入 ${poi.typeCn}</button>
+      </div>
+    `;
+    box.querySelector('[data-act="poi-depart"]')?.addEventListener('click', () => this.bus.emit('ui:poi-depart', poi.id));
+    box.querySelector('[data-act="poi-enter"]')?.addEventListener('click', () => this.bus.emit('ui:poi-open'));
+  }
+
+  _poiDesc(type) {
+    if (type === 'restaurant') return '餐厅:可花金币用餐恢复行动力,也可购买干粮随身携带。';
+    if (type === 'hotel') return '酒店:提供多种房型休息(恢复效果与耗时各异),并可在此更换服饰。';
+    if (type === 'market') return '商市:汇集武器商、防具商与药商,按职业提供各式装备。';
+    return '';
   }
 
   // ===== 旅途(实时行进) =====
@@ -1691,9 +1831,168 @@ export class UI {
     this.renderResources(economy);
   }
 
+  // ===== POI:餐厅 =====
+  renderRestaurant({ name, foods, economy }) {
+    if (this.el.restaurantTitle) this.el.restaurantTitle.textContent = `🍲 ${name || '餐厅'}`;
+    if (this.el.restaurantNote) this.el.restaurantNote.textContent = '用餐恢复行动力,也可购买干粮随身携带';
+    const box = this.el.restaurantList;
+    if (!box) return;
+    box.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'shop-section-title';
+    title.textContent = '购买食品';
+    box.appendChild(title);
+    (foods || []).forEach((it) => {
+      const price = economy.itemPrice ? economy.itemPrice(it.id) : it.price;
+      const afford = economy.gold >= price;
+      box.appendChild(this._shopRow(it, afford, `🪙 ${price}`, '买入', 'data-buy', () => this.bus.emit('ui:restaurant-buy', it.id)));
+    });
+    this.renderResources(economy);
+  }
+
+  // ===== POI:酒店 =====
+  renderHotel({ name, rooms, outfits, equipped, economy }) {
+    if (this.el.hotelTitle) this.el.hotelTitle.textContent = `🏨 ${name || '酒店'}`;
+    if (this.el.hotelNote) this.el.hotelNote.textContent = '选择房型休息(恢复效果与耗时各异),换装仅限酒店';
+    // 房型列表
+    const box = this.el.hotelRooms;
+    if (box) {
+      box.innerHTML = '';
+      const title = document.createElement('div');
+      title.className = 'shop-section-title';
+      title.textContent = '房型 · 休息';
+      box.appendChild(title);
+      (rooms || []).forEach((room) => {
+        const afford = economy.gold >= room.gold;
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <div class="item-icon">🛏️</div>
+          <div class="item-body">
+            <div class="item-name">${this._escapeHtml(room.name)}<span class="item-cat">房型</span></div>
+            <div class="item-desc">恢复 ${room.apRecover} 行动力${room.heal > 0 ? ` · 恢复 ${Math.round(room.heal * 100)}% 生命` : ''} · 耗时 ${room.seconds} 秒</div>
+          </div>
+          <div class="item-actions">
+            <span class="item-price${afford ? '' : ' is-poor'}">🪙 ${room.gold}</span>
+            <button class="btn btn-primary btn-sm" data-checkin ${afford ? '' : 'disabled'}>入住</button>
+          </div>
+        `;
+        const btn = row.querySelector('[data-checkin]');
+        if (btn && afford) btn.addEventListener('click', () => this.bus.emit('ui:hotel-checkin', room.id));
+        box.appendChild(row);
+      });
+    }
+    // 换装列表
+    const obox = this.el.hotelOutfits;
+    if (obox) {
+      obox.innerHTML = '';
+      const otitle = document.createElement('div');
+      otitle.className = 'shop-section-title';
+      otitle.textContent = '换装(仅限酒店)';
+      obox.appendChild(otitle);
+      const currentOutfit = equipped?.top;
+      // 「卸下服饰」选项
+      if (currentOutfit) {
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <div class="item-icon">👤</div>
+          <div class="item-body">
+            <div class="item-name">卸下当前服饰<span class="item-cat">换装</span></div>
+            <div class="item-desc">恢复为朴素穿着</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-ghost btn-sm" data-unequip>卸下</button>
+          </div>
+        `;
+        row.querySelector('[data-unequip]')?.addEventListener('click', () => this.bus.emit('ui:hotel-outfit', null));
+        obox.appendChild(row);
+      }
+      (outfits || []).forEach((it) => {
+        if (it.hide) return;
+        const owned = economy.has(it.id);
+        const isEquipped = currentOutfit === it.id;
+        const afford = owned || economy.gold >= (it.price || 0);
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <div class="item-icon">${it.icon || '👕'}</div>
+          <div class="item-body">
+            <div class="item-name">${this._escapeHtml(it.name)}${isEquipped ? '<span class="item-cat">已穿</span>' : ''}${owned && !isEquipped ? '<span class="item-cat">已拥有</span>' : ''}</div>
+            <div class="item-desc">${this._escapeHtml(it.desc || '')}</div>
+          </div>
+          <div class="item-actions">
+            <span class="item-price${afford ? '' : ' is-poor'}">${owned ? '已有' : `🪙 ${it.price || 0}`}</span>
+            <button class="btn btn-primary btn-sm" data-outfit ${afford && !isEquipped ? '' : 'disabled'}>${isEquipped ? '已穿' : '换装'}</button>
+          </div>
+        `;
+        const btn = row.querySelector('[data-outfit]');
+        if (btn && afford && !isEquipped) btn.addEventListener('click', () => this.bus.emit('ui:hotel-outfit', it.id));
+        obox.appendChild(row);
+      });
+    }
+    this.renderResources(economy);
+  }
+
+  // ===== POI:商市 =====
+  renderMarketPoi({ name, merchants, economy }) {
+    if (this.el.marketpoiTitle) this.el.marketpoiTitle.textContent = `🏪 ${name || '商市'}`;
+    if (this.el.marketpoiNote) this.el.marketpoiNote.textContent = '汇集武器商、防具商与药商,按职业提供各式装备';
+    const box = this.el.marketpoiList;
+    if (!box) return;
+    box.innerHTML = '';
+    (merchants || []).forEach((m) => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <div class="item-icon">${m.icon || '🏪'}</div>
+        <div class="item-body">
+          <div class="item-name">${this._escapeHtml(m.name)}<span class="item-cat">商人</span></div>
+          <div class="item-desc">${this._escapeHtml(m.desc || '')}</div>
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-primary btn-sm" data-merchant>进 入</button>
+        </div>
+      `;
+      row.querySelector('[data-merchant]')?.addEventListener('click', () => this.bus.emit('ui:market-poi-merchant', m.id));
+      box.appendChild(row);
+    });
+    this.renderResources(economy);
+  }
+
+  // ===== POI:商人(武器 / 防具 / 药) =====
+  renderMerchant({ title, icon, desc, items, economy, career }) {
+    if (this.el.merchantTitle) this.el.merchantTitle.textContent = `${icon || '🏪'} ${title || '商人'}`;
+    if (this.el.merchantNote) {
+      const careerTxt = career ? ` · 当前职业:${career}` : '';
+      this.el.merchantNote.textContent = (desc || '') + careerTxt;
+    }
+    const box = this.el.merchantList;
+    if (!box) return;
+    box.innerHTML = '';
+    const list = (items || []).filter((it) => {
+      // 按职业过滤:若物品有 career 限制,仅显示匹配职业的
+      if (it.career && career && it.career !== career) return false;
+      return true;
+    });
+    if (list.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'bag-empty';
+      empty.textContent = career ? `当前职业「${career}」暂无适配的${title}。` : '暂无商品。';
+      box.appendChild(empty);
+    }
+    list.forEach((it) => {
+      const price = economy.itemPrice ? economy.itemPrice(it.id) : it.price;
+      const afford = economy.gold >= price;
+      const tag = it.career ? `<span class="item-cat">${CAREER_MAP[it.career]?.name || it.career}</span>` : '';
+      box.appendChild(this._shopRow(it, afford, `🪙 ${price}`, '买入', 'data-buy', () => this.bus.emit('ui:merchant-buy', it.id), 0, tag));
+    });
+    this.renderResources(economy);
+  }
+
   // ===== 背包 =====
   renderBag({ economy, player }) {
-    const SLOT_CN = { weapon: '武器', hat: '帽子', top: '衣服', bottom: '裤子', shoes: '鞋子', vehicle: '载具' };
+    const SLOT_CN = { weapon: '武器', armor: '防具', hat: '帽子', top: '衣服', bottom: '裤子', shoes: '鞋子', vehicle: '载具' };
     if (this.el.bagEquipped) {
       this.el.bagEquipped.innerHTML = Object.entries(SLOT_CN).map(([slot, label]) => {
         const id = economy.equipped[slot];

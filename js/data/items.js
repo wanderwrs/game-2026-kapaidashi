@@ -25,6 +25,7 @@ export const ITEM_CATEGORY_CN = {
   potion: '药品',
   food: '食品',
   weapon: '武器',
+  armor: '防具',
   outfit: '服饰',
   vehicle: '载具',
   misc: '杂物',
@@ -84,10 +85,39 @@ export const ITEMS = {
   dried_meat:  { id: 'dried_meat',  name: '肉干',     category: 'food',   price: 28, icon: '🍖', desc: '恢复 4 点行动力。',        effect: { kind: 'ap', amount: 4 } },
   honey_cake:  { id: 'honey_cake',  name: '蜜糕',     category: 'food',   price: 55, icon: '🍯', desc: '恢复 8 点行动力。',        effect: { kind: 'ap', amount: 8 } },
 
-  // ===== 武器(战力) =====
-  iron_sword:  { id: 'iron_sword',  name: '铁剑',     category: 'weapon', price: 60,  icon: '🗡️', desc: '战力 +2。',  equipment: { slot: 'weapon', stats: { atkPower: 2 } } },
-  steel_blade: { id: 'steel_blade', name: '精钢长剑', category: 'weapon', price: 160, icon: '⚔️', desc: '战力 +4,生命 +6。', equipment: { slot: 'weapon', stats: { atkPower: 4, maxHp: 6 } } },
-  dragon_fang: { id: 'dragon_fang', name: '龙牙短刃', category: 'weapon', price: 320, icon: '🐉', desc: '战力 +7,生命 +10。', equipment: { slot: 'weapon', stats: { atkPower: 7, maxHp: 10 } } },
+  // ===== 武器(战力)—— 按职业划分:不同职业有多种不同武器,效果各异 =====
+  // career 字段限定职业;swordsman 剑术 / mage 魔法 / cavalier 骑兵 / aviator 飞行 / mariner 航海 / theologian 经典
+  // ---- 剑术(剑 / 刀) ----
+  iron_sword:  { id: 'iron_sword',  name: '铁剑',     category: 'weapon', career: 'swordsman', price: 60,  icon: '🗡️', desc: '战力 +2。',  equipment: { slot: 'weapon', stats: { atkPower: 2 } } },
+  steel_blade: { id: 'steel_blade', name: '精钢长剑', category: 'weapon', career: 'swordsman', price: 160, icon: '⚔️', desc: '战力 +4,生命 +6。', equipment: { slot: 'weapon', stats: { atkPower: 4, maxHp: 6 } } },
+  dragon_fang: { id: 'dragon_fang', name: '龙牙短刃', category: 'weapon', career: 'swordsman', price: 320, icon: '🐉', desc: '战力 +7,生命 +10。', equipment: { slot: 'weapon', stats: { atkPower: 7, maxHp: 10 } } },
+  // ---- 魔法(法杖) ----
+  oak_staff:     { id: 'oak_staff',     name: '橡木法杖',   category: 'weapon', career: 'mage', price: 70,  icon: '🪄', desc: '战力 +1,魔力 +2。', equipment: { slot: 'weapon', stats: { atkPower: 1, maxMp: 2 } } },
+  crystal_staff: { id: 'crystal_staff', name: '水晶法杖',   category: 'weapon', career: 'mage', price: 180, icon: '💎', desc: '战力 +3,魔力 +4。', equipment: { slot: 'weapon', stats: { atkPower: 3, maxMp: 4 } } },
+  void_scepter:  { id: 'void_scepter',  name: '虚空权杖',   category: 'weapon', career: 'mage', price: 340, icon: '🔮', desc: '战力 +5,魔力 +6,生命 +4。', equipment: { slot: 'weapon', stats: { atkPower: 5, maxMp: 6, maxHp: 4 } } },
+  // ---- 骑兵(长枪) ----
+  iron_spear:    { id: 'iron_spear',    name: '铁枪',       category: 'weapon', career: 'cavalier', price: 65,  icon: '🔱', desc: '战力 +2,生命 +4。', equipment: { slot: 'weapon', stats: { atkPower: 2, maxHp: 4 } } },
+  steel_lance:   { id: 'steel_lance',   name: '精钢骑枪',   category: 'weapon', career: 'cavalier', price: 170, icon: '⚔️', desc: '战力 +4,生命 +8。', equipment: { slot: 'weapon', stats: { atkPower: 4, maxHp: 8 } } },
+  dragon_piercer:{ id: 'dragon_piercer',name: '破龙骑枪',   category: 'weapon', career: 'cavalier', price: 330, icon: '🐲', desc: '战力 +6,生命 +12。', equipment: { slot: 'weapon', stats: { atkPower: 6, maxHp: 12 } } },
+  // ---- 飞行(飞刀 / 弓) ----
+  wind_dagger:   { id: 'wind_dagger',   name: '风刃飞刀',   category: 'weapon', career: 'aviator', price: 60,  icon: '🗡️', desc: '战力 +2,行动力上限 +1。', equipment: { slot: 'weapon', stats: { atkPower: 2, apMax: 1 } } },
+  sky_bow:       { id: 'sky_bow',       name: '苍穹弓',     category: 'weapon', career: 'aviator', price: 175, icon: '🏹', desc: '战力 +4,行动力上限 +1。', equipment: { slot: 'weapon', stats: { atkPower: 4, apMax: 1 } } },
+  falcon_blade:  { id: 'falcon_blade',  name: '隼翼弯刀',   category: 'weapon', career: 'aviator', price: 320, icon: '🦅', desc: '战力 +6,行动力上限 +2,生命 +4。', equipment: { slot: 'weapon', stats: { atkPower: 6, apMax: 2, maxHp: 4 } } },
+  // ---- 航海(弯刀 / 鱼叉) ----
+  cutlass:       { id: 'cutlass',       name: '水手弯刀',   category: 'weapon', career: 'mariner', price: 65,  icon: '🗡️', desc: '战力 +2,生命 +3。', equipment: { slot: 'weapon', stats: { atkPower: 2, maxHp: 3 } } },
+  trident:       { id: 'trident',       name: '三叉戟',     category: 'weapon', career: 'mariner', price: 175, icon: '🔱', desc: '战力 +4,魔力 +1,生命 +5。', equipment: { slot: 'weapon', stats: { atkPower: 4, maxMp: 1, maxHp: 5 } } },
+  leviathan_hook:{ id: 'leviathan_hook',name: '利维坦钩',   category: 'weapon', career: 'mariner', price: 330, icon: '🪝', desc: '战力 +6,生命 +8,魔力 +2。', equipment: { slot: 'weapon', stats: { atkPower: 6, maxHp: 8, maxMp: 2 } } },
+  // ---- 经典(圣典 / 权杖) ----
+  prayer_book:   { id: 'prayer_book',   name: '祈祷圣典',   category: 'weapon', career: 'theologian', price: 70, icon: '📖', desc: '战力 +1,魔力 +3。', equipment: { slot: 'weapon', stats: { atkPower: 1, maxMp: 3 } } },
+  holy_scepter:  { id: 'holy_scepter',  name: '圣光权杖',   category: 'weapon', career: 'theologian', price: 185, icon: '✨', desc: '战力 +3,魔力 +5,生命 +3。', equipment: { slot: 'weapon', stats: { atkPower: 3, maxMp: 5, maxHp: 3 } } },
+  scripture:     { id: 'scripture',     name: '降魔真经',   category: 'weapon', career: 'theologian', price: 350, icon: '📜', desc: '战力 +5,魔力 +7,生命 +6。', equipment: { slot: 'weapon', stats: { atkPower: 5, maxMp: 7, maxHp: 6 } } },
+
+  // ===== 防具(与服装独立:不影响外观,纯防御增益) =====
+  // equipment.slot: armor 独立护甲栏位
+  padded_armor:  { id: 'padded_armor',  name: '棉甲',     category: 'armor', price: 50,  icon: '🧥', desc: '生命 +6。软甲,轻便但挡得住割伤。', equipment: { slot: 'armor', stats: { maxHp: 6 } } },
+  chain_mail:    { id: 'chain_mail',    name: '锁子甲',   category: 'armor', price: 130, icon: '🛡️', desc: '生命 +14,战力 +1。铁环相扣,刀枪难入。', equipment: { slot: 'armor', stats: { maxHp: 14, atkPower: 1 } } },
+  plate_armor:   { id: 'plate_armor',   name: '板甲',     category: 'armor', price: 260, icon: '🛡️', desc: '生命 +22,战力 +2。重铠,刀枪不入。', equipment: { slot: 'armor', stats: { maxHp: 22, atkPower: 2 } } },
+  mithril_mail:  { id: 'mithril_mail',  name: '秘银锁甲', category: 'armor', price: 480, icon: '💠', desc: '生命 +30,战力 +3,魔力 +2。秘银所铸,轻若无物。', equipment: { slot: 'armor', stats: { maxHp: 30, atkPower: 3, maxMp: 2 } } },
 
   // ===== 服饰(可自由搭配:帽子 / 衣服 / 裤子 / 鞋子 四个部位各一件) =====
   // equipment.slot: hat 帽子 / top 衣服 / bottom 裤子 / shoes 鞋子
@@ -133,7 +163,7 @@ export const ITEMS = {
   emperor_new_boots: { id: 'emperor_new_boots', name: '皇帝的新靴', category: 'outfit', price: 999, icon: '✨', desc: '踩着虚无赶路,石子硌得生疼。', equipment: { slot: 'shoes', stats: {} }, hide: true, look: { style: 'none' } },
 
   // ===== 绝世稀有(不会出现在普通商店,只在专属交易场所低概率上架) =====
-  starfall_blade:   { id: 'starfall_blade',   name: '陨星剑',   category: 'weapon', price: 980,  icon: '🌠', rare: true, desc: '剑脊嵌着一小块落星,挥动时带着余温。战力 +18,生命 +12。', equipment: { slot: 'weapon', stats: { atkPower: 18, maxHp: 12 } } },
+  starfall_blade:   { id: 'starfall_blade',   name: '陨星剑',   category: 'weapon', career: 'swordsman', price: 980,  icon: '🌠', rare: true, desc: '剑脊嵌着一小块落星,挥动时带着余温。战力 +18,生命 +12。', equipment: { slot: 'weapon', stats: { atkPower: 18, maxHp: 12 } } },
   void_mantle:      { id: 'void_mantle',      name: '虚无斗篷', category: 'outfit', price: 1040, icon: '🌑', rare: true, desc: '披上像被夜色收进去。生命 +34,魔力 +6。', equipment: { slot: 'top', stats: { maxHp: 34, maxMp: 6 } }, look: { cloth: '#2a2740', cloth2: '#3b3760', trim: '#9b7fe8' } },
   prophet_circlet:  { id: 'prophet_circlet',  name: '先知之冠', category: 'outfit', price: 900,  icon: '👑', rare: true, desc: '冠心一颗缓慢转动的星。魔力 +7,生命 +8。特殊:商店购物 8 折。', equipment: { slot: 'hat', stats: { maxMp: 7, maxHp: 8, shopDiscount: 0.2 } }, look: { hat: '#3a2f6b', hatHi: '#9b7fe8', style: 'crown' } },
   titan_greaves:    { id: 'titan_greaves',    name: '泰坦护腿', category: 'outfit', price: 860,  icon: '🦿', rare: true, desc: '沉得像两条石柱。生命 +18,战力 +3。', equipment: { slot: 'bottom', stats: { maxHp: 18, atkPower: 3 } }, look: { pants: '#4a4a55' } },

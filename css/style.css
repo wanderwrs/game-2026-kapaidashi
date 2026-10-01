@@ -304,6 +304,11 @@ body {
   box-shadow: var(--shadow-gold);
 }
 .chapter-entry.is-cleared { border-color: rgba(111, 184, 122, 0.45); }
+.chapter-entry.is-continue {
+  border-color: rgba(232, 205, 110, 0.6);
+  background: linear-gradient(180deg, rgba(232, 205, 110, 0.08), var(--bg-soft));
+}
+.chapter-entry.is-continue:hover { border-color: var(--gold-line); }
 .chapter-entry.is-locked {
   cursor: not-allowed;
   opacity: 0.55;
@@ -1219,50 +1224,91 @@ body {
 .world-map {
   position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 340px;
   background:
-    radial-gradient(circle at 22% 26%, rgba(63, 143, 196, 0.10), transparent 42%),
-    radial-gradient(circle at 76% 66%, rgba(208, 64, 43, 0.10), transparent 45%),
-    linear-gradient(160deg, #0b1017, #070a0f);
-  border: 1px solid var(--border); border-radius: var(--radius-card);
+    /* 牛皮纸纹理:斑驳的棕黄色调,模拟手绘地图的 aged parchment */
+    radial-gradient(ellipse at 30% 20%, rgba(255, 240, 200, 0.35), transparent 55%),
+    radial-gradient(ellipse at 75% 80%, rgba(180, 140, 80, 0.25), transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(230, 200, 150, 0.15), transparent 70%),
+    /* 纸张底色 */
+    linear-gradient(135deg, #d9c39a 0%, #c9a876 30%, #b8945f 60%, #a67c45 100%);
+  border: 1px solid #8b6914; border-radius: var(--radius-card);
   overflow: hidden;
+  box-shadow:
+    inset 0 0 60px rgba(120, 80, 30, 0.35),
+    inset 0 0 120px rgba(90, 60, 20, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.3);
+}
+/* 牛皮纸的做旧斑驳(叠加层,不影响点击) */
+.world-map::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle at 15% 35%, rgba(100, 65, 25, 0.18) 0%, transparent 8%),
+    radial-gradient(circle at 85% 15%, rgba(100, 65, 25, 0.12) 0%, transparent 6%),
+    radial-gradient(circle at 45% 75%, rgba(100, 65, 25, 0.15) 0%, transparent 10%),
+    radial-gradient(circle at 70% 55%, rgba(100, 65, 25, 0.1) 0%, transparent 7%),
+    radial-gradient(circle at 25% 85%, rgba(100, 65, 25, 0.12) 0%, transparent 9%);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+/* 牛皮纸边缘的撕裂/烧焦效果 */
+.world-map::after {
+  content: '';
+  position: absolute; inset: 0;
+  box-shadow: inset 0 0 30px rgba(80, 50, 15, 0.5);
+  pointer-events: none;
+  border-radius: var(--radius-card);
 }
 .wm-grid {
   position: absolute; inset: 0;
   background-image:
-    linear-gradient(rgba(201, 162, 39, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(201, 162, 39, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(100, 70, 30, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 70, 30, 0.06) 1px, transparent 1px);
   background-size: 10% 10%;
+  pointer-events: none;
 }
 .wm-marker {
   position: absolute; transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   background: none; border: 0; padding: 2px; cursor: pointer; font: inherit;
   touch-action: manipulation;
+  z-index: 2; /* 确保标记在牛皮纸纹理之上可点击 */
 }
 .wm-dot {
   width: 11px; height: 11px; border-radius: 50%;
-  background: var(--text-muted); border: 2px solid rgba(8, 10, 16, 0.9);
-  box-shadow: 0 0 0 1px var(--border-soft);
+  background: #6b4423; border: 2px solid rgba(60, 35, 12, 0.85);
+  box-shadow: 0 0 0 1px rgba(120, 80, 30, 0.6);
   transition: transform 0.18s var(--ease), background 0.18s var(--ease);
 }
 .wm-label {
   font-family: var(--font-display); font-size: 10px; letter-spacing: 1px;
-  color: var(--text-muted); white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.9);
+  color: #4a3018; white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(255, 240, 200, 0.7), 0 0 4px rgba(255, 240, 200, 0.5);
 }
 .wm-marker:hover .wm-dot { transform: scale(1.35); }
-.wm-marker:hover .wm-label { color: var(--text); }
-.wm-marker.is-visited .wm-dot { background: var(--text-soft); }
-.wm-marker.is-city .wm-dot { background: var(--gold); box-shadow: 0 0 10px var(--gold-line); }
-.wm-marker.is-city .wm-label { color: var(--text-soft); }
-.wm-marker.is-current .wm-dot { background: var(--arcane-bright); box-shadow: 0 0 12px rgba(111, 192, 232, 0.7); }
-.wm-marker.is-current .wm-label { color: var(--arcane-bright); }
-.wm-marker.is-story .wm-dot { background: var(--ember-bright); box-shadow: 0 0 14px rgba(255, 106, 69, 0.75); animation: wmPulse 2.2s infinite; }
-.wm-marker.is-story .wm-label { color: var(--ember-bright); }
-.wm-marker.is-selected .wm-dot { outline: 2px solid var(--gold-bright); outline-offset: 3px; }
-.wm-marker.is-selected .wm-label { color: var(--gold-bright); }
+.wm-marker:hover .wm-label { color: #2a1a08; }
+.wm-marker.is-visited .wm-dot { background: #8b6914; }
+.wm-marker.is-city .wm-dot { background: #c9a227; box-shadow: 0 0 10px rgba(201, 162, 39, 0.7); }
+.wm-marker.is-city .wm-label { color: #5a4510; font-weight: 700; }
+.wm-marker.is-current .wm-dot { background: #2e7d4f; box-shadow: 0 0 12px rgba(46, 125, 79, 0.7); }
+.wm-marker.is-current .wm-label { color: #1a4a2e; }
+.wm-marker.is-story .wm-dot { background: #c0392b; box-shadow: 0 0 14px rgba(192, 57, 43, 0.75); animation: wmPulse 2.2s infinite; }
+.wm-marker.is-story .wm-label { color: #8b2820; }
+.wm-marker.is-selected .wm-dot { outline: 2px solid #8b2820; outline-offset: 3px; }
+.wm-marker.is-selected .wm-label { color: #8b2820; }
+/* POI 标记在牛皮纸上的样式 */
+.wm-poi-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: rgba(255, 240, 200, 0.9); border: 2px solid #6b4423;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; line-height: 1;
+}
+.wm-marker.wm-poi .wm-label { color: #4a3018; font-weight: 600; }
+.wm-marker.poi-restaurant .wm-poi-dot { background: #e8c07a; }
+.wm-marker.poi-hotel .wm-poi-dot { background: #c8a8d8; }
+.wm-marker.poi-market .wm-poi-dot { background: #a8c8d8; }
 @keyframes wmPulse {
-  0%, 100% { box-shadow: 0 0 10px rgba(255, 106, 69, 0.5); }
-  50%      { box-shadow: 0 0 20px rgba(255, 106, 69, 0.95); }
+  0%, 100% { box-shadow: 0 0 10px rgba(192, 57, 43, 0.5); }
+  50%      { box-shadow: 0 0 20px rgba(192, 57, 43, 0.95); }
 }
 
 .world-side { display: flex; flex-direction: column; gap: var(--sp-8); min-width: 0; }
@@ -1308,8 +1354,8 @@ body {
 .wr-terrain { font-size: 10px; color: var(--text-soft); border: 1px solid var(--border-soft); border-radius: var(--radius-full); padding: 0 6px; }
 /* 当前载具去不了的地方:淡出提示 */
 .world-row.is-unreachable { opacity: 0.45; cursor: not-allowed; }
-.wm-marker.is-unreachable .wm-dot { background: var(--text-faint); box-shadow: none; }
-.wm-marker.is-unreachable .wm-label { color: var(--text-faint); }
+.wm-marker.is-unreachable .wm-dot { background: rgba(120, 90, 50, 0.4); box-shadow: none; }
+.wm-marker.is-unreachable .wm-label { color: rgba(80, 55, 25, 0.45); }
 
 /* ============================================================
    旅途(实时行进)

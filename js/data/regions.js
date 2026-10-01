@@ -39,11 +39,28 @@ export const REGIONS = {
     ],
   },
   ch03: {
-    name: '王城', theme: 'city',
+    name: '王畿三城', theme: 'city',
     stops: [
+      // ===== 第一主城:王城 =====
       { key: 'gate', name: '王城城门', theme: 'city', npc: null, node: 'n01', hint: '入王城,先在城门一带落脚。', services: { shop: true, job: true, rest: true } },
+      { key: 'market', name: '王城集市', theme: 'city', npc: null, node: null, hint: '王城最大的集市,各色货品云集。', services: { shop: true, job: true, rest: true } },
       { key: 'manor', name: '旧友宅邸', theme: 'city', npc: '洛恩', node: 'n04', hint: '按父亲留下的名字,去旧友洛恩的宅邸求见。', services: { rest: true } },
       { key: 'alley', name: '王城暗巷', theme: 'city', npc: null, node: 'n06', hint: '追查刺客的线索,深入王城暗巷。', services: { job: true, rest: true } },
+      { key: 'square', name: '王城广场', theme: 'city', npc: null, node: null, hint: '王城的中心广场,双头鹰旗猎猎作响。', services: { shop: true, rest: true } },
+      { key: 'dock', name: '王城码头', theme: 'port', npc: null, node: null, hint: '王城的内河码头,往来商船络绎不绝。', services: { shop: true, job: true, rest: true } },
+      // ===== 第二主城:双子城 =====
+      { key: 'post', name: '官道驿站', theme: 'village', npc: null, node: null, hint: '王畿官道上的驿站,是前往双子城的歇脚处。', services: { shop: true, rest: true } },
+      { key: 'twin_east', name: '双子城东市', theme: 'city', npc: null, node: null, hint: '双子城的东市,商贾云集。', services: { shop: true, job: true, rest: true } },
+      { key: 'twin_tower', name: '双子城钟塔', theme: 'city', npc: null, node: null, hint: '双子城的地标——双生钟塔。', services: { rest: true } },
+      { key: 'twin_tavern', name: '双子城酒馆', theme: 'city', npc: null, node: null, hint: '城中最热闹的酒馆,消息灵通。', services: { shop: true, job: true, rest: true } },
+      { key: 'twin_lock', name: '双子城水闸', theme: 'port', npc: null, node: null, hint: '扼守运河的双子城水闸。', services: { job: true, rest: true } },
+      // ===== 第三主城:云顶城 =====
+      { key: 'pass', name: '山道哨卡', theme: 'mountain', npc: null, node: null, hint: '通往云顶城的山道哨卡。', services: { rest: true } },
+      { key: 'cloud_gate', name: '云顶城山门', theme: 'city', npc: null, node: null, hint: '云顶城的山门,云雾缭绕。', services: { shop: true, rest: true } },
+      { key: 'cloud_altar', name: '云顶城祭坛', theme: 'city', npc: null, node: null, hint: '云顶城的祭祀祭坛。', services: { rest: true } },
+      { key: 'cloud_armory', name: '云顶城军械库', theme: 'city', npc: null, node: null, hint: '云顶城的军械库,重兵把守。', services: { shop: true, job: true, rest: true } },
+      { key: 'cloud_observatory', name: '云顶城观星台', theme: 'sky', npc: null, node: null, hint: '云顶城最高处的观星台。', services: { rest: true } },
+      { key: 'ruins', name: '城郊废村', theme: 'ruins', npc: null, node: null, hint: '王畿城郊的废弃村落,似有蹊跷。', services: { job: true, rest: true } },
     ],
   },
   ch04: {

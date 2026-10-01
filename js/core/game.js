@@ -25,11 +25,12 @@ import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20260930h';
 import { jobsFor } from '../data/jobs.js?v=20260930h';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
-  regionTerrain, TERRAIN_CN,
+  regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
 } from '../data/world.js?v=20260930h';
 import { NPCS } from '../data/npcs.js?v=20260930h';
 import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20260930h';
 import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20260930h';
+import { generatePois, POI_COUNT, POI_TYPE_CN, POI_ICON, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS } from '../data/pois.js?v=20260930h';
 import { Economy } from './economy.js?v=20260930h';
 import { Travel } from './travel.js?v=20260930h';
 import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20260930h';
@@ -40,6 +41,9 @@ import { UI } from '../ui/ui.js?v=20260930h';
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
 const MAIL_KEY = 'longji.mail.v1';
+/** 完整运行时存档:玩家数值 / 背包 / 剧情进度 / 地图状态 / RNG 种子 */
+const SAVE_KEY = 'longji.fullstate.v1';
+const SAVE_VERSION = 1;
 /** 途中遭遇可用的随机 NPC 上限(每次最多出现的候选数) */
 const MAX_STOP_NPCS = 3;
 /** 一次休息的真实耗时(秒);期间复用旅途界面,不可操作 */
@@ -89,6 +93,37 @@ function saveMailState(state) {
   try { localStorage.setItem(MAIL_KEY, JSON.stringify(state)); } catch { /* 忽略存储异常 */ }
 }
 
+/** 是否存在完整运行时存档 */
+function hasSavedGame() {
+  try { return !!localStorage.getItem(SAVE_KEY); } catch { return false; }
+}
+
+/** 读取完整运行时存档(JSON),失败返回 null */
+function loadSavedGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || data.version !== SAVE_VERSION) return null;
+    return data;
+  } catch { return null; }
+}
+
+/** 写入完整运行时存档;超出配额时静默失败 */
+function saveGameToStorage(payload) {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 清除完整运行时存档(开启新一局 / 通关后调用) */
+function clearSavedGame() {
+  try { localStorage.removeItem(SAVE_KEY); } catch { /* 忽略存储异常 */ }
+}
+
 export const GameState = Object.freeze({
   MENU: 'menu',
   CAREER: 'career',
@@ -104,6 +139,10 @@ export const GameState = Object.freeze({
   REWARD: 'reward',
   VICTORY: 'victory',
   DEFEAT: 'defeat',
+  RESTAURANT: 'restaurant',
+  HOTEL: 'hotel',
+  MARKET_POI: 'market_poi',
+  MERCHANT: 'merchant',
 });
 
 export class Game {
@@ -133,17 +172,50 @@ export class Game {
     this._intel = new Map();        // 已知宝箱情报 chestId → { chestId, text }
     this._openedChests = new Set(); // 本局已开启的宝箱 id
     this._visited = new Set();      // 本局已到过的地区
+    this._pois = [];                // 通关第一章后在世界地图随机出现的兴趣点
+    this._atPoi = null;             // 当前所在 POI(或 null)
+    this._hotelRoom = null;         // 酒店入住中正在休息的房型
+    this._currentMerchant = null;   // 当前打开的商人类型(weapon/armor/medicine)
     this.tutorialSeen = loadTutorialSeen();
     this.audio = new AudioEngine();
     this.audio.arm();
     this.progress = loadProgress();
     this.mailState = loadMailState();
     this._bindUI();
-    // 主菜单:标识两大章 + 通关解锁状态
-    this.ui.renderChapterSelect(this._chapterEntries());
     this.ui.setMusicState(this.audio.enabled);
     this._refreshMailBadge();
     this.transition(GameState.MENU);
+
+    // 合并所有章节为一个连续整体:不再让玩家选章节。
+    //   · 有存档 → 显示「继续旅程」按钮
+    //   · 无存档 → 年龄门通过后(首次用户交互)直接从第一大章开始
+    const saveInfo = this._saveInfo();
+    if (saveInfo.hasSave) {
+      this.ui.renderChapterSelect([], saveInfo);
+    } else {
+      this.ui.renderChapterSelect([], { hasSave: false });
+      const startOnce = () => {
+        window.removeEventListener('pointerdown', startOnce);
+        window.removeEventListener('keydown', startOnce);
+        if (!this.rng) this.startNewRun(undefined, 'ch01');
+      };
+      window.addEventListener('pointerdown', startOnce);
+      window.addEventListener('keydown', startOnce);
+    }
+
+    // 关闭/刷新页面时尽力存档(运行中状态保留在本地)
+    window.addEventListener('pagehide', () => this._autosave());
+    window.addEventListener('beforeunload', () => this._autosave());
+  }
+
+  /** 读取存档摘要信息(供主菜单展示「继续旅程」按钮) */
+  _saveInfo() {
+    const data = loadSavedGame();
+    if (!data) return { hasSave: false };
+    const regionName = REGIONS[data.map?.regionId]?.name || data.map?.regionId || '';
+    const chapter = data.engine?.currentChapterId || '';
+    const summary = [chapter, regionName].filter(Boolean).join(' · ');
+    return { hasSave: true, saveSummary: summary || '未完成的旅程' };
   }
 
   /**
@@ -152,6 +224,9 @@ export class Game {
    * @param {string} [startChapter] 起始章节(默认第一大章 ch01)
    */
   startNewRun(seedInput, startChapter = 'ch01') {
+    // 开启新一局:清除上一局的运行时存档(避免旧存档残留)
+    clearSavedGame();
+
     const seed = seedInput
       ? (typeof seedInput === 'number' ? seedInput >>> 0 : seedFromString(String(seedInput)))
       : (Date.now() & 0xffffffff) >>> 0;
@@ -174,6 +249,10 @@ export class Game {
     this._intel = new Map();
     this._openedChests = new Set();
     this._visited = new Set([startChapter]);
+    this._pois = [];
+    this._atPoi = null;
+    this._hotelRoom = null;
+    this._currentMerchant = null;
     this._venueCache = new Map();     // regionId -> 专属交易场所(可能为 null)
     this._marketMode = 'market';      // 市场视图当前展示:'market' | 'venue'
     this.travel = new Travel({ bus: this.bus, rng: this.rng });
@@ -201,7 +280,181 @@ export class Game {
     this.engine.enterChapter(startChapter);
     // 兜底:若该章不在地区表内(不会发生),直接进入剧情
     if (this.state !== GameState.MAP) this.transition(GameState.NARRATIVE);
+    this._applyAudioTheme();
     this.audio.start();
+  }
+
+  // ===== 完整运行时存档 =====
+  /**
+   * 将当前整局状态序列化到 localStorage。
+   * 仅在非战斗态调用(战斗中不存档,避免半局状态不一致)。
+   */
+  saveGameState() {
+    if (!this.rng || !this.player || !this.economy || !this.engine) return false;
+    // 战斗中跳过存档(战斗是可重试的短流程)
+    if (this.state === GameState.BATTLE || this.currentBattle) return false;
+    // 牌组:汇总所有牌堆的卡牌 id(主牌组)
+    const deckIds = [];
+    if (this.deck) {
+      for (const c of this.deck.drawPile) if (c?.id) deckIds.push(c.id);
+      for (const c of this.deck.discardPile) if (c?.id) deckIds.push(c.id);
+      for (const c of this.deck.exhaustPile) if (c?.id) deckIds.push(c.id);
+      for (const c of this.deck.hand) if (c?.id) deckIds.push(c.id);
+    }
+    // 专属交易场所缓存:仅保存可序列化字段
+    const venues = {};
+    if (this._venueCache) {
+      for (const [rid, v] of this._venueCache.entries()) {
+        venues[rid] = v ? {
+          regionId: v.regionId,
+          theme: v.theme,
+          token: v.token,
+          tokenName: v.tokenName,
+          tokenIcon: v.tokenIcon,
+          stopIndex: v.stopIndex,
+          fee: v.fee,
+          stock: Array.isArray(v.stock) ? [...v.stock] : [],
+        } : null;
+      }
+    }
+    const payload = {
+      version: SAVE_VERSION,
+      savedAt: Date.now(),
+      rng: { seed: this.rng.seed, state: this.rng._state },
+      player: {
+        hp: this.player.hp,
+        maxHp: this.player.maxHp,
+        mp: this.player.mp,
+        maxMp: this.player.maxMp,
+        energy: this.player.energy,
+        energyMax: this.player.energyMax,
+        power: this.player.power,
+        block: this.player.block,
+        statuses: { ...this.player.statuses },
+      },
+      deck: deckIds,
+      economy: this.economy.serialize(),
+      engine: this.engine.serialize(),
+      map: {
+        regionId: this.regionId,
+        storyRegionId: this.storyRegionId,
+        stopIndex: this.stopIndex,
+        segment: this.segment,
+        openedChests: [...this._openedChests],
+        visited: [...this._visited],
+        intel: Object.fromEntries(this._intel),
+      },
+      run: {
+        runStartChapter: this._runStartChapter,
+        marketMode: this._marketMode,
+        venues,
+      },
+      // 记录存档时的界面状态,用于恢复后回到对应视图
+      state: this.state,
+    };
+    return saveGameToStorage(payload);
+  }
+
+  /** 自动存档(供各事件点调用;内部会跳过战斗中与无局状态) */
+  _autosave() {
+    try { this.saveGameState(); } catch { /* 存档失败不影响游戏进行 */ }
+  }
+
+  /**
+   * 从 localStorage 恢复上一局。
+   * @returns {boolean} 是否成功恢复
+   */
+  loadGameState() {
+    const data = loadSavedGame();
+    if (!data) return false;
+    try {
+      // RNG
+      const rngSeed = data.rng?.seed ?? (Date.now() & 0xffffffff);
+      this.rng = new RNG(rngSeed);
+      if (typeof data.rng?.state === 'number') this.rng._state = data.rng.state >>> 0;
+
+      // 玩家
+      this.player = new Player({ maxHp: data.player?.maxHp ?? 70 });
+      this.player.hp = Number(data.player?.hp ?? this.player.maxHp);
+      this.player.maxMp = Number(data.player?.maxMp ?? 3);
+      this.player.mp = Number(data.player?.mp ?? this.player.maxMp);
+      this.player.energy = Number(data.player?.energy ?? 0);
+      this.player.energyMax = Number(data.player?.energyMax ?? 3);
+      this.player.power = Number(data.player?.power ?? 0);
+      this.player.block = Number(data.player?.block ?? 0);
+      this.player.statuses = { ...(data.player?.statuses || {}) };
+
+      // 经济
+      this.economy = Economy.deserialize(data.economy);
+      this.ui.economy = this.economy;
+
+      // 剧情引擎
+      this.engine = new NarrativeEngine({ rng: this.rng, bus: this.bus, chapters: CHAPTERS });
+      this.engine.setGates(this._buildGates());
+      this.engine.player = this.player;
+      this.engine.restore(data.engine);
+      this.ui.bindEngine(this.engine);
+      this.career = this.engine.career;
+
+      // 牌组:按存档的卡牌 id 重建
+      const cardIds = Array.isArray(data.deck) ? data.deck : [];
+      const cards = cardIds.map((id) => CARDS[id]).filter(Boolean);
+      this.deck = cards.length ? new Deck(cards, this.rng) : null;
+
+      // 地图 / 运行状态
+      this.regionId = data.map?.regionId ?? 'ch01';
+      this.storyRegionId = data.map?.storyRegionId ?? this.regionId;
+      this.stopIndex = Number(data.map?.stopIndex ?? 0);
+      this.segment = data.map?.segment ?? null;
+      this._openedChests = new Set(data.map?.openedChests || []);
+      this._visited = new Set(data.map?.visited || [this.regionId]);
+      this._intel = new Map(Object.entries(data.map?.intel || {}));
+      this._runStartChapter = data.run?.runStartChapter ?? this.regionId;
+      this._marketMode = data.run?.marketMode || 'market';
+      this._venueCache = new Map();
+      if (data.run?.venues) {
+        for (const [rid, v] of Object.entries(data.run.venues)) {
+          this._venueCache.set(rid, v ? { ...v } : null);
+        }
+      } else {
+        this._venueCache = new Map();
+      }
+      this._npcCache = new Map();
+      this._themeNpcCache = new Map();
+      this._npcTalk = null;
+      this._trip = null;
+      this._wildBattle = false;
+      this.currentBattle = null;
+      this._currentRewards = null;
+      this.travel = new Travel({ bus: this.bus, rng: this.rng });
+
+      this.ui.updateSeed(this.rng.seed);
+      this._syncPlayerStats();
+      this._syncUi();
+      this._applyAudioTheme();
+
+      // 回到存档时所在的视图
+      const st = data.state;
+      if (st === GameState.NARRATIVE) {
+        this.engine._refresh();
+        this.transition(GameState.NARRATIVE);
+      } else if (st === GameState.MAP || st === GameState.WORLD || st === GameState.SHOP
+        || st === GameState.MARKET || st === GameState.BAG || st === GameState.JOB) {
+        // 这些子视图统一回到地区地图,避免子界面状态不全
+        this.transition(GameState.MAP);
+        this._renderMap();
+      } else {
+        this.transition(GameState.MAP);
+        this._renderMap();
+      }
+      this.audio.start();
+      return true;
+    } catch (e) {
+      console.warn('[存档] 恢复失败,已回退到主菜单:', e);
+      this.transition(GameState.MENU);
+      this.ui.renderChapterSelect(this._chapterEntries(), this._saveInfo());
+      return false;
+    }
   }
 
   /** 收集各章的门控锚点(每章所有地点节点) */
@@ -284,6 +537,13 @@ export class Game {
     this._syncUi();
   }
 
+  /** 根据当前地区主题切换背景音乐(不同主城/地形有不同音乐) */
+  _applyAudioTheme() {
+    const region = REGIONS[this.regionId];
+    const theme = region?.theme || 'village';
+    try { this.audio.setTheme(theme); } catch { /* 音频切换失败不影响游戏 */ }
+  }
+
   /** 引擎暂停在门控锚点 → 记录段落并切到地图 */
   _onGate({ chapterId, nodeId }) {
     const region = REGIONS[chapterId];
@@ -297,6 +557,7 @@ export class Game {
     this._syncPlayerStats();
     this.transition(GameState.MAP);
     this._renderMap();
+    this._autosave();
     // 剧情推进一步:有机会获得当地主题的特殊交易币
     const token = this._grantToken(this._currentTheme());
     if (token) {
@@ -340,6 +601,19 @@ export class Game {
     });
     return {
       regions,
+      pois: this._pois.map((p) => {
+        // POI 与当前地区的距离(按世界坐标估算)
+        const curW = WORLD[cur];
+        const dist = curW ? Math.round(BASE_DISTANCE + Math.hypot(curW.x - p.x, curW.y - p.y) * DISTANCE_SCALE) : 50;
+        return {
+          ...p,
+          typeCn: POI_TYPE_CN[p.type],
+          dist,
+          seconds: tripSeconds(dist, speedMul),
+          ap: travelApCost(dist, discount),
+          current: this._atPoi?.id === p.id,
+        };
+      }),
       currentId: cur,
       currentTerrain: TERRAIN_CN[curTerrain] || '',
       canUseVehicleHere: canUseHere,
@@ -396,6 +670,33 @@ export class Game {
     });
   }
 
+  /** 启程前往某个 POI(餐厅 / 酒店 / 商市) */
+  _poiDepart(poiId) {
+    const poi = this._pois.find((p) => p.id === poiId);
+    if (!poi) return;
+    if (this._atPoi?.id === poiId) { this.ui.showToast('你已经在这里了'); return; }
+    const curW = WORLD[this.regionId];
+    const dist = curW ? Math.round(BASE_DISTANCE + Math.hypot(curW.x - poi.x, curW.y - poi.y) * DISTANCE_SCALE) : 50;
+    const discount = this.economy.equipStats().travelDiscount;
+    const ap = travelApCost(dist, discount);
+    if (!this.economy.spendAp(ap)) {
+      this.ui.showToast('行动力不足 —— 休息一下,或吃点干粮');
+      return;
+    }
+    this._syncUi();
+    this._depart({
+      kind: 'poi',
+      poiId,
+      fromLabel: REGIONS[this.regionId]?.name || '此地',
+      toLabel: `${POI_TYPE_CN[poi.type]}·${poi.name}`,
+      dist,
+      level: Math.max(1, WORLD[this.regionId]?.level || 1),
+      poolKey: 'poi',
+      theme: 'village',
+      ap,
+    });
+  }
+
   /** 主城之间「穿梭」:花金币,瞬间抵达 */
   _worldShuttle(regionId) {
     const fromCity = !!WORLD[this.regionId]?.city;
@@ -412,6 +713,7 @@ export class Game {
     this.regionId = regionId;
     this.stopIndex = 0;
     this._visited.add(regionId);
+    this._applyAudioTheme();
     this._syncUi();
     this.transition(GameState.MAP);
     this._renderMap();
@@ -453,12 +755,12 @@ export class Game {
 
   /** 真正开启一段实时旅途 */
   _depart(trip) {
-    this._trip = { kind: trip.kind, regionId: trip.regionId, stopIndex: trip.stopIndex };
+    this._trip = { kind: trip.kind, regionId: trip.regionId, stopIndex: trip.stopIndex, poiId: trip.poiId };
     // 疾风饮:把这一段旅途的耗时减半
     const haste = this.economy.consumeTravelHaste();
     const baseSec = tripSeconds(trip.dist, this.economy.travelSpeedMul());
     // 「皇帝的新衣」全套:野路上会被高阶怪物盯上(城内踱步不算野外)
-    const wild = this._emperorSet() && (trip.kind === 'region' || !this._isCity(this.regionId));
+    const wild = this._emperorSet() && (trip.kind === 'region' || trip.kind === 'poi' || !this._isCity(this.regionId));
     this.travel.start({
       fromLabel: trip.fromLabel,
       toLabel: trip.toLabel,
@@ -468,7 +770,7 @@ export class Game {
       poolKey: trip.poolKey,
       encounterMul: wild ? EMPEROR_WILD_ENCOUNTER_MUL : 1,
       vehicle: this.economy.vehicleName(),
-      terrain: regionTerrain(trip.regionId),
+      terrain: trip.regionId ? regionTerrain(trip.regionId) : 'land',
       npcPool: this._npcsForTheme(trip.theme),
     });
     if (haste) this.travel.pushLog('疾风饮下肚,脚下的路缩了一半。');
@@ -478,6 +780,25 @@ export class Game {
 
   /** 旅途结束:落到目的地点(休息则是休整完毕,原地结算行动力) */
   _onTravelArrive() {
+    // 酒店入住:用房型的恢复效果结算,并回到酒店界面
+    if (this._hotelRoom) {
+      const room = this._hotelRoom;
+      this._hotelRoom = null;
+      const apGot = this.economy.addAp(room.apRecover);
+      let healTxt = '';
+      if (room.heal > 0) {
+        const heal = Math.floor(this.player.maxHp * room.heal);
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
+        healTxt = ` 与 ${heal} 点生命`;
+      }
+      this._syncPlayerStats();
+      this._syncUi();
+      this.transition(GameState.HOTEL);
+      this._openHotel(this._atPoi);
+      this.ui.showToast(`「${room.name}」休整完毕,恢复 ${apGot} 点行动力${healTxt}`);
+      this._autosave();
+      return;
+    }
     const trip = this._trip;
     this._trip = null;
     if (!trip) {
@@ -488,23 +809,35 @@ export class Game {
       this.transition(GameState.MAP);
       this._renderMap();
       this.ui.showToast(got > 0 ? `在「${place}」休整完毕,恢复 ${got} 点行动力${extra}` : `在「${place}」休整完毕,行动力已满`);
+      this._autosave();
       return;
     }
     if (trip.kind === 'region') {
       this.regionId = trip.regionId;
       this.stopIndex = 0;
       this._visited.add(trip.regionId);
+      this._applyAudioTheme();
+      this._atPoi = null;
+    } else if (trip.kind === 'poi') {
+      this._atPoi = this._pois.find((p) => p.id === trip.poiId) || null;
     } else {
       this.stopIndex = trip.stopIndex;
     }
     this._npcCache.delete(`${this.regionId}:${this.stopIndex}`);
-    this.transition(GameState.MAP);
-    this._renderMap();
-    const region = REGIONS[this.regionId];
-    const place = region?.stops[this.stopIndex]?.name || region?.name;
-    // 主城落地时,「皇帝的新衣」全套可能被巡卫逮住罚款
-    const fine = this._maybeFine();
-    this.ui.showToast(fine ? `抵达「${place}」 —— ${fine}` : `抵达「${place}」`);
+    if (trip.kind === 'poi' && this._atPoi) {
+      // 抵达 POI:直接打开其服务界面
+      this._openPoi();
+      this.ui.showToast(`抵达「${this._atPoi.name}」`);
+    } else {
+      this.transition(GameState.MAP);
+      this._renderMap();
+      const region = REGIONS[this.regionId];
+      const place = region?.stops[this.stopIndex]?.name || region?.name;
+      // 主城落地时,「皇帝的新衣」全套可能被巡卫逮住罚款
+      const fine = this._maybeFine();
+      this.ui.showToast(fine ? `抵达「${place}」 —— ${fine}` : `抵达「${place}」`);
+    }
+    this._autosave();
   }
 
   /** 途中事件(怪物 / 路人 NPC / 休息小奖励) */
@@ -760,6 +1093,7 @@ export class Game {
     this.ui.closeChest();
     this._renderMap();
     this.ui.showToast(`宝箱开启!获得 ${gold} 金币${got.length ? ` 与 ${got.join('、')}` : ''}`);
+    this._autosave();
   }
 
   /** 打开情报面板:列出已知的宝箱密码与位置 */
@@ -899,6 +1233,7 @@ export class Game {
     if (this.economy.buy(id)) this.ui.showToast(`购入「${it.name}」(花费 ${price} 金币)`);
     else this.ui.showToast('金币不足');
     this._openShopRefresh();
+    this._autosave();
   }
 
   /** 发放金币(自动叠加服饰「金币收益」加成),返回实际到手数 */
@@ -917,6 +1252,7 @@ export class Game {
       this.ui.showToast(`卖出「${ITEMS[id].name}」,获得 ${this.economy.gold - before} 金币`);
     }
     this._openShopRefresh();
+    this._autosave();
   }
 
   _openShopRefresh() {
@@ -950,6 +1286,7 @@ export class Game {
     if (this.economy.marketBuy(id, MARKET_FEE)) this.ui.showToast(`购入「${it.name}」,含管理费共 ${price} 金币`);
     else this.ui.showToast('金币不足');
     this._marketRefresh();
+    this._autosave();
   }
 
   _marketSell(id) {
@@ -961,6 +1298,7 @@ export class Game {
       this.ui.showToast(`卖出「${ITEMS[id]?.name || id}」,扣管理费后得 ${net} 金币`);
     }
     this._marketRefresh();
+    this._autosave();
   }
 
   // ===== 专属交易场所(随机出现,只收当地主题的特殊交易币) =====
@@ -1022,6 +1360,7 @@ export class Game {
       this.ui.showToast(`${venue.tokenName}不足(需 ${price} 枚)`);
     }
     this._openVenueRefresh();
+    this._autosave();
   }
 
   /** 特殊交易币的发放:宝箱 / 剧情推进 / 打工 共用(概率 30%~90%) */
@@ -1124,6 +1463,7 @@ export class Game {
     this._refreshMailBadge();
     this.ui.showToast(got && got.length ? `领取成功:${got.join('、')}` : '已阅');
     this._openMailbox();
+    this._autosave();
   }
 
   _openRedeem() {
@@ -1195,6 +1535,7 @@ export class Game {
     this.ui.showToast(r.msg);
     this._bagRefresh();
     if (this.state === GameState.BATTLE && this.currentBattle) this.currentBattle._refresh();
+    this._autosave();
   }
 
   /** 批量使用消耗品(药品 / 食品) */
@@ -1203,6 +1544,7 @@ export class Game {
     this.ui.showToast(r.msg);
     this._bagRefresh();
     if (this.state === GameState.BATTLE && this.currentBattle) this.currentBattle._refresh();
+    this._autosave();
   }
 
   _equipItem(id) {
@@ -1218,21 +1560,25 @@ export class Game {
       } else {
         this.ui.showToast('穿戴齐「皇帝的新衣」 —— 荒野里的高阶怪物会循味找来');
       }
+      this._autosave();
       return;
     }
     this.ui.showToast(`装备「${ITEMS[id].name}」`);
+    this._autosave();
   }
 
   _unequipItem(slot) {
     if (!this.economy.unequip(slot)) return;
     this._syncPlayerStats();
     this._bagRefresh();
+    this._autosave();
   }
 
   _dropItem(id) {
     if (this.economy.isEquipped(id)) { this.ui.showToast('已装备的物品需先卸下'); return; }
     if (this.economy.dropItem(id, 1)) this.ui.showToast(`丢弃了「${ITEMS[id].name}」`);
     this._bagRefresh();
+    this._autosave();
   }
 
   // ===== 打工(小游戏) =====
@@ -1272,6 +1618,7 @@ export class Game {
     }
     this.ui.renderJobs({ theme: this._currentTheme(), jobs: this._jobsHere(), economy: this.economy });
     this._syncUi();
+    this._autosave();
   }
 
   /** 关闭小游戏弹窗,刷新列表 */
@@ -1400,6 +1747,7 @@ export class Game {
       } else {
         this.transition(GameState.MAP);
         this._renderMap();
+        this._autosave();
       }
       return;
     }
@@ -1424,6 +1772,7 @@ export class Game {
       } else {
         this.transition(GameState.MAP);
         this._renderMap();
+        this._autosave();
       }
       return;
     }
@@ -1445,6 +1794,7 @@ export class Game {
     this.ui.showToast(resting
       ? `歇脚时被撂倒……你在「${place}」醒来,损失 ${penalty} 金币`
       : `你倒在了路上……退回「${REGIONS[this.regionId]?.stops[0]?.name || '出发地'}」,损失 ${penalty} 金币`);
+    this._autosave();
   }
 
   /** 胜利奖励:金币 + 概率掉落杂物 */
@@ -1484,6 +1834,7 @@ export class Game {
     this._renderMap();
     const back = seg && region ? region.stops[seg.stopIndex]?.name : '';
     this.ui.showToast(`你倒下了……退回「${region?.stops[0]?.name || '起点'}」,损失 ${penalty} 金币${back ? `。回到「${back}」重新挑战` : ''}`);
+    this._autosave();
   }
 
   /** 战斗结果交回剧情引擎,并跳到对应视图(结局节点直接进结算) */
@@ -1491,10 +1842,15 @@ export class Game {
     this._currentRewards = null;
     this.engine.onBattleResult(result);
     // 战后的下一节点若是门控锚点,引擎已切到地区地图,勿再覆盖
-    if (this.state === GameState.MAP) return;
+    if (this.state === GameState.MAP) { this._autosave(); return; }
     const node = this.engine.currentNode;
-    if (node && node.kind === 'ending') this.transition(GameState.VICTORY);
-    else this.transition(GameState.NARRATIVE);
+    if (node && node.kind === 'ending') {
+      this.transition(GameState.VICTORY);
+      clearSavedGame(); // 抵达结局:本局结束
+    } else {
+      this.transition(GameState.NARRATIVE);
+    }
+    this._autosave();
   }
 
   /** 随机抽取 n 张非基础卡作为战利品 */
@@ -1554,7 +1910,7 @@ export class Game {
   _skipChapter(chapterId) {
     if (this.progress?.cleared?.[chapterId]) return false;
     this.progress = markChapterCleared(chapterId);
-    this.ui.renderChapterSelect(this._chapterEntries());
+    this.ui.renderChapterSelect(this._chapterEntries(), this._saveInfo());
     return true;
   }
 
@@ -1567,9 +1923,195 @@ export class Game {
     if (snap.chapter.startsWith(start)) return;
     if (this.progress?.cleared?.[start]) return;
     this.progress = markChapterCleared(start);
-    this.ui.renderChapterSelect(this._chapterEntries());
+    this.ui.renderChapterSelect(this._chapterEntries(), this._saveInfo());
     const name = start === 'ch01' ? '第一大章「家园破碎」' : '第二大章「踏上旅程」';
     this.ui.showToast(`✦ ${name} 已通关 —— 新的旅程已解锁`);
+    // 通关第一大章:在世界地图上随机出现餐厅 / 酒店 / 商市
+    if (start === 'ch01') this._generatePois();
+  }
+
+  /** 通关第一章后,在世界地图随机生成 POI_COUNT 个兴趣点 */
+  _generatePois() {
+    if (this._pois.length > 0) return; // 已生成过则不重复
+    this._pois = generatePois(() => this.rng.next());
+    this.ui.showToast(`✦ 世界地图上出现了 ${POI_COUNT} 处新的驻足之地(餐厅 / 酒店 / 商市)`);
+  }
+
+  /** 打开当前所在 POI 的服务界面 */
+  _openPoi() {
+    if (!this._atPoi) return;
+    const poi = this._atPoi;
+    if (poi.type === 'restaurant') this._openRestaurant(poi);
+    else if (poi.type === 'hotel') this._openHotel(poi);
+    else if (poi.type === 'market') this._openMarketPoi(poi);
+  }
+
+  // ===== 餐厅 =====
+  _openRestaurant(poi) {
+    const foods = RESTAURANT_FOOD.map((id) => ITEMS[id]).filter(Boolean);
+    this.ui.renderRestaurant({
+      name: poi.name,
+      foods,
+      economy: this.economy,
+    });
+    this.transition(GameState.RESTAURANT);
+  }
+
+  _restaurantBuy(id) {
+    const it = ITEMS[id];
+    if (!it) return;
+    if (this.economy.buy(id)) this.ui.showToast(`在餐厅购入「${it.name}」`);
+    else this.ui.showToast('金币不足');
+    this._openRestaurant(this._atPoi);
+    this._autosave();
+  }
+
+  /** 餐厅用餐:消耗金币恢复行动力 */
+  _restaurantDine() {
+    const cost = 15;
+    if (this.economy.gold < cost) { this.ui.showToast(`金币不足(用餐需 ${cost})`); return; }
+    this.economy.gold -= cost;
+    const got = this.economy.addAp(5);
+    this._syncUi();
+    this.ui.showToast(got > 0 ? `饱餐一顿,恢复 ${got} 点行动力` : '行动力已满');
+    this._autosave();
+  }
+
+  // ===== 酒店 =====
+  _openHotel(poi) {
+    const outfits = Object.values(ITEMS).filter((it) => it.category === 'outfit');
+    this.ui.renderHotel({
+      name: poi.name,
+      rooms: HOTEL_ROOMS,
+      outfits,
+      equipped: this.economy.equipped,
+      economy: this.economy,
+    });
+    this.transition(GameState.HOTEL);
+  }
+
+  /** 酒店入住:选择房型休息(恢复行动力 + 血量,耗时不同)—— 真实等待 */
+  _hotelCheckIn(roomId) {
+    const room = HOTEL_ROOMS.find((r) => r.id === roomId);
+    if (!room) return;
+    if (this.travel?.active) { this.ui.showToast('正在休整中,请稍候'); return; }
+    if (this.economy.gold < room.gold) { this.ui.showToast(`金币不足(需 ${room.gold})`); return; }
+    this.economy.gold -= room.gold;
+    this._syncUi();
+    // 记录本次入住的房型,供旅途结束时结算恢复效果
+    this._hotelRoom = room;
+    const place = this._atPoi?.name || '酒店';
+    this.travel.start({
+      mode: 'rest',
+      fromLabel: place,
+      toLabel: room.name,
+      dist: 0,
+      seconds: Math.max(1, room.seconds),
+      level: WORLD[this.regionId]?.level ?? this._chapterNum(),
+      poolKey: this.regionId,
+      terrain: regionTerrain(this.regionId),
+      events: [], // 酒店入住不触发随机事件
+    });
+    this.travel.pushLog(`你付了 ${room.gold} 金币,住进「${room.name}」。预计 ${room.seconds} 秒后恢复 ${room.apRecover} 点行动力${room.heal > 0 ? `与 ${Math.round(room.heal * 100)}% 生命` : ''}。`);
+    this.transition(GameState.TRAVEL);
+  }
+
+  /** 酒店换装:仅在酒店可更换服饰 */
+  _hotelChangeOutfit(outfitId) {
+    if (outfitId) {
+      if (!this.economy.has(outfitId)) {
+        // 未拥有则购买
+        const it = ITEMS[outfitId];
+        if (!it) return;
+        if (this.economy.gold < it.price) { this.ui.showToast(`金币不足(需 ${it.price})`); return; }
+        this.economy.gold -= it.price;
+        this.economy.addItem(outfitId, 1);
+      }
+      this.economy.equip(outfitId);
+      this._syncPlayerStats();
+      this.ui.showToast(`换装为「${ITEMS[outfitId].name}」`);
+    } else {
+      // 卸下当前服饰
+      this.economy.unequip('top');
+      this._syncPlayerStats();
+      this.ui.showToast('已卸下服饰');
+    }
+    this._syncUi();
+    this._openHotel(this._atPoi);
+    this._autosave();
+  }
+
+  // ===== 商市 =====
+  _openMarketPoi(poi) {
+    this.ui.renderMarketPoi({
+      name: poi.name,
+      merchants: MARKET_MERCHANTS,
+      economy: this.economy,
+    });
+    this.transition(GameState.MARKET_POI);
+  }
+
+  /** 商市选择某个商人 */
+  _marketPoiSelectMerchant(merchantId) {
+    if (merchantId === 'weapon') this._openWeaponMerchant();
+    else if (merchantId === 'armor') this._openArmorMerchant();
+    else if (merchantId === 'medicine') this._openMedicineMerchant();
+  }
+
+  _openWeaponMerchant() {
+    this._currentMerchant = 'weapon';
+    const weapons = Object.values(ITEMS).filter((it) => it.category === 'weapon');
+    const career = this.engine?.career?.id;
+    this.ui.renderMerchant({
+      title: '武器商',
+      icon: '⚔️',
+      desc: '按职业出售各式武器,不同武器效果各异',
+      items: weapons,
+      economy: this.economy,
+      career,
+    });
+  }
+
+  _openArmorMerchant() {
+    this._currentMerchant = 'armor';
+    // 防具:与服装独立 — 此处定义为 category 为 armor 的物品(若无则用 outfit 中防御型)
+    let armors = Object.values(ITEMS).filter((it) => it.category === 'armor');
+    if (armors.length === 0) {
+      // 兼容:若没有独立 armor 分类,用 outfit 中偏防御的
+      armors = Object.values(ITEMS).filter((it) => it.category === 'outfit' && (it.stats?.maxHp || 0) > 0);
+    }
+    this.ui.renderMerchant({
+      title: '防具商',
+      icon: '🛡️',
+      desc: '出售护甲与护具(独立于服装系统)',
+      items: armors,
+      economy: this.economy,
+    });
+  }
+
+  _openMedicineMerchant() {
+    this._currentMerchant = 'medicine';
+    const meds = Object.values(ITEMS).filter((it) => it.category === 'potion');
+    this.ui.renderMerchant({
+      title: '药商',
+      icon: '🧪',
+      desc: '出售各类药品与解毒剂',
+      items: meds,
+      economy: this.economy,
+    });
+  }
+
+  _merchantBuy(id) {
+    const it = ITEMS[id];
+    if (!it) return;
+    if (this.economy.buy(id)) this.ui.showToast(`购入「${it.name}」`);
+    else this.ui.showToast('金币不足');
+    this._syncUi();
+    // 刷新当前商人界面(更新金币与可购买状态)
+    if (this._currentMerchant === 'weapon') this._openWeaponMerchant();
+    else if (this._currentMerchant === 'armor') this._openArmorMerchant();
+    else if (this._currentMerchant === 'medicine') this._openMedicineMerchant();
+    this._autosave();
   }
 
   transition(next) {
@@ -1580,6 +2122,10 @@ export class Game {
 
   _bindUI() {
     this.bus.on('ui:start-chapter', (id) => this.startNewRun(undefined, id));
+    this.bus.on('ui:continue-save', () => {
+      const ok = this.loadGameState();
+      if (!ok) this.ui.showToast('没有可继续的存档,或存档已损坏');
+    });
     this.bus.on('ui:toggle-music', () => {
       const on = this.audio.toggle();
       this.ui.setMusicState(on);
@@ -1611,6 +2157,15 @@ export class Game {
     // 世界地图 / 旅途 / NPC / 教程
     this.bus.on('ui:world-depart', (id) => this._worldDepart(id));
     this.bus.on('ui:world-shuttle', (id) => this._worldShuttle(id));
+    this.bus.on('ui:poi-depart', (id) => this._poiDepart(id));
+    this.bus.on('ui:poi-open', () => this._openPoi());
+    // POI 服务:餐厅 / 酒店 / 商市
+    this.bus.on('ui:restaurant-buy', (id) => this._restaurantBuy(id));
+    this.bus.on('ui:restaurant-dine', () => this._restaurantDine());
+    this.bus.on('ui:hotel-checkin', (roomId) => this._hotelCheckIn(roomId));
+    this.bus.on('ui:hotel-outfit', (outfitId) => this._hotelChangeOutfit(outfitId));
+    this.bus.on('ui:market-poi-merchant', (merchantId) => this._marketPoiSelectMerchant(merchantId));
+    this.bus.on('ui:merchant-buy', (id) => this._merchantBuy(id));
     this.bus.on('ui:npc-talk', (id) => this._talkNpc(id));
     this.bus.on('ui:npc-topic', (id) => this._npcChooseTopic(id));
     this.bus.on('ui:npc-close', () => this._closeNpcDialog());
@@ -1667,7 +2222,11 @@ export class Game {
       // 若节点是 ending,直接转 VICTORY 触发结局展示
       if (snap.node?.kind === 'ending' && this.state === GameState.NARRATIVE) {
         this.transition(GameState.VICTORY);
+        // 抵达结局:本局结束,清除运行时存档(章节通关进度仍保留)
+        clearSavedGame();
       }
+      // 剧情推进后自动存档
+      this._autosave();
     });
 
     // 职业初始分配/切换后:重建牌组、同步玩家数值

@@ -6,14 +6,15 @@
  *   · 魔力(MP)、生命(HP)属于玩家实体(Player),由药品恢复
  *   · 战力(power)由武器/服饰加成,开战时折算为力量,并叠加战力药剂的临时加成
  *
- * 装备槽位(共 6 个):weapon 武器 / hat 帽子 / top 衣服 / bottom 裤子 / shoes 鞋子 / vehicle 载具
+ * 装备槽位(共 7 个):weapon 武器 / armor 防具 / hat 帽子 / top 衣服 / bottom 裤子 / shoes 鞋子 / vehicle 载具
+ * 防具(armor)与服装(outfit)独立:防具不影响外观,纯防御增益。
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
 import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20260930h';
 import { TRAVEL_BASE_COST } from '../data/regions.js?v=20260930h';
 
-const SLOTS = ['weapon', 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
+const SLOTS = ['weapon', 'armor', 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
 const OUTFIT_SLOTS = ['hat', 'top', 'bottom', 'shoes'];
 
 export class Economy {
@@ -22,7 +23,7 @@ export class Economy {
     this.apMax = apMax;
     this.ap = apMax;
     this.bag = new Map();            // itemId -> qty
-    this.equipped = { weapon: null, hat: null, top: null, bottom: null, shoes: null, vehicle: null };
+    this.equipped = { weapon: null, armor: null, hat: null, top: null, bottom: null, shoes: null, vehicle: null };
     this.pendingPower = 0;           // 战力药剂:下一场战斗生效
     this.hasteRest = 0;              // 剩余「缩短休息耗时」次数
     this.hasteTravel = 0;            // 剩余「缩短旅途耗时」次数
@@ -420,5 +421,48 @@ export class Economy {
       hasteRest: this.hasteRest,
       hasteTravel: this.hasteTravel,
     };
+  }
+
+  // ===== 完整存档序列化 / 反序列化 =====
+  /** 序列化为可 JSON 化的纯对象 */
+  serialize() {
+    return {
+      gold: this.gold,
+      apMax: this.apMax,
+      ap: this.ap,
+      bag: Object.fromEntries(this.bag),
+      equipped: { ...this.equipped },
+      pendingPower: this.pendingPower,
+      hasteRest: this.hasteRest,
+      hasteTravel: this.hasteTravel,
+      goldLuckActive: this.goldLuckActive,
+    };
+  }
+
+  /** 从存档数据恢复;返回新的 Economy 实例 */
+  static deserialize(data) {
+    if (!data) return new Economy();
+    const eco = new Economy({ gold: data.gold ?? 40, apMax: data.apMax ?? 10 });
+    eco.ap = Number(data.ap ?? eco.apMax);
+    // 背包:Map
+    eco.bag = new Map();
+    if (data.bag) {
+      for (const [id, qty] of Object.entries(data.bag)) {
+        if (ITEMS[id] && qty > 0) eco.bag.set(id, Math.floor(qty));
+      }
+    }
+    // 装备
+    eco.equipped = { weapon: null, armor: null, hat: null, top: null, bottom: null, shoes: null, vehicle: null };
+    if (data.equipped) {
+      for (const slot of SLOTS) {
+        const id = data.equipped[slot];
+        if (id && ITEMS[id]) eco.equipped[slot] = id;
+      }
+    }
+    eco.pendingPower = Number(data.pendingPower ?? 0);
+    eco.hasteRest = Number(data.hasteRest ?? 0);
+    eco.hasteTravel = Number(data.hasteTravel ?? 0);
+    eco.goldLuckActive = !!data.goldLuckActive;
+    return eco;
   }
 }

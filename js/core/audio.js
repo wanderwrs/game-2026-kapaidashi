@@ -13,11 +13,75 @@
 
 const PREFS_KEY = 'longji.music.v1';
 
-// 旋律音阶:A 小调五声音阶 + 高八度,音色柔和、略带苍凉
-const SCALE = [220.0, 261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
-// 低音持续音:A2 / E3 / A3
-const DRONE = [110.0, 164.81, 220.0];
-// 旋律推进步长(秒)
+/**
+ * 地区主题音乐配置:
+ *   scale  旋律音阶(Hz) — 不同调性营造不同氛围
+ *   drone  低音持续音(Hz)
+ *   step   旋律推进步长(秒) — 步长越大越舒缓
+ *   tone   低通截止频率 — 越低越温暖/朦胧
+ *   label  主题名(仅供调试)
+ */
+const THEME_MUSIC = {
+  // 村庄:温暖、朴素,A 小调五声
+  village: {
+    scale: [220.0, 261.63, 293.66, 329.63, 392.0, 440.0, 523.25],
+    drone: [110.0, 164.81, 220.0],
+    step: 1.75, tone: 2200, label: '村庄',
+  },
+  // 森林:幽静、神秘,D 小调
+  forest: {
+    scale: [146.83, 174.61, 196.0, 233.08, 261.63, 293.66, 349.23],
+    drone: [73.42, 110.0, 146.83],
+    step: 2.1, tone: 1800, label: '森林',
+  },
+  // 主城:恢弘、庄严,C 大调
+  city: {
+    scale: [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 523.25, 587.33],
+    drone: [130.81, 196.0, 261.63],
+    step: 1.4, tone: 2600, label: '主城',
+  },
+  // 港口:开阔、咸涩,G 大调
+  port: {
+    scale: [196.0, 220.0, 246.94, 261.63, 293.66, 329.66, 392.0, 440.0],
+    drone: [98.0, 146.83, 196.0],
+    step: 1.9, tone: 2400, label: '港口',
+  },
+  // 山地:苍凉、凛冽,E 小调
+  mountain: {
+    scale: [164.81, 196.0, 220.0, 246.94, 293.66, 329.63, 392.0],
+    drone: [82.41, 123.47, 164.81],
+    step: 2.3, tone: 2000, label: '山地',
+  },
+  // 废墟:压抑、不安,B 小调
+  ruins: {
+    scale: [123.47, 146.83, 155.56, 185.0, 196.0, 233.08, 246.94],
+    drone: [61.74, 92.5, 123.47],
+    step: 2.5, tone: 1600, label: '废墟',
+  },
+  // 浮空:空灵、奇幻,D 大调高八度
+  sky: {
+    scale: [293.66, 329.63, 369.99, 392.0, 440.0, 493.88, 587.33, 659.25],
+    drone: [146.83, 220.0, 293.66],
+    step: 1.6, tone: 3000, label: '浮空',
+  },
+  // 悬崖/险地:紧张、尖锐,F# 小调
+  cliff: {
+    scale: [185.0, 207.65, 233.08, 277.18, 311.13, 369.99, 415.30],
+    drone: [92.5, 138.59, 185.0],
+    step: 1.5, tone: 2800, label: '险地',
+  },
+  // 营地:篝火般的温暖,G 小调
+  camp: {
+    scale: [196.0, 233.08, 261.63, 293.66, 349.23, 392.0, 466.16],
+    drone: [98.0, 146.83, 196.0],
+    step: 2.0, tone: 2100, label: '营地',
+  },
+};
+
+// 默认主题(村庄)
+const DEFAULT_THEME = 'village';
+
+// 旋律推进步长(秒) — 默认值,实际由主题决定
 const STEP = 1.75;
 
 export class AudioEngine {
@@ -31,9 +95,30 @@ export class AudioEngine {
     this._mi = 2;        // 旋律随机游走索引
     this._noteCount = 0;
     this._armed = false;
+    this._theme = DEFAULT_THEME;
+    this._droneOscs = []; // 当前的低音振荡器,换主题时需停掉重建
+    this._droneGain = null;
   }
 
   get playing() { return this._playing; }
+
+  /** 当前主题名 */
+  get theme() { return this._theme; }
+
+  /**
+   * 切换到指定地区主题的音乐。
+   * 若正在播放,会平滑过渡(淡出 → 重建低音 → 淡入)。
+   * @param {string} theme 地区主题(village/forest/city/port/mountain/ruins/sky/cliff/camp)
+   */
+  setTheme(theme) {
+    const t = THEME_MUSIC[theme] || THEME_MUSIC[DEFAULT_THEME];
+    if (this._theme === theme) return;
+    this._theme = theme;
+    // 未构建音频上下文时,仅记录主题,等 _build 时应用
+    if (!this.ctx || !this._playing) return;
+    // 重建低音铺底
+    this._rebuildDrone(t);
+  }
 
   _readPref() {
     try { return localStorage.getItem(PREFS_KEY) !== 'off'; } catch { return true; }
@@ -97,18 +182,20 @@ export class AudioEngine {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     const ctx = new Ctx();
     this.ctx = ctx;
+    const theme = THEME_MUSIC[this._theme] || THEME_MUSIC[DEFAULT_THEME];
 
     // 总音量(0 起,播放时淡入)
     const master = ctx.createGain();
     master.gain.value = 0;
     master.connect(ctx.destination);
 
-    // 整体低通:让音色温暖、不刺耳
+    // 整体低通:让音色温暖、不刺耳(按主题调整)
     const tone = ctx.createBiquadFilter();
     tone.type = 'lowpass';
-    tone.frequency.value = 2200;
+    tone.frequency.value = theme.tone;
     tone.Q.value = 0.4;
     tone.connect(master);
+    this._toneFilter = tone;
 
     // 回声:为旋律增添空间感
     const delay = ctx.createDelay(1.0);
@@ -125,15 +212,17 @@ export class AudioEngine {
 
     this.master = master;
 
-    // 持续低音铺底
+    // 持续低音铺底(存储引用,换主题时可重建)
     const drone = ctx.createGain();
     drone.gain.value = 0.35;
+    this._droneGain = drone;
     const droneLp = ctx.createBiquadFilter();
     droneLp.type = 'lowpass';
     droneLp.frequency.value = 480;
     drone.connect(droneLp);
     droneLp.connect(tone);
-    DRONE.forEach((freq, i) => {
+    this._droneOscs = [];
+    theme.drone.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       osc.type = i === 0 ? 'sine' : 'triangle';
       osc.frequency.value = freq;
@@ -143,6 +232,7 @@ export class AudioEngine {
       osc.connect(g);
       g.connect(drone);
       osc.start();
+      this._droneOscs.push(osc);
     });
 
     // 旋律总线
@@ -152,27 +242,65 @@ export class AudioEngine {
     this._melody = melody;
   }
 
+  /** 换主题时重建低音铺底与低通截止频率 */
+  _rebuildDrone(theme) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    // 停掉旧的低音振荡器
+    for (const osc of this._droneOscs) {
+      try {
+        osc.stop(now + 0.3);
+      } catch { /* 已停止 */ }
+    }
+    this._droneOscs = [];
+    // 调整低通频率
+    if (this._toneFilter) {
+      this._toneFilter.frequency.cancelScheduledValues(now);
+      this._toneFilter.frequency.linearRampToValueAtTime(theme.tone, now + 1.5);
+    }
+    // 启动新的低音振荡器
+    if (this._droneGain) {
+      theme.drone.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = i === 0 ? 'sine' : 'triangle';
+        osc.frequency.value = freq;
+        osc.detune.value = (i - 1) * 5;
+        const g = ctx.createGain();
+        g.gain.value = 0;
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(i === 0 ? 0.45 : 0.2, now + 1.5);
+        osc.connect(g);
+        g.connect(this._droneGain);
+        osc.start(now);
+        this._droneOscs.push(osc);
+      });
+    }
+  }
+
   _schedule() {
     if (!this._playing || !this.ctx) return;
     const now = this.ctx.currentTime;
     if (this._nextNote < now) this._nextNote = now + 0.1;
+    const step = THEME_MUSIC[this._theme]?.step || STEP;
     while (this._nextNote < now + 1.6) {
       this._note(this._nextNote);
-      this._nextNote += STEP;
+      this._nextNote += step;
     }
     this._timer = setTimeout(() => this._schedule(), 400);
   }
 
   _note(when) {
     const ctx = this.ctx;
+    const scale = THEME_MUSIC[this._theme]?.scale || THEME_MUSIC[DEFAULT_THEME].scale;
     // 随机游走,保证旋律连贯、不跳脱
     this._mi += Math.random() < 0.5 ? -1 : 1;
     if (this._mi < 0) this._mi = 1;
-    if (this._mi > SCALE.length - 1) this._mi = SCALE.length - 2;
+    if (this._mi > scale.length - 1) this._mi = scale.length - 2;
 
     const osc = ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.value = SCALE[this._mi];
+    osc.frequency.value = scale[this._mi];
     const g = ctx.createGain();
     osc.connect(g);
     g.connect(this._melody);

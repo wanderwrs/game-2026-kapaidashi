@@ -252,6 +252,54 @@ export class NarrativeEngine {
       unlockedCareers: [...this.unlockedCareers],
     };
   }
+
+  // ===== 完整存档序列化 / 恢复 =====
+  /** 序列化为可 JSON 化的纯对象 */
+  serialize() {
+    return {
+      currentChapterId: this.currentChapterId,
+      currentNodeId: this.currentNode?.id ?? null,
+      flags: [...this.flags],
+      stats: { ...this.stats },
+      careerId: this.career?.id ?? null,
+      unlockedCareers: [...this.unlockedCareers],
+      gatePassed: [...this.gatePassed],
+      pendingBattle: this._pendingBattle
+        ? { chapterId: this.currentChapterId, nodeId: this._pendingBattle.id }
+        : null,
+      gateTarget: this._gateTarget ?? null,
+    };
+  }
+
+  /** 从存档数据恢复引擎状态(不重新触发节点效果,仅还原到存档时的位置) */
+  restore(data) {
+    if (!data) return;
+    this.flags = new Set(Array.isArray(data.flags) ? data.flags : []);
+    this.stats = { courage: 0, mercy: 0, reason: 0, wild: 0, ...(data.stats || {}) };
+    // 职业
+    if (data.careerId && CAREER_MAP[data.careerId]) {
+      this.career = CAREER_MAP[data.careerId];
+    }
+    this.unlockedCareers = new Set(Array.isArray(data.unlockedCareers) ? data.unlockedCareers : []);
+    this.gatePassed = new Set(Array.isArray(data.gatePassed) ? data.gatePassed : []);
+    // 待战节点
+    if (data.pendingBattle && data.pendingBattle.chapterId && data.pendingBattle.nodeId) {
+      const ch = this.chapters[data.pendingBattle.chapterId];
+      this._pendingBattle = ch?.nodes?.get(data.pendingBattle.nodeId) || null;
+    } else {
+      this._pendingBattle = null;
+    }
+    // 门控目标
+    this._gateTarget = data.gateTarget || null;
+    // 当前章节与节点(定位到存档时的剧情位置)
+    if (data.currentChapterId) {
+      this.currentChapterId = data.currentChapterId;
+      if (data.currentNodeId) {
+        const ch = this.chapters[data.currentChapterId];
+        this.currentNode = ch?.nodes?.get(data.currentNodeId) || null;
+      }
+    }
+  }
 }
 
 export const ENDINGS = {
