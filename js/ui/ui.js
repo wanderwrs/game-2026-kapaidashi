@@ -10,21 +10,21 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001a';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001a';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, socketsOf } from '../data/items.js?v=20261001a';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001a';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001a';
-import { cardMpCost } from '../data/data.js?v=20261001a';
-import { ENDINGS } from '../narrative/engine.js?v=20261001a';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001a';
-import { SceneView, paintCharacter } from './scene.js?v=20261001a';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001a';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001a';
-import { Minigame } from '../minigame/minigame.js?v=20261001a';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001a';
-import { TERRAIN_CN } from '../data/world.js?v=20261001a';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001a';
+import { GameState } from '../core/game.js?v=20261001b';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001b';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, socketsOf } from '../data/items.js?v=20261001b';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001b';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001b';
+import { cardMpCost } from '../data/data.js?v=20261001b';
+import { ENDINGS } from '../narrative/engine.js?v=20261001b';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001b';
+import { SceneView, paintCharacter } from './scene.js?v=20261001b';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001b';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001b';
+import { Minigame } from '../minigame/minigame.js?v=20261001b';
+import { MODE_LABELS } from '../data/jobs.js?v=20261001b';
+import { TERRAIN_CN } from '../data/world.js?v=20261001b';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001b';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',

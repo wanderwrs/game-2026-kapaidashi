@@ -11,41 +11,41 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261001a';
-import { EventBus } from './eventbus.js?v=20261001a';
-import { AudioEngine } from './audio.js?v=20261001a';
-import { Player } from '../combat/entity.js?v=20261001a';
-import { Deck } from '../card/deck.js?v=20261001a';
-import { Battle } from '../combat/battle.js?v=20261001a';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001a';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001a';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001a';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001a';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001a';
-import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001a';
-import { rankExpBonus, rankReward, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001a';
-import { majorSetIds } from '../data/extras.js?v=20261001a';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, armorId } from '../data/armor.js?v=20261001a';
-import { lookLabel } from '../data/looks.js?v=20261001a';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001a';
-import { TradeEngine } from './trade.js?v=20261001a';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001a';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001a';
-import { jobsFor } from '../data/jobs.js?v=20261001a';
+import { RNG, seedFromString } from './rng.js?v=20261001b';
+import { EventBus } from './eventbus.js?v=20261001b';
+import { AudioEngine } from './audio.js?v=20261001b';
+import { Player } from '../combat/entity.js?v=20261001b';
+import { Deck } from '../card/deck.js?v=20261001b';
+import { Battle } from '../combat/battle.js?v=20261001b';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001b';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001b';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001b';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001b';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001b';
+import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001b';
+import { rankExpBonus, rankReward, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001b';
+import { majorSetIds } from '../data/extras.js?v=20261001b';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, armorId } from '../data/armor.js?v=20261001b';
+import { lookLabel } from '../data/looks.js?v=20261001b';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001b';
+import { TradeEngine } from './trade.js?v=20261001b';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001b';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001b';
+import { jobsFor } from '../data/jobs.js?v=20261001b';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261001a';
-import { NPCS } from '../data/npcs.js?v=20261001a';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001a';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001a';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001a';
-import { Economy } from './economy.js?v=20261001a';
-import { Travel } from './travel.js?v=20261001a';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001a';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001a';
-import { CAREERS } from '../narrative/careers.js?v=20261001a';
-import { UI } from '../ui/ui.js?v=20261001a';
+} from '../data/world.js?v=20261001b';
+import { NPCS } from '../data/npcs.js?v=20261001b';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001b';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001b';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001b';
+import { Economy } from './economy.js?v=20261001b';
+import { Travel } from './travel.js?v=20261001b';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001b';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001b';
+import { CAREERS } from '../narrative/careers.js?v=20261001b';
+import { UI } from '../ui/ui.js?v=20261001b';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
