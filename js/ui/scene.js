@@ -179,7 +179,7 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   const bootCol = bareFeet ? SKIN : (a.boot || BOOT);
   const acc = o.accessory;
 
-  const clothHi = shade(cloth, 0.2), clothLo = shade(cloth, -0.35);
+  const clothHi = shade(cloth, 0.2), clothLo = shade(cloth, -0.35), clothMid = shade(cloth, -0.12);
   const cloth2Hi = shade(cloth2, 0.2), cloth2Lo = shade(cloth2, -0.3);
   const trimHi = shade(trim, 0.25), trimLo = shade(trim, -0.3);
   const pantsHi = shade(pantsCol, 0.18), pantsLo = shade(pantsCol, -0.32);
@@ -190,14 +190,14 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   const ox = swayX;
   const oy = breathY;
 
-  // 坐标基准
+  // 坐标基准(优化比例:头部占全身约1/4)
   const headCX = 72 + ox;
-  const headCY = 52 + oy;
-  const headR = 30;
-  const neckY = 82 + oy;
-  const shoulderY = 96 + oy;
-  const waistY = 148 + oy;
-  const hipY = 160 + oy;
+  const headCY = 46 + oy;
+  const headR = 26;
+  const neckY = 72 + oy;
+  const shoulderY = 86 + oy;
+  const waistY = 138 + oy;
+  const hipY = 150 + oy;
 
   ctx.save();
 
@@ -217,103 +217,103 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   // ============================================================
   if (acc === 'sword') {
     // 剑身(背后,被身体遮挡下半部分)
-    const bladeGrad = ctx.createLinearGradient(118, 30, 130, 30);
+    const bladeGrad = ctx.createLinearGradient(118, 20, 130, 20);
     bladeGrad.addColorStop(0, '#79818c');
     bladeGrad.addColorStop(0.5, '#d8dde4');
     bladeGrad.addColorStop(1, '#aeb6be');
     ctx.fillStyle = bladeGrad;
     ctx.beginPath();
-    ctx.moveTo(122, 28 + oy);
-    ctx.lineTo(128, 28 + oy);
-    ctx.lineTo(126, 130 + oy);
-    ctx.lineTo(124, 130 + oy);
+    ctx.moveTo(122, 18 + oy);
+    ctx.lineTo(128, 18 + oy);
+    ctx.lineTo(126, 120 + oy);
+    ctx.lineTo(124, 120 + oy);
     ctx.closePath();
     ctx.fill();
     // 剑身光泽
     ctx.fillStyle = `rgba(255,255,255,${0.3 + sheen * 0.5})`;
-    ctx.fillRect(124, 30 + oy + sheen * 80, 1, 15);
+    ctx.fillRect(124, 20 + oy + sheen * 80, 1, 15);
     // 护手
     ctx.fillStyle = LEATHER;
-    ctx.fillRect(116, 128 + oy, 18, 4);
+    ctx.fillRect(116, 118 + oy, 18, 4);
     ctx.fillStyle = shade(LEATHER, 0.2);
-    ctx.fillRect(116, 128 + oy, 18, 1);
+    ctx.fillRect(116, 118 + oy, 18, 1);
     // 握柄
     ctx.fillStyle = LEATHER;
-    ctx.fillRect(122, 132 + oy, 6, 16);
+    ctx.fillRect(122, 122 + oy, 6, 16);
     ctx.fillStyle = shade(LEATHER, 0.15);
-    ctx.fillRect(122, 132 + oy, 2, 16);
+    ctx.fillRect(122, 122 + oy, 2, 16);
     // 剑首
     ctx.fillStyle = trim;
     ctx.beginPath();
-    ctx.arc(125, 150 + oy, 4, 0, Math.PI * 2);
+    ctx.arc(125, 140 + oy, 4, 0, Math.PI * 2);
     ctx.fill();
   }
   if (acc === 'staff') {
     ctx.strokeStyle = '#6b4a30';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(22 + ox, 60 + oy);
-    ctx.lineTo(20 + ox, 165 + oy);
+    ctx.moveTo(22 + ox, 50 + oy);
+    ctx.lineTo(20 + ox, 155 + oy);
     ctx.stroke();
     ctx.strokeStyle = '#835c3c';
     ctx.lineWidth = 2;
     ctx.stroke();
     // 法杖顶端宝石
-    const gemGrad = ctx.createRadialGradient(22 + ox, 52 + oy, 1, 22 + ox, 52 + oy, 10);
+    const gemGrad = ctx.createRadialGradient(22 + ox, 42 + oy, 1, 22 + ox, 42 + oy, 10);
     gemGrad.addColorStop(0, `rgba(255,240,184,${0.6 + sheen * 0.4})`);
     gemGrad.addColorStop(0.5, trim);
     gemGrad.addColorStop(1, trimLo);
     ctx.fillStyle = gemGrad;
     ctx.beginPath();
-    ctx.arc(22 + ox, 52 + oy, 9, 0, Math.PI * 2);
+    ctx.arc(22 + ox, 42 + oy, 9, 0, Math.PI * 2);
     ctx.fill();
-    circle(ctx, 22 + ox, 52 + oy, 3, `rgba(255,255,255,${0.5 + sheen * 0.5})`);
+    circle(ctx, 22 + ox, 42 + oy, 3, `rgba(255,255,255,${0.5 + sheen * 0.5})`);
   }
   if (acc === 'spear') {
     ctx.strokeStyle = '#5a3f2a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(120 + ox, 20 + oy);
-    ctx.lineTo(124 + ox, 175 + oy);
+    ctx.moveTo(120 + ox, 12 + oy);
+    ctx.lineTo(124 + ox, 165 + oy);
     ctx.stroke();
     // 枪尖
     ctx.fillStyle = METAL;
     ctx.beginPath();
-    ctx.moveTo(122 + ox, 8 + oy);
-    ctx.lineTo(128 + ox, 24 + oy);
-    ctx.lineTo(116 + ox, 24 + oy);
+    ctx.moveTo(122 + ox, 0 + oy);
+    ctx.lineTo(128 + ox, 16 + oy);
+    ctx.lineTo(116 + ox, 16 + oy);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = '#e6ebf0';
     ctx.beginPath();
-    ctx.moveTo(120 + ox, 10 + oy);
-    ctx.lineTo(123 + ox, 22 + oy);
-    ctx.lineTo(119 + ox, 22 + oy);
+    ctx.moveTo(120 + ox, 2 + oy);
+    ctx.lineTo(123 + ox, 14 + oy);
+    ctx.lineTo(119 + ox, 14 + oy);
     ctx.closePath();
     ctx.fill();
   }
   if (acc === 'wings') {
-    const wingGrad = ctx.createLinearGradient(0, 80, 50, 80);
+    const wingGrad = ctx.createLinearGradient(0, 70, 50, 70);
     wingGrad.addColorStop(0, '#6f96a8');
     wingGrad.addColorStop(0.5, '#8fb6c9');
     wingGrad.addColorStop(1, '#b9d7e6');
     // 左翼
     ctx.fillStyle = wingGrad;
     ctx.beginPath();
-    ctx.moveTo(30 + ox, 100 + oy);
-    ctx.bezierCurveTo(5 + ox, 80 + oy, 0 + ox, 120 + oy, 15 + ox, 150 + oy);
-    ctx.bezierCurveTo(25 + ox, 135 + oy, 30 + ox, 120 + oy, 30 + ox, 100 + oy);
+    ctx.moveTo(30 + ox, 90 + oy);
+    ctx.bezierCurveTo(5 + ox, 70 + oy, 0 + ox, 110 + oy, 15 + ox, 140 + oy);
+    ctx.bezierCurveTo(25 + ox, 125 + oy, 30 + ox, 110 + oy, 30 + ox, 90 + oy);
     ctx.fill();
     // 右翼
-    const wingGrad2 = ctx.createLinearGradient(144, 80, 94, 80);
+    const wingGrad2 = ctx.createLinearGradient(144, 70, 94, 70);
     wingGrad2.addColorStop(0, '#6f96a8');
     wingGrad2.addColorStop(0.5, '#8fb6c9');
     wingGrad2.addColorStop(1, '#b9d7e6');
     ctx.fillStyle = wingGrad2;
     ctx.beginPath();
-    ctx.moveTo(114 + ox, 100 + oy);
-    ctx.bezierCurveTo(139 + ox, 80 + oy, 144 + ox, 120 + oy, 129 + ox, 150 + oy);
-    ctx.bezierCurveTo(119 + ox, 135 + oy, 114 + ox, 120 + oy, 114 + ox, 100 + oy);
+    ctx.moveTo(114 + ox, 90 + oy);
+    ctx.bezierCurveTo(139 + ox, 70 + oy, 144 + ox, 110 + oy, 129 + ox, 140 + oy);
+    ctx.bezierCurveTo(119 + ox, 125 + oy, 114 + ox, 110 + oy, 114 + ox, 90 + oy);
     ctx.fill();
   }
 
@@ -523,7 +523,7 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   ctx.fill();
 
   // ============================================================
-  // 6. 颈部
+  // 6. 颈部(延伸至躯干内,消除间隙)
   // ============================================================
   const neckGrad = ctx.createLinearGradient(66, neckY - 6, 78, neckY + 10);
   neckGrad.addColorStop(0, skinMid);
@@ -533,13 +533,26 @@ function drawCharacter(ctx, scale, careerId, hpRatio, flags, look, time = 0) {
   ctx.beginPath();
   ctx.moveTo(66 + ox, neckY - 4);
   ctx.lineTo(78 + ox, neckY - 4);
-  ctx.lineTo(80 + ox, neckY + 12);
-  ctx.lineTo(64 + ox, neckY + 12);
+  ctx.lineTo(82 + ox, shoulderY + 4);
+  ctx.lineTo(62 + ox, shoulderY + 4);
   ctx.closePath();
   ctx.fill();
-  // 颈侧阴影
+  // 颈侧阴影(右侧入影)
   ctx.fillStyle = 'rgba(0,0,0,0.15)';
-  ctx.fillRect(76 + ox, neckY - 2, 3, 12);
+  ctx.beginPath();
+  ctx.moveTo(76 + ox, neckY - 2);
+  ctx.lineTo(82 + ox, shoulderY + 4);
+  ctx.lineTo(78 + ox, shoulderY + 4);
+  ctx.lineTo(75 + ox, neckY - 2);
+  ctx.closePath();
+  ctx.fill();
+  // 锁骨阴影
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(66 + ox, shoulderY);
+  ctx.quadraticCurveTo(72 + ox, shoulderY + 3, 78 + ox, shoulderY);
+  ctx.stroke();
 
   // ============================================================
   // 7. 头部(脸 + 五官)
@@ -767,8 +780,8 @@ function drawHatReal(ctx, ox, oy, a) {
   const hi = a.hatHi || shade(c, 0.25);
   const lo = shade(c, -0.3);
   const headCX = 72 + ox;
-  const headCY = 52 + oy;
-  const grad = ctx.createLinearGradient(headCX, headCY - 35, headCX, headCY - 18);
+  const headCY = 46 + oy;
+  const grad = ctx.createLinearGradient(headCX, headCY - 29, headCX, headCY - 12);
   grad.addColorStop(0, hi);
   grad.addColorStop(1, lo);
 

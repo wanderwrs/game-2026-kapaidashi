@@ -5,8 +5,8 @@
  * 支持自动战斗模式:AI 自动选取最优卡牌并结束回合。
  */
 
-import { Enemy } from './entity.js?v=20260930f';
-import { cardMpCost } from '../data/data.js?v=20260930f';
+import { Enemy } from './entity.js?v=20260930g';
+import { cardMpCost } from '../data/data.js?v=20260930g';
 
 const STATUS_CN = {
   vulnerable: '易伤',
