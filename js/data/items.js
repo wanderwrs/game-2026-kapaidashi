@@ -26,11 +26,11 @@
  * sell 未填时按 price 的 50% 计算。
  */
 
-import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261001h';
-import { GEM_ITEMS } from './gems.js?v=20261001h';
-import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261001h';
-import { isSellLockedLevel } from './grade.js?v=20261001h';
-import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261001h';
+import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261001j';
+import { GEM_ITEMS } from './gems.js?v=20261001j';
+import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261001j';
+import { isSellLockedLevel } from './grade.js?v=20261001j';
+import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261001j';
 
 export const ITEM_CATEGORY_CN = {
   potion: '药品',
@@ -177,7 +177,7 @@ export const ITEMS = {
   cloth_shoes:   { id: 'cloth_shoes',   name: '布鞋',     category: 'outfit', price: 15,  icon: '👟', desc: '生命 +1。走十里就该换一双。', equipment: { slot: 'shoes', stats: { maxHp: 1 } }, look: { boot: '#3b342a' } },
   leather_boots: { id: 'leather_boots', name: '皮靴',     category: 'outfit', price: 80,  icon: '🥾', desc: '生命 +4。踩进泥里也不怕。', equipment: { slot: 'shoes', stats: { maxHp: 4 } }, look: { boot: '#4a3423' } },
   dancer_shoes:  { id: 'dancer_shoes',  name: '舞鞋',     category: 'outfit', price: 140, icon: '🩰', desc: '魔力 +2。轻得几乎感觉不到脚。', equipment: { slot: 'shoes', stats: { maxMp: 2 } }, look: { boot: '#8a5a63' } },
-  swift_boots:   { id: 'swift_boots',   name: '疾行靴',   category: 'outfit', price: 220, icon: '👢', desc: '旅行行动力消耗 −2。鞋底薄,脚感却轻。', equipment: { slot: 'shoes', stats: { travelDiscount: 2 } }, look: { boot: '#2f4a5a' } },
+  swift_boots:   { id: 'swift_boots',   name: '疾行靴',   category: 'outfit', price: 220, icon: '👢', desc: '生命 +6,魔力 +1,战力 +1。特殊:旅行行动力消耗 −2。鞋底薄,脚感却轻。', equipment: { slot: 'shoes', stats: { maxHp: 6, maxMp: 1, atkPower: 1, travelDiscount: 2 } }, look: { boot: '#2f4a5a' } },
   emperor_new_boots: { id: 'emperor_new_boots', name: '皇帝的新靴', category: 'outfit', price: 999, icon: '✨', desc: '踩着虚无赶路,石子硌得生疼。', equipment: { slot: 'shoes', stats: {} }, hide: true, look: { style: 'none' } },
 
   // ===== 绝世稀有(不会出现在普通商店,只在专属交易场所低概率上架) =====
@@ -185,7 +185,7 @@ export const ITEMS = {
   void_mantle:      { id: 'void_mantle',      name: '虚无斗篷', category: 'outfit', price: 1040, icon: '🌑', rare: true, desc: '披上像被夜色收进去。生命 +34,魔力 +6。', equipment: { slot: 'top', stats: { maxHp: 34, maxMp: 6 } }, look: { cloth: '#2a2740', cloth2: '#3b3760', trim: '#9b7fe8' } },
   prophet_circlet:  { id: 'prophet_circlet',  name: '先知之冠', category: 'outfit', price: 900,  icon: '👑', rare: true, desc: '冠心一颗缓慢转动的星。魔力 +7,生命 +8。特殊:商店购物 8 折。', equipment: { slot: 'hat', stats: { maxMp: 7, maxHp: 8, shopDiscount: 0.2 } }, look: { hat: '#3a2f6b', hatHi: '#9b7fe8', style: 'crown' } },
   titan_greaves:    { id: 'titan_greaves',    name: '泰坦护腿', category: 'armor', armorSlot: 'legs', level: 100, price: 860,  icon: '🦿', rare: true, desc: '沉得像两条石柱。生命 +18,战力 +3。', equipment: { slot: 'legs', stats: { maxHp: 18, atkPower: 3 } } },
-  gale_boots:       { id: 'gale_boots',       name: '疾风长靴', category: 'outfit', price: 820,  icon: '👢', rare: true, desc: '落地无声。旅行行动力消耗 −5。', equipment: { slot: 'shoes', stats: { travelDiscount: 5 } }, look: { boot: '#20404a' } },
+  gale_boots:       { id: 'gale_boots',       name: '疾风长靴', category: 'outfit', price: 820,  icon: '👢', rare: true, desc: '生命 +14,魔力 +3,战力 +2。特殊:旅行行动力消耗 −5。落地无声。', equipment: { slot: 'shoes', stats: { maxHp: 14, maxMp: 3, atkPower: 2, travelDiscount: 5 } }, look: { boot: '#20404a' } },
   sage_stone:       { id: 'sage_stone',       name: '贤者之石', category: 'misc',   price: 880,  icon: '💎', rare: true, desc: '握久了他做梦。卖给识货者可换大钱。' },
 
   // ===== 特殊交易币(专属交易场所专用;不能换成金币,只能在对应主题的集市里花) =====
@@ -203,14 +203,15 @@ export const ITEMS = {
   // equipment.stats.travelDiscount:降低行动力消耗;speedMul:旅途耗时倍率(越小越快)
   // terrain:该载具可通行的地形(land 陆地 / plateau 高原 / sea 海面·港口 / sky 浮空);
   //         徒步不受地形限制,但装备的载具走不了的地形就无法出发
-  old_horse:   { id: 'old_horse',   name: '老马',     category: 'vehicle', price: 90,  icon: '🐴', terrain: ['land', 'plateau'], desc: '旅途耗时 ×0.75,行动力消耗 −1。只走陆地与高原。', speedMul: 0.75, equipment: { slot: 'vehicle', stats: { travelDiscount: 1 } } },
-  cart:        { id: 'cart',        name: '板车',     category: 'vehicle', price: 180, icon: '🛒', terrain: ['land', 'plateau'], desc: '旅途耗时 ×0.55,行动力消耗 −2。只走陆地与高原。', speedMul: 0.55, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
-  swift_horse: { id: 'swift_horse', name: '快马',     category: 'vehicle', price: 260, icon: '🐎', terrain: ['land', 'plateau'], desc: '旅途耗时 ×0.45,行动力消耗 −2。只走陆地与高原。', speedMul: 0.45, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
-  snow_leopard:{ id: 'snow_leopard',name: '雪豹',     category: 'vehicle', price: 420, icon: '🐆', terrain: ['land', 'plateau'], desc: '旅途耗时 ×0.34,行动力消耗 −3。只走陆地与高原,不渡海。', speedMul: 0.34, equipment: { slot: 'vehicle', stats: { travelDiscount: 3 } } },
-  skiff:       { id: 'skiff',       name: '快帆船',   category: 'vehicle', price: 320, icon: '⛵', terrain: ['sea'], desc: '旅途耗时 ×0.38,行动力消耗 −2。只走海面与港口。', speedMul: 0.38, equipment: { slot: 'vehicle', stats: { travelDiscount: 2 } } },
-  steamship:   { id: 'steamship',   name: '轮船',     category: 'vehicle', price: 440, icon: '🚢', terrain: ['sea'], desc: '旅途耗时 ×0.30,行动力消耗 −3。只走海面与港口。', speedMul: 0.30, equipment: { slot: 'vehicle', stats: { travelDiscount: 3 } } },
-  wind_glider: { id: 'wind_glider', name: '风翼',     category: 'vehicle', price: 360, icon: '🪂', terrain: ['land', 'plateau', 'sky'], desc: '旅途耗时 ×0.30,行动力消耗 −3,行动力上限 +2。走陆地、高原与浮空,不渡海。', speedMul: 0.30, equipment: { slot: 'vehicle', stats: { travelDiscount: 3, apMax: 2 } } },
-  airship:     { id: 'airship',     name: '飞艇',     category: 'vehicle', price: 680, icon: '🎈', terrain: ['land', 'plateau', 'sea', 'sky'], desc: '旅途耗时 ×0.18,行动力消耗 −4,行动力上限 +2。可飞跃全部地区。', speedMul: 0.18, equipment: { slot: 'vehicle', stats: { travelDiscount: 4, apMax: 2 } } },
+  // 载具同样占装备格,除旅行特效外也给基础参数(兽力坐骑额外带战力)
+  old_horse:   { id: 'old_horse',   name: '老马',     category: 'vehicle', price: 90,  icon: '🐴', terrain: ['land', 'plateau'], desc: '生命 +8,战力 +1。旅途耗时 ×0.75,行动力消耗 −1。只走陆地与高原。', speedMul: 0.75, equipment: { slot: 'vehicle', stats: { maxHp: 8, atkPower: 1, travelDiscount: 1 } } },
+  cart:        { id: 'cart',        name: '板车',     category: 'vehicle', price: 180, icon: '🛒', terrain: ['land', 'plateau'], desc: '生命 +14。旅途耗时 ×0.55,行动力消耗 −2。只走陆地与高原。', speedMul: 0.55, equipment: { slot: 'vehicle', stats: { maxHp: 14, travelDiscount: 2 } } },
+  swift_horse: { id: 'swift_horse', name: '快马',     category: 'vehicle', price: 260, icon: '🐎', terrain: ['land', 'plateau'], desc: '生命 +16,战力 +1。旅途耗时 ×0.45,行动力消耗 −2。只走陆地与高原。', speedMul: 0.45, equipment: { slot: 'vehicle', stats: { maxHp: 16, atkPower: 1, travelDiscount: 2 } } },
+  snow_leopard:{ id: 'snow_leopard',name: '雪豹',     category: 'vehicle', price: 420, icon: '🐆', terrain: ['land', 'plateau'], desc: '生命 +22,战力 +2。旅途耗时 ×0.34,行动力消耗 −3。只走陆地与高原,不渡海。', speedMul: 0.34, equipment: { slot: 'vehicle', stats: { maxHp: 22, atkPower: 2, travelDiscount: 3 } } },
+  skiff:       { id: 'skiff',       name: '快帆船',   category: 'vehicle', price: 320, icon: '⛵', terrain: ['sea'], desc: '生命 +16,魔力 +1。旅途耗时 ×0.38,行动力消耗 −2。只走海面与港口。', speedMul: 0.38, equipment: { slot: 'vehicle', stats: { maxHp: 16, maxMp: 1, travelDiscount: 2 } } },
+  steamship:   { id: 'steamship',   name: '轮船',     category: 'vehicle', price: 440, icon: '🚢', terrain: ['sea'], desc: '生命 +22,魔力 +2。旅途耗时 ×0.30,行动力消耗 −3。只走海面与港口。', speedMul: 0.30, equipment: { slot: 'vehicle', stats: { maxHp: 22, maxMp: 2, travelDiscount: 3 } } },
+  wind_glider: { id: 'wind_glider', name: '风翼',     category: 'vehicle', price: 360, icon: '🪂', terrain: ['land', 'plateau', 'sky'], desc: '生命 +18,魔力 +2,战力 +1。旅途耗时 ×0.30,行动力消耗 −3,行动力上限 +2。走陆地、高原与浮空,不渡海。', speedMul: 0.30, equipment: { slot: 'vehicle', stats: { maxHp: 18, maxMp: 2, atkPower: 1, travelDiscount: 3, apMax: 2 } } },
+  airship:     { id: 'airship',     name: '飞艇',     category: 'vehicle', price: 680, icon: '🎈', terrain: ['land', 'plateau', 'sea', 'sky'], desc: '生命 +26,魔力 +3,战力 +2。旅途耗时 ×0.18,行动力消耗 −4,行动力上限 +2。可飞跃全部地区。', speedMul: 0.18, equipment: { slot: 'vehicle', stats: { maxHp: 26, maxMp: 3, atkPower: 2, travelDiscount: 4, apMax: 2 } } },
 
   // ===== 杂物(可捡拾 / 可出售) =====
   herbs:       { id: 'herbs',       name: '草药',     category: 'misc', price: 10, icon: '🌿', desc: '寻常草药,可卖给商人。' },

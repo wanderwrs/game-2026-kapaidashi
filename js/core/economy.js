@@ -11,13 +11,13 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261001h';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261001h';
-import { GEM_EFFECT } from '../data/gems.js?v=20261001h';
-import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261001h';
-import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261001h';
-import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261001h';
-import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261001h';
+import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261001j';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261001j';
+import { GEM_EFFECT } from '../data/gems.js?v=20261001j';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261001j';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261001j';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261001j';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261001j';
 
 /** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
 const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
@@ -182,6 +182,15 @@ export class Economy {
     return true;
   }
   petList() { return [...this.pets.entries()]; }
+  /** 送走一只宠物(卖出);若卖掉的是出战宠物则同时收回出战 */
+  removePet(id, qty = 1) {
+    const n = this.pets.get(id) || 0;
+    if (n < qty) return false;
+    if (n === qty) this.pets.delete(id);
+    else this.pets.set(id, n - qty);
+    if (!this.pets.has(id) && this.petActive === id) this.petActive = null;
+    return true;
+  }
 
   // ===== 背包格数 =====
   /** 当前占用的格数(每个物品种类一格;镶嵌武器等动态物品各占一格) */

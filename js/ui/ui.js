@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001h';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001h';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001h';
-import { gradeOf } from '../data/grade.js?v=20261001h';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261001h';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001h';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001h';
-import { cardMpCost } from '../data/data.js?v=20261001h';
-import { ENDINGS } from '../narrative/engine.js?v=20261001h';
-import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001h';
-import { SceneView, paintCharacter } from './scene.js?v=20261001h';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001h';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001h';
-import { Minigame } from '../minigame/minigame.js?v=20261001h';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001h';
-import { TERRAIN_CN } from '../data/world.js?v=20261001h';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001h';
+import { GameState } from '../core/game.js?v=20261001j';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001j';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001j';
+import { gradeOf } from '../data/grade.js?v=20261001j';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261001j';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001j';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001j';
+import { cardMpCost } from '../data/data.js?v=20261001j';
+import { ENDINGS } from '../narrative/engine.js?v=20261001j';
+import { CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001j';
+import { SceneView, paintCharacter } from './scene.js?v=20261001j';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001j';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001j';
+import { Minigame } from '../minigame/minigame.js?v=20261001j';
+import { MODE_LABELS } from '../data/jobs.js?v=20261001j';
+import { TERRAIN_CN } from '../data/world.js?v=20261001j';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001j';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -195,6 +195,7 @@ export class UI {
       worldPanel: $('world-panel'),
       worldList: $('world-list'),
       worldNote: $('world-note'),
+      worldStoryBanner: $('world-story-banner'),
       btnWorldBack: $('btn-world-back'),
       // 旅途
       travelCard: $('travel-card'),
@@ -1468,6 +1469,7 @@ export class UI {
         b.style.top = `${r.y}%`;
         b.title = `${r.name} · ${r.terrainLabel} · ${r.dist} 里`;
         b.innerHTML = `
+          ${r.story ? '<span class="wm-flag">剧情</span>' : ''}
           <span class="wm-dot"></span>
           <span class="wm-label">${this._escapeHtml(r.name)}</span>
         `;
@@ -1560,7 +1562,47 @@ export class UI {
         : '当前徒步:不限地形,可在商店购买载具提速';
       this.el.worldNote.textContent = `${veh} · 全部 ${regions.length} 处地区已标注`;
     }
+    this._renderWorldStoryBanner(state);
     this.renderResources(economy);
+  }
+
+  /**
+   * 世界地图顶部的「剧情引导」横幅:报出主线所在的地区与里程 / 耗时 / 行动力,
+   * 并给出一键「启程前往 / 穿梭」;若已身处该地区,则指引打开地区地图。
+   */
+  _renderWorldStoryBanner(state) {
+    const box = this.el.worldStoryBanner;
+    if (!box) return;
+    const s = state.story;
+    if (!s) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+    box.hidden = false;
+    const here = !!s.current;
+    const stop = state.storyStop;
+    const stopTxt = stop
+      ? `前往「${this._escapeHtml(stop.name)}」${stop.npc ? `找到「${this._escapeHtml(stop.npc)}」` : '开启剧情'}`
+      : '打开地区地图继续推进';
+    const text = here
+      ? `剧情在此 · 第${state.storyChapterNum}章「${this._escapeHtml(s.name)}」—— ${stopTxt}`
+      : `第${state.storyChapterNum}章主线在「${this._escapeHtml(s.name)}」—— ${s.dist} 里 · 约 ${this._fmtDuration(s.seconds)} · ⚡${s.ap}`
+        + (stop ? ` · 到那儿后${stopTxt}` : '');
+    const curCity = !!state.regions.find((r) => r.id === state.currentId)?.city;
+    const canShuttle = !here && !!s.city && curCity;
+    const actions = here
+      ? '<button class="btn btn-primary" data-act="story-map">打 开 地 区 地 图</button>'
+      : `<button class="btn btn-primary" data-act="story-depart" ${s.reachable ? '' : 'disabled'}>启 程 前 往</button>`
+        + (canShuttle ? `<button class="btn btn-ghost" data-act="story-shuttle">穿 梭 🪙${s.shuttleGold}</button>` : '');
+    box.innerHTML = `
+      <span class="story-banner-icon">📜</span>
+      <span class="story-banner-text">${text}</span>
+      <span class="story-banner-actions">${actions}</span>
+    `;
+    box.querySelector('[data-act="story-map"]')?.addEventListener('click', () => this.bus.emit('ui:back-map'));
+    box.querySelector('[data-act="story-depart"]')?.addEventListener('click', () => this.bus.emit('ui:world-depart', s.id));
+    box.querySelector('[data-act="story-shuttle"]')?.addEventListener('click', () => this.bus.emit('ui:world-shuttle', s.id));
   }
 
   _renderWorldPanel(sel, cur, state) {
@@ -1872,7 +1914,7 @@ export class UI {
   }
 
   // ===== 商店 =====
-  renderShop({ stock, economy, fee = 0.03, priceMul = 1, isCity = false }) {
+  renderShop({ stock, pets = [], sellPets = [], economy, fee = 0.03, priceMul = 1, isCity = false }) {
     const box = this.el.shopList;
     if (!box) return;
     const nav = this.el.shopCats;
@@ -1897,7 +1939,7 @@ export class UI {
     const cats = [...byCat.entries()].map(([key, ids]) => ({
       key, label: ITEM_CATEGORY_CN[key] || key, count: ids.length,
     }));
-    if (sellables.length) cats.push({ key: '__sell', label: '出售(背包)', icon: '🪙', count: sellables.length });
+    if (sellables.length || sellPets.length) cats.push({ key: '__sell', label: '出售(背包)', icon: '🪙', count: sellables.length + sellPets.length });
 
     if (!cats.length) {
       if (nav) nav.innerHTML = '';
@@ -1946,12 +1988,31 @@ export class UI {
           if (!it) return;
           box.appendChild(this._shopRow(it, true, `🪙 ${sellPrice(id)}`, '卖出', 'data-sell', () => this.bus.emit('ui:shop-sell', id), qty, this._gradeTag(it)));
         });
-        if (!sellables.length) box.innerHTML = '<p class="bag-empty">背包里没有可出售的物品。</p>';
+        // 宠物也能卖回给商店(仅常规宠物)
+        if (sellPets.length) {
+          const t = document.createElement('div');
+          t.className = 'shop-section-title';
+          t.textContent = '送走宠物(仅常规宠物可卖)';
+          box.appendChild(t);
+          sellPets.forEach((p) => box.appendChild(this._petRow(p, `🪙 ${Math.max(1, Math.round(p.sell * (1 - fee)))}`, '送走', 'data-sell', 'ui:shop-sell-pet', p.count)));
+        }
+        if (!sellables.length && !sellPets.length) box.innerHTML = '<p class="bag-empty">背包里没有可出售的物品。</p>';
       } else {
         (byCat.get(this._shopCat) || []).forEach((id) => { const r = buyRow(id); if (r) box.appendChild(r); });
+        // 本店随机上架的宠物(常规)
+        if (pets.length) {
+          const t = document.createElement('div');
+          t.className = 'shop-section-title';
+          t.textContent = '宠物(本店随机上架 · 常规)';
+          box.appendChild(t);
+          pets.forEach((p) => {
+            const price = Math.max(1, Math.round(p.price * priceMul * (1 + fee)));
+            box.appendChild(this._petRow(p, `🪙 ${price}`, '领养', 'data-buy', 'ui:shop-buy-pet', 0, economy.gold >= price));
+          });
+        }
       }
     };
-    this._shopData = { stock, economy, fee, priceMul, isCity };
+    this._shopData = { stock, pets, sellPets, economy, fee, priceMul, isCity };
     draw();
     this.renderResources(economy);
   }
@@ -2004,6 +2065,15 @@ export class UI {
     }
   }
 
+  /** 宠物行(宠物不在 ITEMS 中,单独渲染;带技能说明) */
+  _petRow(p, priceTxt, btnTxt, attr, evt, qty = 0, enabled = true) {
+    return this._shopRow(
+      { ...p, desc: `${p.desc || ''}${p.skill ? ` 技能:${p.skill}。` : ''}` },
+      enabled, priceTxt, btnTxt, attr, () => this.bus.emit(evt, p.id), qty,
+      `<span class="item-cat">宠物 · ${this._escapeHtml(p.rarity || '')}</span>`,
+    );
+  }
+
   _shopRow(it, enabled, priceTxt, btnTxt, attr, onClick, qty = 0, tag = '') {
     const row = document.createElement('div');
     row.className = 'item-row';
@@ -2026,7 +2096,7 @@ export class UI {
   // ===== 市场(玩家集市:多商家 + 宝石 + 镶嵌武器 + 玩家货架) =====
   renderMarket(data = {}) {
     const {
-      stalls, wares = [], gems = [], pets = [], listings = [], economy,
+      stalls, wares = [], gems = [], pets = [], sellPets = [], listings = [], economy,
       fee = 0, festival = false, trade = null,
       shelfCount = 0, shelfMax = 0, shelfCost = -1, nextTickMs = 0, sellFloor = 0.45,
     } = data;
@@ -2058,7 +2128,7 @@ export class UI {
     if (wares.length) cats.push({ key: '__ware', label: '镶嵌装备', icon: '🛠️', count: wares.length });
     if (pets.length) cats.push({ key: '__pet', label: '宠物摊', icon: '🐾', count: pets.length });
     cats.push({ key: '__shelf', label: '我的货架', icon: '🧺', count: listings.length });
-    if (sellables.length) cats.push({ key: '__sell', label: '出售(背包)', icon: '🪙', count: sellables.length });
+    if (sellables.length || sellPets.length) cats.push({ key: '__sell', label: '出售(背包)', icon: '🪙', count: sellables.length + sellPets.length });
 
     if (!cats.some((c) => c.key === this._marketCat)) this._marketCat = cats[0].key;
 
@@ -2091,7 +2161,7 @@ export class UI {
       else if (key === '__ware') this._renderMarketWares(box, wares, economy);
       else if (key === '__pet') this._renderMarketPets(box, pets, economy, fee);
       else if (key === '__shelf') this._renderMarketShelf(box, { economy, trade, fee, listings, shelfCount, shelfMax, shelfCost, sellFloor });
-      else if (key === '__sell') this._renderMarketSell(box, economy, fee, 'ui:market-sell', trade);
+      else if (key === '__sell') this._renderMarketSell(box, economy, fee, 'ui:market-sell', trade, sellPets);
       else {
         (byCat.get(key) || []).forEach(({ id, seller }) => {
           const it = ITEMS[id];
@@ -2259,14 +2329,14 @@ export class UI {
   }
 
   /** 市场 / 密市共用的「出售(背包)」区块(即时成交) */
-  _renderMarketSell(box, economy, fee, evt, trade = null) {
+  _renderMarketSell(box, economy, fee, evt, trade = null, sellPets = []) {
     const sellables = [...economy.bag.entries()]
       .filter(([id]) => !economy.isEquipped(id) && isTradeable(id));
     const title = document.createElement('div');
     title.className = 'shop-section-title';
     title.textContent = '即时出售(按均价 50% 收购,扣管理费)';
     box.appendChild(title);
-    if (!sellables.length) {
+    if (!sellables.length && !sellPets.length) {
       const empty = document.createElement('p');
       empty.className = 'bag-empty';
       empty.textContent = '背包里没有可出售的物品。';
@@ -2280,6 +2350,17 @@ export class UI {
       const net = trade ? trade.marketSellNet(id, fee) : sellPrice(id);
       box.appendChild(this._shopRow(it, true, `🪙 ${net}<s class="item-was">均价 ${avg}</s>`, '卖出', 'data-sell', () => this.bus.emit(evt, id), qty, this._gradeTag(it)));
     });
+    // 宠物(仅常规宠物可在市场卖掉)
+    if (sellPets.length) {
+      const t = document.createElement('div');
+      t.className = 'shop-section-title';
+      t.textContent = '送走宠物(仅常规宠物可卖)';
+      box.appendChild(t);
+      sellPets.forEach((p) => box.appendChild(this._petRow(
+        p, `🪙 ${Math.max(1, Math.round(p.sell * (1 - fee)))}<s class="item-was">原价 ${p.price}</s>`,
+        '送走', 'data-sell', 'ui:market-sell-pet', p.count,
+      )));
+    }
   }
 
   // ===== 专属交易场所(只收当地主题的特殊交易币) =====

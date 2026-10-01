@@ -89,6 +89,33 @@ export const PETS_BY_RARITY = {
   mythic: Object.values(PETS).filter((p) => p.rarity === 'mythic'),
 };
 
+/** 宠物出售价(仅为买入价的一半) */
+export function petSellPrice(id) {
+  const p = PETS[id];
+  return p ? Math.max(1, Math.floor(p.price * 0.5)) : 0;
+}
+
+/** 只有常规宠物可以卖给市场 / 商店(稀有、神话不出售) */
+export function canSellPet(id) {
+  const p = PETS[id];
+  return !!p && p.rarity === 'common';
+}
+
+/**
+ * 商店随机上架的普通宠物(每次进店重掷一次)。
+ * @param {() => number} flip 返回 0~1
+ * @returns {string[]} 0~2 只常规宠物的 id
+ */
+export function rollShopPetStock(flip) {
+  const n = flip() < 0.15 ? 0 : (flip() < 0.6 ? 1 : 2);
+  const pool = PETS_BY_RARITY.common.slice();
+  const out = [];
+  for (let i = 0; i < n && pool.length; i++) {
+    out.push(pool.splice(Math.floor(flip() * pool.length), 1)[0].id);
+  }
+  return out;
+}
+
 /**
  * 本次市场刷新的宠物货架。
  * @param {() => number} flip 返回 0~1

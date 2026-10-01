@@ -11,41 +11,41 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261001h';
-import { EventBus } from './eventbus.js?v=20261001h';
-import { AudioEngine } from './audio.js?v=20261001h';
-import { Player } from '../combat/entity.js?v=20261001h';
-import { Deck } from '../card/deck.js?v=20261001h';
-import { Battle } from '../combat/battle.js?v=20261001h';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001h';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001h';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001h';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001h';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001h';
-import { PETS, petSkills, petSkillText, rollPetStock, PET_RARITY } from '../data/pets.js?v=20261001h';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001h';
-import { majorSetIds } from '../data/extras.js?v=20261001h';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261001h';
-import { lookLabel } from '../data/looks.js?v=20261001h';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001h';
-import { TradeEngine } from './trade.js?v=20261001h';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001h';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001h';
-import { jobsFor } from '../data/jobs.js?v=20261001h';
+import { RNG, seedFromString } from './rng.js?v=20261001j';
+import { EventBus } from './eventbus.js?v=20261001j';
+import { AudioEngine } from './audio.js?v=20261001j';
+import { Player } from '../combat/entity.js?v=20261001j';
+import { Deck } from '../card/deck.js?v=20261001j';
+import { Battle } from '../combat/battle.js?v=20261001j';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001j';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001j';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001j';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001j';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001j';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261001j';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001j';
+import { majorSetIds } from '../data/extras.js?v=20261001j';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261001j';
+import { lookLabel } from '../data/looks.js?v=20261001j';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001j';
+import { TradeEngine } from './trade.js?v=20261001j';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001j';
+import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001j';
+import { jobsFor } from '../data/jobs.js?v=20261001j';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261001h';
-import { NPCS } from '../data/npcs.js?v=20261001h';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001h';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001h';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001h';
-import { Economy } from './economy.js?v=20261001h';
-import { Travel } from './travel.js?v=20261001h';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001h';
-import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001h';
-import { CAREERS } from '../narrative/careers.js?v=20261001h';
-import { UI } from '../ui/ui.js?v=20261001h';
+} from '../data/world.js?v=20261001j';
+import { NPCS } from '../data/npcs.js?v=20261001j';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001j';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001j';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001j';
+import { Economy } from './economy.js?v=20261001j';
+import { Travel } from './travel.js?v=20261001j';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001j';
+import { CHAPTERS, CHAPTER_ORDER } from '../narrative/chapters/index.js?v=20261001j';
+import { CAREERS } from '../narrative/careers.js?v=20261001j';
+import { UI } from '../ui/ui.js?v=20261001j';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -695,8 +695,21 @@ export class Game {
         reachable: canUseHere && this.economy.vehicleCanReach(terrain),
       };
     });
+    // 剧情引导:主线此刻在哪、到那儿后「去哪个地点、找谁」
+    const storyRegion = this.storyRegionId
+      ? regions.find((r) => r.id === this.storyRegionId) || null
+      : null;
+    const gate = this.engine?.pendingGate;
+    let storyStop = null;
+    if (gate && gate.chapterId === this.storyRegionId) {
+      const st = REGIONS[this.storyRegionId]?.stops?.find((s) => s.node === gate.nodeId);
+      if (st) storyStop = { name: st.name, npc: st.npc || null };
+    }
     return {
       regions,
+      story: storyRegion,
+      storyStop,
+      storyChapterNum: storyRegion ? this._chapterNum(storyRegion.id) : 0,
       pois: this._pois.map((p) => {
         // POI 与当前地区的距离(按世界坐标估算)
         const curW = WORLD[cur];
@@ -1427,8 +1440,38 @@ export class Game {
     const theme = this._currentTheme();
     this._shopMul = this._isCity(this.regionId) ? 0.85 : 1;
     this._shopStockCache = this._rollShopStock(theme);
+    this._shopPetsCache = this._rollShopPets();
     this._renderShop();
     this.transition(GameState.SHOP);
+  }
+
+  /** 宠物 → 视图数据(市场宠物摊与商店宠物栏共用) */
+  _petView(id) {
+    const p = PETS[id];
+    return {
+      id, name: p.name, icon: p.icon,
+      price: p.price, sell: petSellPrice(id),
+      rarity: PET_RARITY[p.rarity] || p.rarity,
+      skill: petSkills(p).map(petSkillText).join('、'),
+      desc: p.desc,
+      owned: this.economy ? this.economy.petCount(id) : 0,
+    };
+  }
+
+  /** 可出售的宠物(仅常规宠物,带持有数量) */
+  _sellablePets() {
+    if (!this.economy) return [];
+    return this.economy.petList()
+      .filter(([id, n]) => n > 0 && canSellPet(id))
+      .map(([id, n]) => ({ ...this._petView(id), count: n }));
+  }
+
+  /** 本店随机上架的普通宠物(每次进店重掷;主城再掷一次,更容易遇到) */
+  _rollShopPets() {
+    const flip = () => this.rng.next();
+    let ids = rollShopPetStock(flip);
+    if (this._isCity(this.regionId) && !ids.length) ids = rollShopPetStock(flip);
+    return ids.map((id) => this._petView(id));
   }
 
   /** 按地区刷新货架(主城货全价低;非主城随机不同,极低概率出绝世) */
@@ -1462,6 +1505,8 @@ export class Game {
     this.ui.renderShop({
       theme,
       stock: this._shopStockCache || this._rollShopStock(theme),
+      pets: this._shopPetsCache || this._rollShopPets(),
+      sellPets: this._sellablePets(),
       economy: this.economy,
       fee: FEES.shop,
       priceMul: this._shopMul || 1,
@@ -1508,6 +1553,35 @@ export class Game {
     this._autosave();
   }
 
+  /** 在本店领养一只宠物(常规宠物随机上架) */
+  _shopBuyPet(id) {
+    const p = PETS[id];
+    if (!p) return;
+    const price = Math.max(1, Math.round(p.price * (this._shopMul || 1) * (1 + FEES.shop)));
+    if (this.economy.gold < price) { this.ui.showToast(`金币不足(需 ${price})`); return; }
+    this.economy.gold -= price;
+    this.economy.addPet(id, 1);
+    const first = !this.economy.petActive;
+    if (first) this.economy.setActivePet(id);
+    this.ui.showToast(`🐾 在本店领回「${p.name}」${first ? '(已随行)' : ''}`);
+    this._openShopRefresh();
+    this._syncUi();
+    this._autosave();
+  }
+
+  /** 把一只常规宠物卖给本店 */
+  _shopSellPet(id) {
+    if (!canSellPet(id)) { this.ui.showToast('这只宠物不可出售(仅常规宠物可卖)'); return; }
+    if (!this.economy.hasPet(id)) { this.ui.showToast('你没有这只宠物'); return; }
+    const net = Math.max(1, Math.round(petSellPrice(id) * (1 - FEES.shop)));
+    this.economy.removePet(id, 1);
+    this.economy.gold += net;
+    this.ui.showToast(`送走了「${PETS[id].name}」,扣手续费后得 ${net} 金币`);
+    this._openShopRefresh();
+    this._syncUi();
+    this._autosave();
+  }
+
   _openShopRefresh() {
     this._renderShop();
   }
@@ -1526,6 +1600,7 @@ export class Game {
         trend: this.trade ? this.trade.priceTrend(g.id) : 1,
       })),
       pets: this._marketPets(),
+      sellPets: this._sellablePets(),
       listings: this.economy.listings,
       economy: this.economy,
       fee,
@@ -1600,15 +1675,7 @@ export class Game {
     const flip = () => hash01(`pet:${seed}:${tick}:${i++}`); // 稳定 0~1(同一轮次同一盘货)
     const stock = rollPetStock(flip);
     const ids = [...stock.common, ...stock.rare, ...stock.mythic];
-    return ids.map((id) => {
-      const p = PETS[id];
-      return {
-        id, name: p.name, icon: p.icon,
-        rarity: PET_RARITY[p.rarity] || p.rarity,
-        price: p.price, desc: p.desc,
-        skill: petSkills(p).map(petSkillText).join('、'),
-      };
-    });
+    return ids.map((id) => this._petView(id));
   }
 
   /** 买入宠物(价格随稀有度;到手即可在角色弹窗指定出战) */
@@ -1669,6 +1736,20 @@ export class Game {
     this.economy.gold += net;
     this.ui.showToast(`卖出「${ITEMS[id]?.name || id}」,扣 ${pct(fee)} 管理费后得 ${net} 金币`);
     this._marketRefresh();
+    this._autosave();
+  }
+
+  /** 把一只常规宠物卖给市场 */
+  _marketSellPet(id) {
+    if (!canSellPet(id)) { this.ui.showToast('这只宠物不可出售(仅常规宠物可卖)'); return; }
+    if (!this.economy.hasPet(id)) { this.ui.showToast('你没有这只宠物'); return; }
+    const fee = this.trade ? this.trade.feeFor('market').fee : MARKET_FEE;
+    const net = Math.max(1, Math.round(petSellPrice(id) * (1 - fee)));
+    this.economy.removePet(id, 1);
+    this.economy.gold += net;
+    this.ui.showToast(`送走了「${PETS[id].name}」,扣管理费后得 ${net} 金币`);
+    this._marketRefresh();
+    this._syncUi();
     this._autosave();
   }
 
@@ -3041,6 +3122,8 @@ export class Game {
     // 商店 / 市场 / 背包 / 打工
     this.bus.on('ui:shop-buy', (id) => this._buy(id));
     this.bus.on('ui:shop-sell', (id) => this._sell(id));
+    this.bus.on('ui:shop-buy-pet', (id) => this._shopBuyPet(id));
+    this.bus.on('ui:shop-sell-pet', (id) => this._shopSellPet(id));
     this.bus.on('ui:map-market', () => this._openMarket());
     this.bus.on('ui:map-venue', () => this._openVenue());
     this.bus.on('ui:market-buy', (id) => this._marketBuy(id));
@@ -3058,6 +3141,7 @@ export class Game {
     this.bus.on('ui:char-look', (p) => this._charLook(p));
     this.bus.on('ui:char-pet', (id) => this._charPet(id));
     this.bus.on('ui:market-buy-pet', (id) => this._marketPetBuy(id));
+    this.bus.on('ui:market-sell-pet', (id) => this._marketSellPet(id));
     this.bus.on('ui:bag-equip', (id) => this._equipItem(id));
     this.bus.on('ui:bag-unequip', (slot) => this._unequipItem(slot));
     this.bus.on('ui:bag-drop', (id) => this._dropItem(id));
