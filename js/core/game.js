@@ -34,7 +34,7 @@ import {
 import { NPCS } from '../data/npcs.js?v=20261001a';
 import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001a';
 import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001a';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, FIXED_STALLS, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001a';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001a';
 import { Economy } from './economy.js?v=20261001a';
 import { Travel } from './travel.js?v=20261001a';
 import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001a';
@@ -687,7 +687,7 @@ export class Game {
   _stallsHere() {
     if (!this._roaming) this._rollRoaming();
     const isCity = !!WORLD[this.regionId]?.city;
-    return stallsAtRegion(this.regionId, isCity, FIXED_STALLS, this._roaming);
+    return stallsAtRegion(this.regionId, isCity, this._roaming);
   }
 
   /** 打开某类摊位(铁匠铺 / 宝石商 / 精益师) */

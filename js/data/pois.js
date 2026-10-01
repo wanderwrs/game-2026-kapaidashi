@@ -28,11 +28,11 @@ export const POI_ICON = {
 };
 
 // ============================================================
-// 铁匠铺 / 宝石商 / 精益师:主城全有,其他地区「固定 + 流动」摊位
+// 铁匠铺 / 宝石商 / 精益师:主城全有,其他地区为随机流动摊位
 // ============================================================
 
 /**
- * 三类固定摊位:
+ * 三类摊位:
  *   铁匠(blacksmith) —— 用材料 + 金币 + 图纸锻造特殊武器
  *   宝石商(gemshop)  —— 售卖宝石
  *   精益师(jeweler)  —— 把宝石镶嵌进武器
@@ -51,55 +51,37 @@ export const STALL_ICON = {
   jeweler: '🔧',
 };
 
-/** 主城恒有以下三类摊位 */
-export const CITY_STALL_TYPES = ['blacksmith', 'gemshop', 'jeweler'];
-
-/** 固定摊位所在地区(须为非主城) */
-export const FIXED_STALLS = {
-  blacksmith: ['ch02', 'ch05', 'ch07', 'ch13', 'ch14'],
-  gemshop:    ['ch02b', 'ch06', 'ch08', 'ch12', 'ch05'],
-  jeweler:    ['ch02', 'ch07', 'ch12', 'ch13'],
-};
-
-/** 流动摊位数量(非主城、非固定位之外随机抽取) */
-export const ROAMING_COUNT = {
-  blacksmith: 3,
-  gemshop: 3,
-  jeweler: 3,
-};
+/** 三类摊位类型 */
+export const STALL_TYPES = ['blacksmith', 'gemshop', 'jeweler'];
 
 /**
- * 随机流动摊位:每次世界地图刷新时重抽。
+ * 非主城地区每类摊位的出现概率:
+ *   每个非主城地区对每一类摊位各自独立掷 10%,不设固定摊位。
+ */
+export const STALL_SPAWN_CHANCE = 0.1;
+
+/**
+ * 随机流动摊位:每个非主城地区对每类摊位独立掷点,每次世界地图刷新时重抽。
  * @param {() => number} rng 返回 0~1
  * @param {string[]} allRegions 全部地区 id
- * @param {string[]} cityRegions 主城地区 id(会被排除)
+ * @param {string[]} cityRegions 主城地区 id(主城恒有,不参与掷点)
  * @returns {{blacksmith:string[],gemshop:string[],jeweler:string[]}}
  */
 export function rollRoamingStalls(rng, allRegions, cityRegions) {
-  const out = {};
-  for (const type of ['blacksmith', 'gemshop', 'jeweler']) {
-    const fixed = new Set(FIXED_STALLS[type] || []);
-    const cities = new Set(cityRegions || []);
-    const pool = (allRegions || []).filter((id) => !cities.has(id) && !fixed.has(id));
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
+  const out = { blacksmith: [], gemshop: [], jeweler: [] };
+  const cities = new Set(cityRegions || []);
+  for (const id of allRegions || []) {
+    if (cities.has(id)) continue;
+    for (const type of STALL_TYPES) {
+      if (rng() < STALL_SPAWN_CHANCE) out[type].push(id);
     }
-    out[type] = pool.slice(0, ROAMING_COUNT[type]);
   }
   return out;
 }
 
-/** 汇总某地区拥有的摊位类型(主城全有 + 固定 + 流动) */
-export function stallsAtRegion(regionId, isCity, fixed, roaming) {
-  const out = [];
-  for (const type of ['blacksmith', 'gemshop', 'jeweler']) {
-    const has = isCity
-      || (fixed?.[type] || []).includes(regionId)
-      || (roaming?.[type] || []).includes(regionId);
-    if (has) out.push(type);
-  }
-  return out;
+/** 汇总某地区拥有的摊位类型(主城全有 + 随机流动位) */
+export function stallsAtRegion(regionId, isCity, roaming) {
+  return STALL_TYPES.filter((type) => isCity || (roaming?.[type] || []).includes(regionId));
 }
 
 
