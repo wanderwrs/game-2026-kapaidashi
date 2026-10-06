@@ -11,42 +11,42 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261006c';
-import { EventBus } from './eventbus.js?v=20261006c';
-import { AudioEngine } from './audio.js?v=20261006c';
-import { Player } from '../combat/entity.js?v=20261006c';
-import { Deck } from '../card/deck.js?v=20261006c';
-import { Battle } from '../combat/battle.js?v=20261006c';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261006c';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261006c';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261006c';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261006c';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261006c';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261006c';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261006c';
-import { majorSetIds } from '../data/extras.js?v=20261006c';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261006c';
-import { lookLabel } from '../data/looks.js?v=20261006c';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261006c';
-import { TradeEngine } from './trade.js?v=20261006c';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261006c';
-import { REGIONS } from '../data/regions.js?v=20261006c';
-import { jobsFor } from '../data/jobs.js?v=20261006c';
+import { RNG, seedFromString } from './rng.js?v=20261006d';
+import { EventBus } from './eventbus.js?v=20261006d';
+import { AudioEngine } from './audio.js?v=20261006d';
+import { Player } from '../combat/entity.js?v=20261006d';
+import { Deck } from '../card/deck.js?v=20261006d';
+import { Battle } from '../combat/battle.js?v=20261006d';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261006d';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261006d';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261006d';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261006d';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261006d';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261006d';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261006d';
+import { majorSetIds } from '../data/extras.js?v=20261006d';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261006d';
+import { lookLabel } from '../data/looks.js?v=20261006d';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261006d';
+import { TradeEngine } from './trade.js?v=20261006d';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261006d';
+import { REGIONS } from '../data/regions.js?v=20261006d';
+import { jobsFor } from '../data/jobs.js?v=20261006d';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261006c';
-import { NPCS } from '../data/npcs.js?v=20261006c';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261006c';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261006c';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261006c';
-import { Economy } from './economy.js?v=20261006c';
-import { Travel } from './travel.js?v=20261006c';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261006c';
-import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261006c';
-import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261006c';
-import { CAREERS } from '../narrative/careers.js?v=20261006c';
-import { UI } from '../ui/ui.js?v=20261006c';
+} from '../data/world.js?v=20261006d';
+import { NPCS } from '../data/npcs.js?v=20261006d';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261006d';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261006d';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261006d';
+import { Economy } from './economy.js?v=20261006d';
+import { Travel } from './travel.js?v=20261006d';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261006d';
+import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261006d';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261006d';
+import { CAREERS } from '../narrative/careers.js?v=20261006d';
+import { UI } from '../ui/ui.js?v=20261006d';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -1986,7 +1986,7 @@ export class Game {
     const code = String(raw || '').trim().toUpperCase();
     if (!code) { this.ui.renderRedeem({ msg: '请输入兑换码', kind: 'bad' }); return; }
     const hit = REDEEM_CODES.find((c) => String(c.code || '').toUpperCase() === code);
-    if (!hit) { this.ui.renderRedeem({ msg: '兑换码无效,请核对后重试', kind: 'bad' }); return; }
+    if (!hit || hit.invalid) { this.ui.renderRedeem({ msg: '兑换码无效,请核对后重试', kind: 'bad' }); return; }
     if (!hit.unlimited && this.mailState.used[code]) { this.ui.renderRedeem({ msg: '这个兑换码已经兑换过了', kind: 'bad' }); return; }
     const label = hit.label ? `「${hit.label}」` : '';
 
