@@ -308,6 +308,8 @@ export class UI {
       hotelNote: $('hotel-note'),
       hotelRooms: $('hotel-rooms'),
       hotelOutfits: $('hotel-outfits'),
+      hotelRecaps: $('hotel-recaps'),
+      hotelStorage: $('hotel-storage'),
       btnHotelBack: $('btn-hotel-back'),
       marketpoiTitle: $('marketpoi-title'),
       marketpoiRes: $('marketpoi-res'),
@@ -2667,9 +2669,9 @@ export class UI {
   }
 
   // ===== POI:酒店 =====
-  renderHotel({ name, rooms, outfits, equipped, economy }) {
+  renderHotel({ name, rooms, outfits, equipped, economy, recaps: recapsParam }) {
     if (this.el.hotelTitle) this.el.hotelTitle.textContent = `🏨 ${name || '酒店'}`;
-    if (this.el.hotelNote) this.el.hotelNote.textContent = '选择房型休息(恢复效果与耗时各异),换装仅限酒店';
+    if (this.el.hotelNote) this.el.hotelNote.textContent = '选择房型休息恢复行动力,亦可在此更换服饰、回忆剧情、存放金币与道具';
     // 房型列表
     const box = this.el.hotelRooms;
     if (box) {
@@ -2745,6 +2747,95 @@ export class UI {
         const btn = row.querySelector('[data-outfit]');
         if (btn && afford && !isEquipped) btn.addEventListener('click', () => this.bus.emit('ui:hotel-outfit', it.id));
         obox.appendChild(row);
+      });
+    }
+    // ===== 回忆剧情 =====
+    const rbox = this.el.hotelRecaps;
+    if (rbox) {
+      rbox.innerHTML = '';
+      const recaps = (recapsParam || []).filter((r) => r.cleared);
+      if (!recaps.length) {
+        const empty = document.createElement('div');
+        empty.className = 'item-row';
+        empty.innerHTML = '<div class="item-desc" style="opacity:.6">尚无已通关的大章可回忆</div>';
+        rbox.appendChild(empty);
+      } else {
+        recaps.forEach((r) => {
+          const row = document.createElement('div');
+          row.className = 'item-row';
+          row.innerHTML = `
+            <div class="item-icon">📖</div>
+            <div class="item-body">
+              <div class="item-name">${this._escapeHtml(r.no)} · ${this._escapeHtml(r.title)}</div>
+              <div class="item-desc">${this._escapeHtml(r.recap)}</div>
+            </div>
+          `;
+          rbox.appendChild(row);
+        });
+      }
+    }
+    // ===== 仓库(存放金币与道具)=====
+    const sbox = this.el.hotelStorage;
+    if (sbox) {
+      sbox.innerHTML = '';
+      // 金币存取
+      const goldRow = document.createElement('div');
+      goldRow.className = 'item-row';
+      goldRow.innerHTML = `
+        <div class="item-icon">🪙</div>
+        <div class="item-body">
+          <div class="item-name">金币<span class="item-cat">仓 ${economy.storageGold || 0}</span></div>
+          <div class="item-desc">持有 ${economy.gold} · 仓 ${economy.storageGold || 0}</div>
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-ghost btn-sm" data-store-gold>存全部</button>
+          <button class="btn btn-ghost btn-sm" data-withdraw-gold>取全部</button>
+        </div>
+      `;
+      goldRow.querySelector('[data-store-gold]')?.addEventListener('click', () => this.bus.emit('ui:hotel-store-gold', economy.gold));
+      goldRow.querySelector('[data-withdraw-gold]')?.addEventListener('click', () => this.bus.emit('ui:hotel-withdraw-gold', economy.storageGold || 0));
+      sbox.appendChild(goldRow);
+      // 背包物品 → 存入
+      const bagEntries = [...economy.bag.entries()].filter(([id]) => ITEMS[id]);
+      bagEntries.forEach(([id, qty]) => {
+        const it = ITEMS[id];
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <div class="item-icon">${it.icon || '📦'}</div>
+          <div class="item-body">
+            <div class="item-name">${this._escapeHtml(it.name)}<span class="item-cat">×${qty}</span></div>
+            <div class="item-desc">${this._escapeHtml(it.desc || it.category || '')}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-ghost btn-sm" data-store>存 1</button>
+            <button class="btn btn-ghost btn-sm" data-store-all>全存</button>
+          </div>
+        `;
+        row.querySelector('[data-store]')?.addEventListener('click', () => this.bus.emit('ui:hotel-store-item', id, 1));
+        row.querySelector('[data-store-all]')?.addEventListener('click', () => this.bus.emit('ui:hotel-store-item', id, qty));
+        sbox.appendChild(row);
+      });
+      // 仓库物品 → 取出
+      const storageEntries = [...economy.storage.entries()].filter(([id]) => ITEMS[id]);
+      storageEntries.forEach(([id, qty]) => {
+        const it = ITEMS[id];
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <div class="item-icon">${it.icon || '📦'}</div>
+          <div class="item-body">
+            <div class="item-name">${this._escapeHtml(it.name)}<span class="item-cat">仓×${qty}</span></div>
+            <div class="item-desc">${this._escapeHtml(it.desc || it.category || '')}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-ghost btn-sm" data-withdraw>取 1</button>
+            <button class="btn btn-ghost btn-sm" data-withdraw-all>全取</button>
+          </div>
+        `;
+        row.querySelector('[data-withdraw]')?.addEventListener('click', () => this.bus.emit('ui:hotel-withdraw-item', id, 1));
+        row.querySelector('[data-withdraw-all]')?.addEventListener('click', () => this.bus.emit('ui:hotel-withdraw-item', id, qty));
+        sbox.appendChild(row);
       });
     }
     this.renderResources(economy);

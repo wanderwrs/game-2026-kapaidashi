@@ -74,6 +74,9 @@ export class Economy {
     // ===== 衣橱 · 防具外观(纯装饰,不提供任何数值) =====
     // 「角色」弹窗的防具位只给数值、不影响外观;外观由这里的 cosmetic 槽决定。
     this.cosmetic = { head: null, body: null, hands: null, legs: null, feet: null, ring: null, earring: null };
+    // ===== 酒店仓库(储存金币与道具)=====
+    this.storageGold = 0;       // 仓库金币
+    this.storage = new Map();   // 仓库物品:itemId -> qty
   }
 
   // ===== 角色名 / 形象 =====
@@ -259,6 +262,50 @@ export class Economy {
     this.addItem(id, 1);
     return true;
   }
+
+  // ===== 酒店仓库(储存金币与道具)=====
+  /** 存入金币 */
+  storeGold(amount) {
+    const n = Math.max(0, Math.floor(amount || 0));
+    if (n <= 0 || this.gold < n) return 0;
+    this.gold -= n;
+    this.storageGold += n;
+    return n;
+  }
+
+  /** 取出金币 */
+  withdrawGold(amount) {
+    const n = Math.max(0, Math.floor(amount || 0));
+    if (n <= 0 || this.storageGold < n) return 0;
+    this.storageGold -= n;
+    this.gold += n;
+    return n;
+  }
+
+  /** 存入道具 */
+  storeItem(id, qty = 1) {
+    const n = Math.max(1, Math.floor(qty || 1));
+    if (!this.has(id, n)) return 0;
+    this.removeItem(id, n);
+    this.storage.set(id, (this.storage.get(id) || 0) + n);
+    return n;
+  }
+
+  /** 取出道具 */
+  withdrawItem(id, qty = 1) {
+    const n = Math.max(1, Math.floor(qty || 1));
+    const stored = this.storage.get(id) || 0;
+    if (n > stored) return 0;
+    // 取出时需检查背包是否还能装下(按种类计数)
+    if (!this.bag.has(id) && this.bag.size >= this.bagCap) return 0;
+    this.storage.set(id, stored - n);
+    if (this.storage.get(id) <= 0) this.storage.delete(id);
+    this.addItem(id, n);
+    return n;
+  }
+
+  /** 仓库某物品数量 */
+  storageCount(id) { return this.storage.get(id) || 0; }
 
   // ===== 市场 / 专属交易场所(买卖均额外收管理费) =====
   /** 市场买入价:原价 + 管理费 */
@@ -886,6 +933,9 @@ export class Economy {
       petActive: this.petActive,
       // 衣橱 · 防具外观(纯装饰)
       cosmetic: { ...this.cosmetic },
+      // 酒店仓库
+      storageGold: this.storageGold,
+      storage: Object.fromEntries(this.storage),
     };
   }
 
@@ -974,6 +1024,14 @@ export class Economy {
       for (const slot of ARMOR_SLOTS) {
         const id = data.cosmetic[slot];
         if (id && eco.bag.has(id) && ITEMS[id]?.category === 'armor') eco.cosmetic[slot] = id;
+      }
+    }
+    // 酒店仓库
+    eco.storageGold = Number(data.storageGold ?? 0);
+    eco.storage = new Map();
+    if (data.storage && typeof data.storage === 'object') {
+      for (const [id, qty] of Object.entries(data.storage)) {
+        if (ITEMS[id] && Number(qty) > 0) eco.storage.set(id, Math.floor(Number(qty)));
       }
     }
     return eco;

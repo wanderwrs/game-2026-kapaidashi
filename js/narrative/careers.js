@@ -105,6 +105,7 @@ export const CAREERS = [
     backstory: '在龙骨荒原,你得到了远古龙魂的祝福。那股温暖的力量不仅能增强你的攻击力,还能治愈伤口。在联军营地,你系统地学习了如何运用这股治疗之力,成为了联军里第一位「治疗师」——一个能用龙魂之力治愈伤口、提升士气的特殊职业。',
     starterDeck: ['strike', 'defend', 'defend', 'heal_touch', 'heal_touch', 'sanctuary', 'insight', 'recover'],
     signatureCards: ['heal_touch', 'group_heal'],
+    passive: { id: 'dragon_vitality', name: '龙魂活力', desc: '每次剧情推进(章节切换)额外恢复 2 点行动力' },
   },
   // ===== 法师进阶:白魔法师(white_mage) =====
   {

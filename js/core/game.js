@@ -694,8 +694,11 @@ export class Game {
     const bp = this._rollBlueprintDrop();
     if (bp) this.ui.showToast(`📜 获得图纸「${bp.name}」,锻造配方已解锁`);
     // 剧情告一段落:行动力小幅恢复(剧情推进是行动力的恢复途径之一)
-    const apGot = this.economy.addAp(3);
-    if (apGot) this.ui.showToast(`剧情告一段落,行动力 +${apGot}`);
+    // 治疗师职业被动「龙魂活力」:每次剧情推进额外恢复 2 点行动力
+    const baseAp = 3;
+    const healBonus = this.career?.passive?.id === 'dragon_vitality' ? 2 : 0;
+    const apGot = this.economy.addAp(baseAp + healBonus);
+    if (apGot) this.ui.showToast(`剧情告一段落,行动力 +${apGot}${healBonus > 0 ? '(龙魂活力 +2)' : ''}`);
   }
 
   /** 剧情 / NPC 处获得图纸(解锁锻造配方) */
@@ -1272,6 +1275,18 @@ export class Game {
       this._learnClue({ id: ev.flag || `${st.npc.id}_clue`, text: ev.text, from: st.npc.name });
       st.transcript.push({ who: 'npc', text: ev.text });
       st.npcLineCount++;
+      return false;
+    }
+
+    if (ev.kind === 'ap') {
+      // NPC 赠予行动力(休息下线后,行动力的恢复途径之一)
+      const amount = Math.max(1, Math.round(ev.amount || 3));
+      const got = this.economy.addAp(amount);
+      st.transcript.push({ who: 'npc', text: ev.text || `路上辛苦了 —— 这点心意你收下,恢复 ${got} 点行动力。` });
+      st.npcLineCount++;
+      if (got > 0) this.ui.showToast(`${st.npc.name} 赠予行动力 +${got}`);
+      this._syncUi();
+      this._autosave();
       return false;
     }
     return false;
@@ -2943,14 +2958,62 @@ export class Game {
   // ===== 酒店 =====
   _openHotel(poi) {
     const outfits = Object.values(ITEMS).filter((it) => it.category === 'outfit');
+    // 回忆剧情:已通关的大章回顾
+    const cleared = this.progress?.cleared || {};
+    const recaps = MAJOR_CHAPTERS.map((mc) => ({
+      id: mc.id, no: mc.no, title: mc.title,
+      recap: CHAPTER_RECAPS[mc.id] || '',
+      cleared: !!cleared[mc.id],
+    }));
     this.ui.renderHotel({
       name: poi.name,
       rooms: HOTEL_ROOMS,
       outfits,
       equipped: this.economy.equipped,
       economy: this.economy,
+      recaps,
     });
     this.transition(GameState.HOTEL);
+  }
+
+  /** 酒店仓库:存入金币 */
+  _hotelStoreGold(amount) {
+    const got = this.economy.storeGold(amount);
+    this.ui.showToast(got > 0 ? `存入 ${got} 金币` : '金币不足或金额无效');
+    this._syncUi();
+    this._openHotel(this._atPoi);
+    this._autosave();
+  }
+
+  /** 酒店仓库:取出金币 */
+  _hotelWithdrawGold(amount) {
+    const got = this.economy.withdrawGold(amount);
+    this.ui.showToast(got > 0 ? `取出 ${got} 金币` : '仓库金币不足或金额无效');
+    this._syncUi();
+    this._openHotel(this._atPoi);
+    this._autosave();
+  }
+
+  /** 酒店仓库:存入道具 */
+  _hotelStoreItem(id, qty) {
+    const it = ITEMS[id];
+    if (!it) return;
+    const got = this.economy.storeItem(id, qty);
+    this.ui.showToast(got > 0 ? `存入「${it.name}」×${got}` : '背包中没有该物品或数量不足');
+    this._syncUi();
+    this._openHotel(this._atPoi);
+    this._autosave();
+  }
+
+  /** 酒店仓库:取出道具 */
+  _hotelWithdrawItem(id, qty) {
+    const it = ITEMS[id];
+    if (!it) return;
+    const got = this.economy.withdrawItem(id, qty);
+    this.ui.showToast(got > 0 ? `取出「${it.name}」×${got}` : '仓库中没有该物品或背包已满');
+    this._syncUi();
+    this._openHotel(this._atPoi);
+    this._autosave();
   }
 
   /** 酒店入住:选择房型休息(恢复行动力 + 血量,耗时不同)—— 真实等待 */
@@ -3267,6 +3330,10 @@ export class Game {
     this.bus.on('ui:restaurant-dine', () => this._restaurantDine());
     this.bus.on('ui:hotel-checkin', (roomId) => this._hotelCheckIn(roomId));
     this.bus.on('ui:hotel-outfit', (outfitId) => this._hotelChangeOutfit(outfitId));
+    this.bus.on('ui:hotel-store-gold', (amount) => this._hotelStoreGold(amount));
+    this.bus.on('ui:hotel-withdraw-gold', (amount) => this._hotelWithdrawGold(amount));
+    this.bus.on('ui:hotel-store-item', (id, qty) => this._hotelStoreItem(id, qty));
+    this.bus.on('ui:hotel-withdraw-item', (id, qty) => this._hotelWithdrawItem(id, qty));
     this.bus.on('ui:market-poi-merchant', (merchantId) => this._marketPoiSelectMerchant(merchantId));
     this.bus.on('ui:merchant-buy', (id) => this._merchantBuy(id));
     this.bus.on('ui:npc-talk', (id) => this._talkNpc(id));
