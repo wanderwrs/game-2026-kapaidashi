@@ -2,7 +2,7 @@
  * Game — 顶层游戏状态机与运行控制器。
  *
  * 流程:菜单 → (地区)地图 → 抵达地点/找到 NPC → 剧情(文字抉择) → 战斗 → 战利品 → …
- *       途中可在商店买卖、背包装备、打工赚钱、休息恢复行动力。
+ *       途中可在商店买卖、背包装备、打工赚钱;行动力由剧情推进 / 食品 / 酒店休整恢复。
  *
  * 说明:
  *   · 初始职业(剑术)由第一章 n06 的 effects.assign_career 自动锁定;
@@ -30,10 +30,10 @@ import { lookLabel } from '../data/looks.js?v=20261001n';
 import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001n';
 import { TradeEngine } from './trade.js?v=20261001n';
 import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001n';
-import { REGIONS, REST_AP_RECOVER } from '../data/regions.js?v=20261001n';
+import { REGIONS } from '../data/regions.js?v=20261001n';
 import { jobsFor } from '../data/jobs.js?v=20261001n';
 import {
-  WORLD, regionDistance, stopDistance, tripSeconds, travelApCost, shuttleGold, levelLabel,
+  WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
 } from '../data/world.js?v=20261001n';
 import { NPCS } from '../data/npcs.js?v=20261001n';
@@ -43,7 +43,8 @@ import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MAR
 import { Economy } from './economy.js?v=20261001n';
 import { Travel } from './travel.js?v=20261001n';
 import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001n';
-import { CHAPTERS, chapterNumber } from '../narrative/chapters/index.js?v=20261001n';
+import { CHAPTERS, CHAPTER_ORDER, chapterNumber } from '../narrative/chapters/index.js?v=20261001n';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261001n';
 import { CAREERS } from '../narrative/careers.js?v=20261001n';
 import { UI } from '../ui/ui.js?v=20261001n';
 
@@ -57,10 +58,8 @@ const SAVE_VERSION = 1;
 const NPC_COUNT_RANGE = [1, 7];
 /** 主城人烟稠密:本地人物 12~19 人 */
 const NPC_COUNT_RANGE_CITY = [12, 19];
-/** 一次休息的真实耗时(秒);期间复用旅途界面,不可操作 */
-const REST_SECONDS = 300;
-/** 用了「醒神香」后休息耗时的倍率 */
-const REST_HASTE_MUL = 0.25;
+/** 用了「醒神香 / 长明香」后酒店休整耗时的倍率 */
+const HOTEL_HASTE_MUL = 0.25;
 /** 用了「疾风饮」后旅途耗时的倍率 */
 const TRAVEL_HASTE_MUL = 0.5;
 /** 「皇帝的新衣」全套的风险:野外遭遇倍率 / 等级加成;主城罚款概率 / 比例 / 下限 */
@@ -212,6 +211,7 @@ export class Game {
     this.currentBattle = null;
     this._currentRewards = null;
     this._runStartChapter = null;   // 本局起始大章(用于通关判定)
+    this._storyChapter = null;      // 剧情当前所处的大章(跨章时结算上一章通关)
     this.regionId = null;           // 玩家当前所在地区(=章节)
     this.storyRegionId = null;      // 剧情门控所在地区(此刻该去哪儿开剧情)
     this.stopIndex = 0;             // 当前所在地点索引
@@ -329,6 +329,7 @@ export class Game {
     this.ui.bindEngine(this.engine);
     this.ui.updateSeed(this.rng.seed);
     this._runStartChapter = startChapter;
+    this._storyChapter = startChapter;   // 剧情通关结算用:记录当前所处大章
     // 直接进入非第一章时,预分配默认职业(剑术)并建立牌组
     if (startChapter !== 'ch01') this.engine.assignCareer('swordsman');
     this._syncPlayerStats();
@@ -407,6 +408,7 @@ export class Game {
       },
       run: {
         runStartChapter: this._runStartChapter,
+        storyChapter: this._storyChapter,
         marketMode: this._marketMode,
         venues,
       },
@@ -474,6 +476,7 @@ export class Game {
       this._intel = new Map(Object.entries(data.map?.intel || {}));
       this._clues = new Map(Object.entries(data.map?.clues || {}));
       this._runStartChapter = data.run?.runStartChapter ?? this.regionId;
+      this._storyChapter = data.run?.storyChapter ?? this._runStartChapter;
       this._marketMode = data.run?.marketMode || 'market';
       this._venueCache = new Map();
       if (data.run?.venues) {
@@ -570,7 +573,7 @@ export class Game {
       isStoryRegion,
       storyRegionId: this.storyRegionId,
       travelCost: region.stops.map((_, i) => this.economy.travelCost(this.stopIndex, i)),
-      travelSeconds: region.stops.map((_, i) => tripSeconds(stopDistance(this.stopIndex, i), this.economy.travelSpeedMul())),
+      travelSeconds: region.stops.map((_, i) => stopTripSeconds(stopDistance(this.stopIndex, i), this.economy.travelSpeedMul())),
       npcs: this._npcsAt(this.regionId, this.stopIndex),
       chest: chest ? { id: chest.id, name: chest.name, opened: this._openedChests.has(chest.id), known: this._intel.has(chest.id) } : null,
       stopChests: region.stops.map((_, i) => {
@@ -690,6 +693,9 @@ export class Game {
     }
     const bp = this._rollBlueprintDrop();
     if (bp) this.ui.showToast(`📜 获得图纸「${bp.name}」,锻造配方已解锁`);
+    // 剧情告一段落:行动力小幅恢复(剧情推进是行动力的恢复途径之一)
+    const apGot = this.economy.addAp(3);
+    if (apGot) this.ui.showToast(`剧情告一段落,行动力 +${apGot}`);
   }
 
   /** 剧情 / NPC 处获得图纸(解锁锻造配方) */
@@ -828,7 +834,7 @@ export class Game {
     const discount = this.economy.equipStats().travelDiscount;
     const ap = travelApCost(dist, discount);
     if (!this.economy.spendAp(ap)) {
-      this.ui.showToast('行动力不足 —— 休息一下,或吃点干粮');
+      this.ui.showToast('行动力不足 —— 吃点干粮、推进剧情,或去酒店休整');
       return;
     }
     this._syncUi();
@@ -856,7 +862,7 @@ export class Game {
     const discount = this.economy.equipStats().travelDiscount;
     const ap = travelApCost(dist, discount);
     if (!this.economy.spendAp(ap)) {
-      this.ui.showToast('行动力不足 —— 休息一下,或吃点干粮');
+      this.ui.showToast('行动力不足 —— 吃点干粮、推进剧情,或去酒店休整');
       return;
     }
     this._syncUi();
@@ -911,7 +917,7 @@ export class Game {
     const discount = this.economy.equipStats().travelDiscount;
     const ap = travelApCost(dist, discount);
     if (!this.economy.spendAp(ap)) {
-      this.ui.showToast('行动力不足 —— 休息一下,或吃点干粮');
+      this.ui.showToast('行动力不足 —— 吃点干粮、推进剧情,或去酒店休整');
       return;
     }
     this._syncUi();
@@ -934,7 +940,10 @@ export class Game {
     this._trip = { kind: trip.kind, regionId: trip.regionId, stopIndex: trip.stopIndex, poiId: trip.poiId };
     // 疾风饮:把这一段旅途的耗时减半
     const haste = this.economy.consumeTravelHaste();
-    const baseSec = tripSeconds(trip.dist, this.economy.travelSpeedMul());
+    // 地区内地点间的移动走「短途」节奏(远快于地区间旅行)
+    const baseSec = trip.kind === 'stop'
+      ? stopTripSeconds(trip.dist, this.economy.travelSpeedMul())
+      : tripSeconds(trip.dist, this.economy.travelSpeedMul());
     // 「皇帝的新衣」全套:野路上会被高阶怪物盯上(城内踱步不算野外)
     const wild = this._emperorSet() && (trip.kind === 'region' || trip.kind === 'poi' || !this._isCity(this.regionId));
     this.travel.start({
@@ -954,13 +963,14 @@ export class Game {
     this.transition(GameState.TRAVEL);
   }
 
-  /** 旅途结束:落到目的地点(休息则是休整完毕,原地结算行动力) */
+  /** 旅途结束:落到目的地点(酒店休整则结算恢复效果并回到酒店界面) */
   _onTravelArrive() {
-    // 酒店入住:用房型的恢复效果结算,并回到酒店界面
+    // 酒店入住:用房型的恢复效果结算(服饰「休息多回行动力」在此生效),并回到酒店界面
     if (this._hotelRoom) {
       const room = this._hotelRoom;
       this._hotelRoom = null;
-      const apGot = this.economy.addAp(room.apRecover);
+      const bonus = this.economy.restBonus ? this.economy.restBonus() : 0;
+      const apGot = this.economy.addAp(room.apRecover + bonus);
       let healTxt = '';
       if (room.heal > 0) {
         const heal = Math.floor(this.player.maxHp * room.heal);
@@ -971,21 +981,16 @@ export class Game {
       this._syncUi();
       this.transition(GameState.HOTEL);
       this._openHotel(this._atPoi);
-      this.ui.showToast(`「${room.name}」休整完毕,恢复 ${apGot} 点行动力${healTxt}`);
+      this.ui.showToast(`「${room.name}」休整完毕,恢复 ${apGot} 点行动力${healTxt}${bonus > 0 && apGot > 0 ? `(服饰加成 +${bonus})` : ''}`);
       this._autosave();
       return;
     }
     const trip = this._trip;
     this._trip = null;
     if (!trip) {
-      const place = this.travel.info?.fromLabel || '此地';
-      const bonus = this.economy.restBonus ? this.economy.restBonus() : 0;
-      const got = this.economy.addAp(REST_AP_RECOVER + bonus);
-      const extra = bonus > 0 && got > 0 ? `(服饰加成 +${bonus})` : '';
+      // 防御性兜底:既非酒店也无行程的抵达(正常流程不会发生)
       this.transition(GameState.MAP);
       this._renderMap();
-      this.ui.showToast(got > 0 ? `在「${place}」休整完毕,恢复 ${got} 点行动力${extra}` : `在「${place}」休整完毕,行动力已满`);
-      this._autosave();
       return;
     }
     if (trip.kind === 'region') {
@@ -1016,7 +1021,7 @@ export class Game {
     this._autosave();
   }
 
-  /** 途中事件(怪物 / 路人 NPC / 休息小奖励) */
+  /** 途中事件(怪物 / 路人 NPC) */
   _onTravelEvent({ type, npc }) {
     if (type === 'encounter') {
       const level = WORLD[this.regionId]?.level ?? this._chapterNum();
@@ -1025,9 +1030,7 @@ export class Game {
     }
     if (type === 'npc' && npc) {
       this._startNpcTalk(npc, 'road');
-      return;
     }
-    if (type === 'reward') this._onRestReward();
   }
 
   // ===== 「皇帝的新衣」全套的风险(主城罚款 / 野外招怪) =====
@@ -1399,73 +1402,6 @@ export class Game {
     this.tutorialSeen = true;
     markTutorialSeen();
     this.ui.closeTutorial();
-  }
-
-  /**
-   * 休息:整整 5 分钟的真实等待,期间复用「旅途」界面、无法操作。
-   * 期间可能被怪物惊扰(入战斗),也可能捡到随机小奖励;结束时才结算行动力。
-   */
-  _rest() {
-    if (this.travel.active) return;
-    const region = REGIONS[this.regionId];
-    const place = region?.stops?.[this.stopIndex]?.name || region?.name || '此地';
-    // 醒神香:把这一次的休息耗时缩到四分之一
-    const haste = this.economy.consumeRestHaste();
-    this.travel.start({
-      mode: 'rest',
-      fromLabel: place,
-      toLabel: '休整',
-      dist: 0,
-      seconds: haste ? Math.max(1, Math.round(REST_SECONDS * REST_HASTE_MUL)) : REST_SECONDS,
-      level: WORLD[this.regionId]?.level ?? this._chapterNum(),
-      poolKey: this.regionId,
-      terrain: regionTerrain(this.regionId),
-      events: this._buildRestEvents(),
-    });
-    if (haste) this.travel.pushLog('醒神香起了效,这一觉短了许多。');
-    this.transition(GameState.TRAVEL);
-  }
-
-  /** 休息期间的事件表:0~2 次怪物惊扰、1~3 次随机小奖励,错落在整段时间里 */
-  _buildRestEvents() {
-    const events = [];
-    let monsters = this.rng.next() < 0.55 ? 1 : 0;
-    if (this.rng.next() < 0.18) monsters += 1;
-    for (let i = 0; i < monsters; i++) {
-      events.push({
-        type: 'encounter',
-        at: 0.12 + this.rng.next() * 0.74,
-        log: '半梦半醒间被惊醒 —— 有东西摸了过来。',
-      });
-    }
-    const rewards = 1 + Math.floor(this.rng.next() * 3);
-    for (let i = 0; i < rewards; i++) {
-      events.push({ type: 'reward', at: 0.1 + this.rng.next() * 0.8 });
-    }
-    return events.sort((a, b) => a.at - b.at);
-  }
-
-  /** 休息途中的随机小奖励(不打断计时) */
-  _onRestReward() {
-    const roll = this.rng.next();
-    const ch = this._chapterNum();
-    let text;
-    if (roll < 0.4) {
-      const gold = this._grantGold(3 + Math.floor(this.rng.next() * 8) + ch);
-      text = `歇脚时在石缝里拾得 ${gold} 金币。`;
-    } else if (roll < 0.7) {
-      const loot = LOOT_MISC[Math.floor(this.rng.next() * LOOT_MISC.length)];
-      this.economy.addItem(loot, 1);
-      text = `随手一翻,翻出了「${ITEMS[loot]?.name || loot}」。`;
-    } else if (roll < 0.9) {
-      const got = this.economy.addAp(1 + Math.floor(this.rng.next() * 2));
-      text = got > 0 ? `打了个盹,行动力恢复 ${got} 点。` : '睡得很沉,只是行动力已满。';
-    } else {
-      this.economy.addItem('hp_small', 1);
-      text = '梦见旧事,醒来手里多了「金创药」×1。';
-    }
-    this._syncUi();
-    this.travel.pushLog(text);
   }
 
   _currentTheme() {
@@ -2087,6 +2023,71 @@ export class Game {
     this.ui.renderRedeem({ msg: `兑换成功${label}:${skipNote}${got.length ? got.join('、') : '（无奖励）'}`, kind: 'ok' });
   }
 
+  // ===== 回忆(剧情回顾) / 衣橱(更换时装) =====
+  /** 回忆弹窗数据:全部主线大章的通关状态与回顾(未通关章显示「未解锁」) */
+  _memorialData() {
+    const cleared = this.progress?.cleared || {};
+    const curChapter = this.engine?.currentChapterId || this._storyChapter || this.regionId;
+    let clearedCount = 0;
+    const chapters = CHAPTER_ORDER.map((id, i) => {
+      const n = chapterNumber(id);
+      const isCleared = !!cleared[id];
+      if (isCleared) clearedCount++;
+      const status = isCleared ? 'cleared' : (id === curChapter ? 'current' : 'locked');
+      return {
+        id,
+        no: `第${n}章`,
+        title: CHAPTERS[id]?.title || `${n}章`,
+        recap: CHAPTER_RECAPS[id] || '',
+        status,
+      };
+    });
+    return { chapters, clearedCount, total: chapters.length };
+  }
+
+  _openMemorial() {
+    this.ui.renderMemorial(this._memorialData());
+  }
+
+  /** 衣橱弹窗数据:七个防具外观槽 + 背包中各槽可选防具 + 当前形象预览 */
+  _wardrobeData() {
+    const eco = this.economy;
+    const slots = {};
+    for (const slot of ARMOR_SLOTS) {
+      const options = this._bagOf((id) => armorSlotOf(id) === slot).map((o) => ({
+        id: o.id, name: o.name, icon: o.icon, level: o.level,
+        tint: ITEMS[o.id]?.tint || null,
+      }));
+      const curId = eco.cosmetic[slot];
+      const curDef = curId ? ITEMS[curId] : null;
+      const current = (curDef && options.some((o) => o.id === curId))
+        ? { id: curId, name: curDef.name, icon: curDef.icon || '❔', level: curDef.level || 0, tint: curDef.tint || null }
+        : null;
+      slots[slot] = { current, options };
+    }
+    return {
+      appearance: eco.appearance(),
+      careerId: this.engine?.career?.id || this.career?.id || null,
+      lookLabel: lookLabel(eco.body, eco.skin),
+      slots,
+    };
+  }
+
+  _openWardrobe() {
+    if (!this.economy) { this.ui.showToast('先开始一局旅程,再来整理衣橱'); return; }
+    this.ui.renderWardrobe(this._wardrobeData());
+  }
+
+  /** 更换防具外观(纯装饰,不给数值;物品留在背包) */
+  _setCosmetic(slot, id) {
+    if (!this.economy) return;
+    if (!this.economy.setCosmetic(slot, id)) { this.ui.showToast('无法以此件作为外观'); return; }
+    this._autosave();
+    // 重开衣橱以刷新预览与选中态;若正处地图,同步重绘左下角人物形象
+    this.ui.renderWardrobe(this._wardrobeData());
+    if (this.state === GameState.MAP) this._renderMap();
+  }
+
   // ===== 背包 =====
   _openBag() {
     this._syncUi();
@@ -2410,7 +2411,7 @@ export class Game {
     const job = this._jobsHere().find((j) => j.id === jobId);
     const tier = job?.tiers?.[tierIndex];
     if (!job || !tier) return;
-    if (this.economy.ap < tier.ap) { this.ui.showToast('行动力不足,先休息一下'); return; }
+    if (this.economy.ap < tier.ap) { this.ui.showToast('行动力不足 —— 吃点干粮或推进剧情再回来'); return; }
     this.ui.openMinigame(job, tier, tierIndex);
   }
 
@@ -2613,7 +2614,7 @@ export class Game {
       return;
     }
 
-    // 战败:中止当前流程(旅途退回出发地;休息则醒来留在原地)
+    // 战败:中止当前流程(旅途退回出发地;酒店休整则醒来留在原地)
     const resting = this.travel?.info?.mode === 'rest';
     const place = this.travel?.info?.fromLabel || REGIONS[this.regionId]?.stops[this.stopIndex]?.name || '此地';
     const penalty = Math.max(10, Math.floor(this.economy.gold * 0.15));
@@ -2818,21 +2819,52 @@ export class Game {
     return true;
   }
 
-  /** 检测本局是否离开了起始大章;若是,则记录该大章通关并提示 */
+  /**
+   * 剧情快照推进时检测「跨大章」:离开某个主线大章(进入下一章或支线地区)
+   * 即视为该大章通关 —— 记录通关进度、行动力回满、寄出「通关谢仪」到邮箱。
+   * 支线地区(ch02b / ch04b / ch05b)不计入主线进度,只作为进出主章的中转。
+   */
   _checkChapterClear(snap) {
-    const start = this._runStartChapter;
-    if (!snap?.chapter || !start) return;
-    if (snap.chapter === start) return;
-    // 子地区(如 ch02b 废弃矿镇)不算跨大章,不触发大章通关
-    if (snap.chapter.startsWith(start)) return;
-    if (this.progress?.cleared?.[start]) return;
-    this.progress = markChapterCleared(start);
+    const cur = snap?.chapter;
+    const prev = this._storyChapter;
+    if (!cur || !prev || cur === prev) return;
+    this._storyChapter = cur;
+    // 只结算主线大章;支线地区不触发通关
+    if (!CHAPTER_ORDER.includes(prev)) return;
+    if (this.progress?.cleared?.[prev]) return;
+    this.progress = markChapterCleared(prev);
     this.ui.renderChapterSelect(this._chapterEntries(), this._saveInfo());
-    // 用章节定义中的标题(如「第一章 · 家园破碎」)提示通关
-    const title = CHAPTERS[start]?.title || `${start}`;
-    this.ui.showToast(`✦ ${title} 已通关 —— 新的旅程已解锁`);
+    // 用章节定义中的标题(如「第一章 · 家园破碎」)提示通关;行动力回满
+    const title = CHAPTERS[prev]?.title || `${prev}`;
+    const apGot = this.economy ? this.economy.addAp(this.economy.apCap()) : 0;
+    // 通关谢仪:寄到「邮箱」,点「领取」才入袋
+    this._sendChapterMail(prev);
+    this.ui.showToast(`✦ ${title} 已通关${apGot ? ' · 行动力已回满' : ''} · 驿站寄来通关谢仪`);
     // 通关第一大章:在世界地图上随机出现餐厅 / 酒店 / 商市
-    if (start === 'ch01') this._generatePois();
+    if (prev === 'ch01') this._generatePois();
+  }
+
+  /** 大章通关:把「通关谢仪」信(含奖励与剧情回顾)寄到邮箱;已寄过则不重发 */
+  _sendChapterMail(chapterId) {
+    const reward = CHAPTER_CLEAR_REWARDS[chapterId];
+    const recap = CHAPTER_RECAPS[chapterId];
+    if (!reward && !recap) return;
+    if (!this.mailState) this.mailState = loadMailState();
+    this.mailState.granted = this.mailState.granted || {};
+    const id = `clear_${chapterId}`;
+    if (this.mailState.granted[id]) return;
+    const n = chapterNumber(chapterId);
+    const title = CHAPTERS[chapterId]?.title || `第${n}章`;
+    this.mailState.granted[id] = {
+      id,
+      no: `C${String(n).padStart(2, '0')}`,
+      from: '守约 · 驿站',
+      title: `${title} · 通关谢仪`,
+      body: `${recap}\n大章既已走完,驿站随信附上这一程的谢仪。点「领取」收入行囊,再启新程。`,
+      reward: reward || null,
+    };
+    saveMailState(this.mailState);
+    this._refreshMailBadge();
   }
 
   /** 通关第一章后,在世界地图随机生成 POI_COUNT 个兴趣点 */
@@ -2906,18 +2938,22 @@ export class Game {
     // 记录本次入住的房型,供旅途结束时结算恢复效果
     this._hotelRoom = room;
     const place = this._atPoi?.name || '酒店';
+    // 醒神香 / 长明香:把这一次酒店休整的耗时缩到四分之一
+    const haste = this.economy.consumeRestHaste();
+    const seconds = haste ? Math.max(1, Math.round(room.seconds * HOTEL_HASTE_MUL)) : room.seconds;
     this.travel.start({
       mode: 'rest',
       fromLabel: place,
       toLabel: room.name,
       dist: 0,
-      seconds: Math.max(1, room.seconds),
+      seconds: Math.max(1, seconds),
       level: WORLD[this.regionId]?.level ?? this._chapterNum(),
       poolKey: this.regionId,
       terrain: regionTerrain(this.regionId),
       events: [], // 酒店入住不触发随机事件
     });
-    this.travel.pushLog(`你付了 ${room.gold} 金币,住进「${room.name}」。预计 ${room.seconds} 秒后恢复 ${room.apRecover} 点行动力${room.heal > 0 ? `与 ${Math.round(room.heal * 100)}% 生命` : ''}。`);
+    this.travel.pushLog(`你付了 ${room.gold} 金币,住进「${room.name}」。预计 ${seconds} 秒后恢复 ${room.apRecover} 点行动力${room.heal > 0 ? `与 ${Math.round(room.heal * 100)}% 生命` : ''}。`);
+    if (haste) this.travel.pushLog('香起了效,这一觉短了许多。');
     this.transition(GameState.TRAVEL);
   }
 
@@ -3183,7 +3219,7 @@ export class Game {
     // 地区地图
     this.bus.on('ui:map-travel', (i) => this._travelTo(i));
     this.bus.on('ui:map-story', () => this._beginStory());
-    this.bus.on('ui:map-rest', () => this._rest());
+    // 「休息」操作已下线:行动力改由 剧情推进 / NPC赠予 / 食品 / 酒店休整 恢复
     this.bus.on('ui:map-shop', () => this._openShop());
     this.bus.on('ui:map-job', () => this._openJobs());
     this.bus.on('ui:map-bag', () => this._openBag());
@@ -3218,6 +3254,10 @@ export class Game {
     this.bus.on('ui:open-redeem', () => this._openRedeem());
     this.bus.on('ui:redeem-submit', (code) => this._redeemCode(code));
     this.bus.on('ui:redeem-close', () => this.ui.closeRedeem());
+    // 回忆(剧情回顾) / 衣橱(更换时装)(左下角圆形按钮入口)
+    this.bus.on('ui:open-memorial', () => this._openMemorial());
+    this.bus.on('ui:open-wardrobe', () => this._openWardrobe());
+    this.bus.on('ui:cosmetic-set', ({ slot, id }) => this._setCosmetic(slot, id));
     this.bus.on('travel:progress', (snap) => this.ui.renderTravel(snap));
     this.bus.on('travel:start', (snap) => { this.ui.resetTravelTips(); this.ui.renderTravel(snap); });
     this.bus.on('travel:event', (payload) => this._onTravelEvent(payload));

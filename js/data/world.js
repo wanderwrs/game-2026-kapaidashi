@@ -97,6 +97,15 @@ export function tripSeconds(dist, speedMul = 1) {
 }
 
 /**
+ * 同一地区内两地点之间的真实耗时(秒)。
+ * 地区内短途移动要比地区间旅行轻快得多:夹在 [5, 19] 秒,载具还能更快。
+ */
+export function stopTripSeconds(dist, speedMul = 1) {
+  const raw = dist * 0.36 * speedMul;
+  return Math.max(5, Math.min(19, Math.round(raw)));
+}
+
+/**
  * 旅行消耗的行动力。
  * @param {number} dist 里程(里)
  * @param {number} discount 载具的行动力折扣(每段至少 1)

@@ -71,6 +71,9 @@ export class Economy {
     // ===== 宠物 =====
     this.pets = new Map();           // petId -> 拥有数量
     this.petActive = null;           // 出战宠物 id
+    // ===== 衣橱 · 防具外观(纯装饰,不提供任何数值) =====
+    // 「角色」弹窗的防具位只给数值、不影响外观;外观由这里的 cosmetic 槽决定。
+    this.cosmetic = { head: null, body: null, hands: null, legs: null, feet: null, ring: null, earring: null };
   }
 
   // ===== 角色名 / 形象 =====
@@ -225,7 +228,13 @@ export class Economy {
   removeItem(id, qty = 1) {
     const cur = this.count(id);
     if (cur < qty) return false;
-    if (cur === qty) this.bag.delete(id);
+    if (cur === qty) {
+      this.bag.delete(id);
+      // 物品已不在背包:清掉以其为外观的衣橱槽(纯装饰,无需补偿)
+      for (const slot of ARMOR_SLOTS) {
+        if (this.cosmetic[slot] === id) this.cosmetic[slot] = null;
+      }
+    }
     else this.bag.set(id, cur - qty);
     return true;
   }
@@ -506,6 +515,23 @@ export class Economy {
     return true;
   }
 
+  // ===== 衣橱 · 防具外观 =====
+  /**
+   * 指定某防具槽位的「外观」(纯装饰,不给数值;物品留在背包,可同时用于数值装配)。
+   * @param {string} slot 防具槽位(head/body/hands/legs/feet/ring/earring)
+   * @param {string|null} id 物品 id;null 表示卸下该部位外观
+   */
+  setCosmetic(slot, id) {
+    if (!ARMOR_SLOTS.includes(slot)) return false;
+    if (id == null) { this.cosmetic[slot] = null; return true; }
+    const it = ITEMS[id];
+    // 必须是已拥有、且槽位相符的防具
+    if (!it || it.category !== 'armor' || !this.has(id)) return false;
+    if (armorSlotOf(id) !== slot) return false;
+    this.cosmetic[slot] = id;
+    return true;
+  }
+
   /** 汇总装备加成 */
   equipStats() {
     const total = { atkPower: 0, maxHp: 0, maxMp: 0, apMax: 0, travelDiscount: 0, shopDiscount: 0, goldBonus: 0, restBonus: 0, startBlock: 0 };
@@ -582,15 +608,16 @@ export class Economy {
       if (hat.hide) a.hideHat = true;
       else if (hat.look) { a.hat = hat.look.hat ?? null; a.hatHi = hat.look.hatHi ?? null; a.hatStyle = hat.look.style ?? null; }
     }
-    // 防具与服饰各画各的:防具按「等级档位」取色(见 data/armor.js 的 armorBand),
+    // 防具外观由「衣橱」决定(cosmetic 槽,纯装饰);数值装配位(equipped)不再影响外观。
+    // 防具按「等级档位」取色(见 data/armor.js 的 armorBand),
     // 与服饰配色互不覆盖,故同一个部位可以「里衣外甲」同时可见。
     a.armor = {};
     for (const slot of ARMOR_SLOTS) {
-      const it = ITEMS[this.equipped[slot]];
+      const it = ITEMS[this.cosmetic[slot]];
       if (!it || it.category !== 'armor') continue;
       a.armor[slot] = armorBand(it.level || 1).tint;
     }
-    const armorNames = ARMOR_SLOTS.map((s) => ITEMS[this.equipped[s]]?.name).filter(Boolean);
+    const armorNames = ARMOR_SLOTS.map((s) => ITEMS[this.cosmetic[s]]?.name).filter(Boolean);
     const names = OUTFIT_SLOTS.map((s) => ITEMS[this.equipped[s]]?.name).filter(Boolean);
     const all = [...armorNames, ...names];
     a.label = all.length ? all.join(' · ') : null;
@@ -857,6 +884,8 @@ export class Economy {
       careerExps: { ...this.careerExps },
       pets: Object.fromEntries(this.pets),
       petActive: this.petActive,
+      // 衣橱 · 防具外观(纯装饰)
+      cosmetic: { ...this.cosmetic },
     };
   }
 
@@ -940,6 +969,13 @@ export class Economy {
       }
     }
     eco.petActive = eco.pets.has(data.petActive) ? data.petActive : null;
+    // 衣橱 · 防具外观(纯装饰):仅接受背包里仍拥有的防具
+    if (data.cosmetic && typeof data.cosmetic === 'object') {
+      for (const slot of ARMOR_SLOTS) {
+        const id = data.cosmetic[slot];
+        if (id && eco.bag.has(id) && ITEMS[id]?.category === 'armor') eco.cosmetic[slot] = id;
+      }
+    }
     return eco;
   }
 }

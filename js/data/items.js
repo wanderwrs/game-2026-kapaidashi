@@ -90,9 +90,9 @@ export const ITEMS = {
   smoke_bomb:  { id: 'smoke_bomb',  name: '烟雾弹',   category: 'potion', price: 80, icon: '💨', desc: '战斗中使用,立即逃离当前战斗(剧情战斗可重试)。', effect: { kind: 'escape', amount: 0 } },
   lucky_coin:  { id: 'lucky_coin',  name: '幸运币',   category: 'potion', price: 120, icon: '🪙', rare: true, desc: '下场战斗胜利时金币收益翻倍。', effect: { kind: 'gold_luck', amount: 1 } },
 
-  // ===== 加速恢复(缩短休息 / 旅途的真实耗时) =====
-  swift_incense:{ id: 'swift_incense', name: '醒神香', category: 'potion', price: 90,  icon: '🕯️', desc: '点上一支,下一次休息的耗时缩短至四分之一。', effect: { kind: 'rest_haste',   amount: 1 } },
-  long_incense: { id: 'long_incense',  name: '长明香', category: 'potion', price: 160, icon: '🪔', desc: '能烧一整夜。接下来 2 次休息的耗时缩短至四分之一。', effect: { kind: 'rest_haste', amount: 2 } },
+  // ===== 加速恢复(缩短酒店休整 / 旅途的真实耗时) =====
+  swift_incense:{ id: 'swift_incense', name: '醒神香', category: 'potion', price: 90,  icon: '🕯️', desc: '点上一支,下一次在酒店休整的耗时缩短至四分之一。', effect: { kind: 'rest_haste',   amount: 1 } },
+  long_incense: { id: 'long_incense',  name: '长明香', category: 'potion', price: 160, icon: '🪔', desc: '能烧一整夜。接下来 2 次在酒店休整的耗时缩短至四分之一。', effect: { kind: 'rest_haste', amount: 2 } },
   wind_tonic:   { id: 'wind_tonic',    name: '疾风饮', category: 'potion', price: 110, icon: '🥤', desc: '一口气灌下,下一段旅途的耗时减半。', effect: { kind: 'travel_haste', amount: 1 } },
 
   // ===== 食品(恢复行动力) =====
