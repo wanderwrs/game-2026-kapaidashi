@@ -1,8 +1,8 @@
 /**
  * ch14.js — 第十四章 · 大祭司之战(终战)
- * 节拍:圣心坛终战 → 大祭司 + 圣坛傀儡 → 弟弟的最终抉择 → 结局触发
+ * 节拍:圣心坛终战 → 大祭司 + 圣坛傀儡 → 弟弟的最终抉择 → 过渡至 ch15(回归王城)
  * 战斗:1 场(大祭司/圣坛傀儡)
- * 关键 flag:killed_grandpriest(终战)、ending_* 由 resolveEnding 综合
+ * 关键 flag:killed_grandpriest(终战)、found_brother(寻回弟弟)、sacrificed_self(化龙护弟)
  */
 
 const nodes = [
@@ -157,10 +157,10 @@ const nodes = [
     next: 'n05_tragic',
     effects: { flags: ['found_brother', 'killed_grandpriest', 'sacrificed_self'] },
   },
-  // ===== 结局节点 =====
+  // ===== 过渡节点:圣心坛之战落幕 → 回归王城(ch15) =====
   {
     id: 'n05_hero',
-    kind: 'ending',
+    kind: 'narrative',
     chapter: 14,
     text: `火柱熄灭了。
 
@@ -174,12 +174,13 @@ const nodes = [
 
 王城在等你回去。而更远的地方,还有山,还有海,还有云。
 
-你握紧『守约』,向前迈了一步。新征程,即将开启。`,
-    ending_id: 'hero',
+你握紧『守约』,向前迈了一步。新的征程,已在脚下铺开。`,
+    next: 'ch15:n01',
+    effects: { flags: ['found_brother', 'killed_grandpriest'] },
   },
   {
     id: 'n05_tragic',
-    kind: 'ending',
+    kind: 'narrative',
     chapter: 14,
     text: `火柱熄灭了。
 
@@ -193,8 +194,11 @@ const nodes = [
 
 你回不去了。可你守住了弟弟。
 
-也许,这就够了。`,
-    ending_id: 'tragic',
+也许,这就够了。
+
+山下传来隐约的钟声——是王城在等你回去。你深吸一口气,搀着弟弟,朝那钟声走去。`,
+    next: 'ch15:n01',
+    effects: { flags: ['found_brother', 'killed_grandpriest', 'sacrificed_self'] },
   },
 ];
 
