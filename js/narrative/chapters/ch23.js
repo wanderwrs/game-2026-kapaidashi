@@ -122,8 +122,18 @@ const nodes = [
 你点了点头,转身走下高地。
 
 「全军听令——明日拂晓,进攻卡斯特罗!」`,
-    next: 'ch24:n01',
+    next: 'n06_choice',
     effects: { flags: ['army_ready', 'healer_unlocked'] },
+  },
+  {
+    id: 'n06_choice',
+    kind: 'choice',
+    chapter: 23,
+    text: `明日拂晓便要进攻卡斯特罗。出发之前,你还有一点闲暇——你打算如何度过?`,
+    choices: [
+      { text: '「早些歇息,养精蓄锐。」(直接进军卡斯特罗)', next: 'ch24:n01' },
+      { text: '「我想再研究一下那卷从典学院带出的星图。」(法师支线)', next: 'fs1:n01' },
+    ],
   },
 ];
 

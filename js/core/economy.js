@@ -11,13 +11,13 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261006a';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261006a';
-import { GEM_EFFECT } from '../data/gems.js?v=20261006a';
-import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261006a';
-import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261006a';
-import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261006a';
-import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261006a';
+import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261006c';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261006c';
+import { GEM_EFFECT } from '../data/gems.js?v=20261006c';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261006c';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261006c';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261006c';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261006c';
 
 /** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
 const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
@@ -846,9 +846,9 @@ export class Economy {
       case 'dream': {
         return { ok: true, prompt: 'dream', msg: '' };
       }
-      // ===== 记忆之书:跳过对应大章(交由 game 处理,此处不消耗) =====
+      // ===== 记忆之书:跳过对应区间主线(交由 game 处理,此处不消耗) =====
       case 'skip_chapter': {
-        return { ok: true, prompt: 'skip_chapter', chapter: it.effect.chapter, msg: '' };
+        return { ok: true, prompt: 'skip_chapter', from: it.effect.from, to: it.effect.to, next: it.effect.next, msg: '' };
       }
       // ===== 职业等级药水 / 星辉秘典 =====
       case 'career_exp': {

@@ -11,42 +11,42 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261006a';
-import { EventBus } from './eventbus.js?v=20261006a';
-import { AudioEngine } from './audio.js?v=20261006a';
-import { Player } from '../combat/entity.js?v=20261006a';
-import { Deck } from '../card/deck.js?v=20261006a';
-import { Battle } from '../combat/battle.js?v=20261006a';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261006a';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261006a';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261006a';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261006a';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261006a';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261006a';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261006a';
-import { majorSetIds } from '../data/extras.js?v=20261006a';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261006a';
-import { lookLabel } from '../data/looks.js?v=20261006a';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261006a';
-import { TradeEngine } from './trade.js?v=20261006a';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261006a';
-import { REGIONS } from '../data/regions.js?v=20261006a';
-import { jobsFor } from '../data/jobs.js?v=20261006a';
+import { RNG, seedFromString } from './rng.js?v=20261006c';
+import { EventBus } from './eventbus.js?v=20261006c';
+import { AudioEngine } from './audio.js?v=20261006c';
+import { Player } from '../combat/entity.js?v=20261006c';
+import { Deck } from '../card/deck.js?v=20261006c';
+import { Battle } from '../combat/battle.js?v=20261006c';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261006c';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261006c';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261006c';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261006c';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261006c';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261006c';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261006c';
+import { majorSetIds } from '../data/extras.js?v=20261006c';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261006c';
+import { lookLabel } from '../data/looks.js?v=20261006c';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261006c';
+import { TradeEngine } from './trade.js?v=20261006c';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261006c';
+import { REGIONS } from '../data/regions.js?v=20261006c';
+import { jobsFor } from '../data/jobs.js?v=20261006c';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261006a';
-import { NPCS } from '../data/npcs.js?v=20261006a';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261006a';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261006a';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261006a';
-import { Economy } from './economy.js?v=20261006a';
-import { Travel } from './travel.js?v=20261006a';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261006a';
-import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261006a';
-import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261006a';
-import { CAREERS } from '../narrative/careers.js?v=20261006a';
-import { UI } from '../ui/ui.js?v=20261006a';
+} from '../data/world.js?v=20261006c';
+import { NPCS } from '../data/npcs.js?v=20261006c';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261006c';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261006c';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261006c';
+import { Economy } from './economy.js?v=20261006c';
+import { Travel } from './travel.js?v=20261006c';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261006c';
+import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261006c';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261006c';
+import { CAREERS } from '../narrative/careers.js?v=20261006c';
+import { UI } from '../ui/ui.js?v=20261006c';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -75,35 +75,23 @@ const EMPEROR_FINE_MIN = 120;
  * next:跳过之后进入的下一大章起点。
  */
 const CHAPTER_SKIP_REWARDS = {
-  ch01: {
-    title: '第一章 · 家园破碎',
-    next: 'ch02',
-    stats: { courage: 6, reason: 5, mercy: 6, wild: 3 },
-    flags: ['began_quest', 'met_mentor', 'spared_cultist'],
+  // 记忆之书·壹:跳过第 1~14 章(第一大章前十四节),直达第十五章
+  ch01_ch14: {
+    title: '守约之路 · 前十四章',
+    summary: '龙脊山下的小村庄一夜之间被黑龙焚毁,弟弟被身披黑袍的教团掳走。你握起父亲留下的旧剑「守约」,循着断刃与线索一路北上——穿过焦土与密林,在废矿井下记下教团掳走的每一个孩子的名字;在王城躲过教团的追杀,带着揭穿伪神的证据南下渔港寻回母亲;在圣心坛的火柱旁见到弟弟的真身,做出屠龙或饶龙的抉择。你牵着时人时龙的弟弟,穿过迷心林,登上云端浮岛,漂过远洋,潜入大神殿取回古卷残页,又在弟弟独自回坛时循迹追去。第一卷的前半程,你守住了约。',
+    stats: { courage: 38, reason: 36, mercy: 34, wild: 24 },
+    flags: ['began_quest', 'met_mentor', 'spared_cultist', 'met_friend', 'exposed_church', 'mentor_dead', 'found_mother', 'mother_truth', 'brother_bond', 'aviator_ally', 'got_wings', 'mariner_ally', 'got_ship'],
     assign_career: 'swordsman',
-    summary: '龙脊山下的小村庄一夜之间被黑龙焚毁,弟弟被身披黑袍的教团掳走。你循着父亲留下的断刃与线索,穿过焦土与密林,途中结识了同路人,在剑塔旧址得遇父亲旧友。你立誓踏上火种之路,夺回弟弟。',
+    unlock_career: ['mage', 'aviator', 'mariner', 'theologian'],
   },
-  ch02: {
-    title: '第二章 · 边境孤驿',
-    next: 'ch03',
-    stats: { courage: 4, reason: 4, mercy: 4, wild: 3 },
-    flags: ['met_friend'],
-    unlock_career: 'mage',
-    summary: '你踏入北国边境的孤驿,与流亡的同路人结伴同行。废矿井下的名册记录着教团掳走的每一个孩子,你替守矿的药师守住了那些名字,也在雪夜里与林结下换命的交情。往北的路,从此不再是一个人走。',
-  },
-  ch03: {
-    title: '第三章 · 王城旧友',
-    next: 'ch04',
-    stats: { courage: 4, reason: 5, mercy: 3, wild: 2 },
-    flags: ['met_mentor', 'exposed_church', 'mentor_dead'],
-    summary: '你奔赴王城寻找父亲的旧友洛恩,却卷入教团与王室的暗斗。洛恩临终前将一枚龙脊印与揭穿伪神的证据托付于你,你在王城的夜色中躲过教团的追杀,带着真相继续南下,去渔港寻找尚在人世的母亲。',
-  },
-  ch04: {
-    title: '第四章 · 渔港寻亲',
-    next: 'ch05',
-    stats: { courage: 5, reason: 5, mercy: 6, wild: 2 },
-    flags: ['found_mother', 'mother_truth', 'brother_bond'],
-    summary: '你在南方渔港寻得母亲,得知弟弟竟是教团以「火种」之名寄养的龙裔。母亲将一对银刻小鱼交予你,你带着真相与牵挂,决意北上圣心坛,从祭火之中夺回弟弟。',
+  // 记忆之书·贰:跳过第 15~26 章(第一大章末节 + 第二大章前半),直达最终决战第二十七章
+  ch15_ch26: {
+    title: '卡斯特罗之战 · 第十五至二十六章',
+    summary: '你杀回圣心坛,直面大祭司,把这一场宿命了结在祭火里;残党的最后反扑在王城广场被击退,第一卷终章落幕。你辞别王城,踏入人迹罕至的北境荒原。教团残党在荒原上穿梭,寻找远古巨龙的埋骨之地,企图以黑曜铁锁住龙魂、复活他们的「龙国」。你在荒城断壁寻访守关老兵,穿过风蚀峡谷,在黑曜矿城与矿工头领交易,最终抵达龙骨荒原——直面被唤醒的远古龙魂,做出封印或安抚的抉择。可和平转瞬即逝:卡斯特罗城邦撕毁停战协议,大军压境。你为了和平与稳定,带着弟弟与新认识的朋友们踏上征途——潜入边境要塞救出守将,侦察卡斯特罗前哨获取部署图,说服中立城邦结盟,在联盟营地解锁治疗师职业,兵临卡斯特罗主城,决战平原击溃敌军主力,攻入内城。',
+    stats: { courage: 42, reason: 40, mercy: 36, wild: 28 },
+    flags: ['sacrificed_self', 'saved_village', 'found_brother', 'dragon_sealed', 'army_ready', 'healer_unlocked', 'city_broken'],
+    assign_career: null,
+    unlock_career: ['healer'],
   },
 };
 
@@ -2139,7 +2127,7 @@ export class Game {
   _useItem(id) {
     const r = this.economy.useItem(id, this.player, this.currentBattle);
     // 改名卡 / 美梦药水:交由角色弹窗处理(此处不消耗)
-    if (r.ok && r.prompt === 'skip_chapter') { this._skipChapter(id, r.chapter); return; }
+    if (r.ok && r.prompt === 'skip_chapter') { this._skipChapter(id, r.from, r.to, r.next); return; }
     if (r.ok && r.prompt) { this._openCharacterSheet(r.prompt); return; }
     this.ui.showToast(r.msg);
     if (r.promotions?.length) this._applyCareerPromotions(r.promotions);
@@ -2158,25 +2146,23 @@ export class Game {
   }
 
   /**
-   * 使用「记忆之书」跳过对应大章。
-   * · 仅可在玩家身处该大章(regionId === chapterId)时使用
-   * · 发放该章全部奖励(属性 / 关键 flag / 职业),消耗书本
-   * · 跳转到下一大章的起点,并弹出剧情简介
+   * 使用「记忆之书」跳过对应区间的主线剧情。
+   * · 仅可在玩家身处该区间(regionId 章节序号在 [from, to] 内)时使用
+   * · 发放该区间全部奖励(属性 / 关键 flag / 职业),消耗书本
+   * · 标记区间内所有章节已到访,跳转到 next 章节,并弹出剧情简介
    */
-  _skipChapter(bookId, chapterId) {
+  _skipChapter(bookId, from, to, next) {
     if (this.state === GameState.BATTLE) { this.ui.showToast('战斗中无法使用记忆之书'); return; }
-    // 已通关的大章无法再使用对应记忆之书
-    if (this.progress?.cleared?.[chapterId]) {
-      const n = chapterNumber(chapterId);
-      this.ui.showToast(`第${n}章已通关,无需再使用记忆之书`);
+    if (!from || !to || !next) { this.ui.showToast('此记忆之书已失效'); return; }
+    const fromN = chapterNumber(from);
+    const toN = chapterNumber(to);
+    const curN = chapterNumber(this.regionId);
+    if (curN < fromN || curN > toN) {
+      this.ui.showToast(`记忆之书仅可在第 ${fromN}~${toN} 章境内使用`);
       return;
     }
-    if (this.regionId !== chapterId) {
-      const n = chapterNumber(chapterId);
-      this.ui.showToast(`记忆之书·${['零','壹','贰','叁','肆','伍'][n]}仅可在第${n}章使用`);
-      return;
-    }
-    const rw = CHAPTER_SKIP_REWARDS[chapterId];
+    const key = `${from}_${to}`;
+    const rw = CHAPTER_SKIP_REWARDS[key];
     if (!rw) { this.ui.showToast('此记忆之书已失效'); return; }
 
     // 1) 发放属性
@@ -2199,20 +2185,20 @@ export class Game {
     }
     // 4) 消耗书本
     this.economy.removeItem(bookId, 1);
-    // 5) 标记该大章已通过(避免重复跳 + 解锁章节选择)
-    this._visited.add(chapterId);
-    this.progress = markChapterCleared(chapterId);
+    // 5) 标记区间内所有章节已到访(地图可见 / 章节选择解锁)
+    for (let n = fromN; n <= toN; n++) {
+      const cid = n < 10 ? `ch0${n}` : `ch${n}`;
+      this._visited.add(cid);
+    }
     this._syncPlayerStats();
 
-    // 6) 弹出剧情简介,确认后跳转下一大章
-    const n = chapterNumber(chapterId);
+    // 6) 弹出剧情简介,确认后跳转目标章节
     this.ui.showStorySummary({
-      chapter: n,
+      chapter: `${fromN}~${toN}`,
       title: rw.title,
       summary: rw.summary,
       rewards: rw.stats,
       onConfirm: () => {
-        const next = rw.next;
         this.engine.enterChapter(next);
         this._bagRefresh();
         this._autosave();
