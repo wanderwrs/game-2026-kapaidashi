@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261006e';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261006e';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261006e';
-import { gradeOf } from '../data/grade.js?v=20261006e';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261006e';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261006e';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261006e';
-import { cardMpCost } from '../data/data.js?v=20261006e';
-import { ENDINGS } from '../narrative/engine.js?v=20261006e';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261006e';
-import { SceneView, paintCharacter } from './scene.js?v=20261006e';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261006e';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261006e';
-import { Minigame } from '../minigame/minigame.js?v=20261006e';
-import { MODE_LABELS } from '../data/jobs.js?v=20261006e';
-import { TERRAIN_CN } from '../data/world.js?v=20261006e';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261006e';
+import { GameState } from '../core/game.js?v=20261006f';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261006f';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261006f';
+import { gradeOf } from '../data/grade.js?v=20261006f';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261006f';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261006f';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261006f';
+import { cardMpCost } from '../data/data.js?v=20261006f';
+import { ENDINGS } from '../narrative/engine.js?v=20261006f';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261006f';
+import { SceneView, paintCharacter } from './scene.js?v=20261006f';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261006f';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261006f';
+import { Minigame } from '../minigame/minigame.js?v=20261006f';
+import { MODE_LABELS } from '../data/jobs.js?v=20261006f';
+import { TERRAIN_CN } from '../data/world.js?v=20261006f';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261006f';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -624,6 +624,7 @@ export class UI {
     if (!node) return;
     if (node.kind === 'choice') return; // 选项必须显式选择
     if (node.kind === 'switch_career') return;
+    if (node.kind === 'ending') { this.bus.emit('ui:show-ending'); return; }
     if (node.next) this.bus.emit('ui:narrative-next');
   }
 
@@ -631,7 +632,9 @@ export class UI {
     if (this.state !== GameState.NARRATIVE) return;
     if (this._typing) { this._skipTyping(); return; }
     const node = this.engine?.currentNode;
-    if (node && (node.kind === 'narrative' || node.kind === 'ending') && node.next) {
+    if (!node) return;
+    if (node.kind === 'ending') { this.bus.emit('ui:show-ending'); return; }
+    if (node.kind === 'narrative' && node.next) {
       this.bus.emit('ui:narrative-next');
     }
   }
@@ -1379,7 +1382,7 @@ export class UI {
       const btn = document.createElement('button');
       btn.className = 'btn btn-primary';
       btn.textContent = '查看结局';
-      btn.addEventListener('click', () => this.bus.emit('ui:restart'));
+      btn.addEventListener('click', () => this.bus.emit('ui:show-ending'));
       box.appendChild(btn);
     } else if (node.next) {
       const cont = document.createElement('div');

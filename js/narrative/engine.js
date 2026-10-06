@@ -15,8 +15,8 @@
  *   { id, kind:'ending', text, ending_id }            // 触发结局
  */
 
-import { CAREER_MAP } from './careers.js?v=20261006e';
-import { CHAPTER_IMAGES } from './images.js?v=20261006e';
+import { CAREER_MAP } from './careers.js?v=20261006f';
+import { CHAPTER_IMAGES } from './images.js?v=20261006f';
 
 export class NarrativeEngine {
   constructor({ rng, bus, chapters }) {
@@ -227,6 +227,11 @@ export class NarrativeEngine {
 
   /** 计算最终结局(由全局 flag 与 stats 综合) */
   resolveEnding() {
+    // 若当前结局节点显式指定了 ending_id,优先使用(保证与玩家选择的结局文本一致)
+    const node = this.currentNode;
+    if (node && node.kind === 'ending' && node.ending_id) {
+      return node.ending_id;
+    }
     // 4 结局:英雄回归 / 悲剧献身 / 隐世退避 / 未尽征程
     const has = (f) => this.flags.has(f);
 
