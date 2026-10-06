@@ -871,6 +871,10 @@ body {
   80% { transform: translateX(3px); }
 }
 .entity-card.is-dead { opacity: 0.35; filter: grayscale(0.8); }
+.entity-card.is-selected { border-color: #f1c40f; box-shadow: 0 0 12px rgba(241, 196, 15, 0.5); }
+.entity-card.is-ally { border-color: rgba(46, 204, 113, 0.4); min-width: 140px; }
+.entity-card.is-ally .entity-avatar { background: linear-gradient(160deg, #1e8449, #0b3d1e); }
+.entity-card.is-ally .hpbar > i { background: linear-gradient(90deg, #1e8449, #2ecc71); }
 
 .entity-top { display: flex; align-items: center; gap: var(--sp-8); margin-bottom: var(--sp-8); }
 .entity-avatar {
@@ -2042,6 +2046,125 @@ body {
 }
 .dock-badge[hidden] { display: none; }
 
+/* 左下角功能坞:回忆 / 衣橱(圆形图标,左对齐) */
+.dock-left {
+  right: auto;
+  left: 18px;
+  align-items: flex-start;
+}
+
+/* ============================================================
+   回忆 · 剧情回顾
+   ============================================================ */
+.memorial-note { font-size: 12px; color: var(--text-muted); text-align: center; }
+.memorial-list { display: flex; flex-direction: column; gap: var(--sp-12); }
+.memorial-empty { text-align: center; color: var(--text-muted); padding: var(--sp-16) 0; }
+.memorial-card {
+  padding: var(--sp-12);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, var(--surface-2), var(--bg-soft));
+}
+.memorial-card.is-locked { opacity: 0.55; border-style: dashed; }
+.memorial-card.is-current { border-color: var(--gold); }
+.memorial-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-8);
+  margin-bottom: 6px;
+}
+.memorial-no { font-size: 12px; color: var(--gold); letter-spacing: 0.06em; white-space: nowrap; }
+.memorial-title { font-weight: 700; color: var(--text); }
+.memorial-state {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.memorial-state.is-current { color: var(--gold-bright); }
+.memorial-body { font-size: 13px; line-height: 1.8; color: var(--text); white-space: pre-wrap; }
+.memorial-card.is-locked .memorial-body { font-style: italic; }
+
+/* ============================================================
+   衣橱 · 更换时装
+   ============================================================ */
+.wardrobe-note { font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.7; }
+.wardrobe-layout {
+  display: flex;
+  gap: var(--sp-16);
+  align-items: flex-start;
+  margin-top: var(--sp-12);
+}
+.wardrobe-side {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-12);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, var(--surface-2), var(--bg-soft));
+}
+.wardrobe-look { font-size: 12px; color: var(--text-muted); }
+.wardrobe-slots {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: var(--sp-4);
+}
+.wardrobe-slot {
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, var(--surface-2), var(--bg-soft));
+}
+.wardrobe-slot-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-8);
+  margin-bottom: var(--sp-8);
+}
+.wardrobe-slot-name { font-weight: 700; font-size: 13px; color: var(--gold); white-space: nowrap; }
+.wardrobe-slot-cur { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+.wardrobe-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.wardrobe-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg-soft);
+  border: 1px solid var(--gold-line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.wardrobe-opt:hover { border-color: var(--gold); color: var(--gold-bright); }
+.wardrobe-opt.is-active {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  box-shadow: var(--shadow-gold);
+}
+.wardrobe-opt-icon { line-height: 1; }
+.wardrobe-opt-text { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .wardrobe-layout { flex-direction: column; align-items: stretch; }
+  .wardrobe-side { flex-direction: row; justify-content: center; }
+  .wardrobe-slots { max-height: 44vh; }
+  .wardrobe-opt-text { max-width: 110px; }
+}
+
 /* ============================================================
    邮箱
    ============================================================ */
@@ -2103,6 +2226,7 @@ body {
 
 @media (max-width: 760px) {
   .dock { right: 10px; bottom: 10px; gap: 8px; }
+  .dock-left { right: auto; left: 10px; bottom: 10px; gap: 8px; }
   .dock-btn { width: 42px; height: 42px; }
   .dock-icon { font-size: 19px; }
 }
@@ -2502,6 +2626,13 @@ body.is-gated #dock { pointer-events: none; }
 .cs-slot-text { display: flex; flex-direction: column; min-width: 0; }
 .cs-slot-text b { font-size: 12px; color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cs-slot-text i { font-style: normal; font-size: 10.5px; color: var(--text-faint); }
+.cs-armor-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
 
 .cs-side { display: flex; flex-direction: column; gap: var(--sp-12); min-width: 0; }
 .cs-card {

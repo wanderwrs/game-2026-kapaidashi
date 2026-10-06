@@ -57,6 +57,19 @@ export const WORLD = {
   ch13: { x: 76, y: 58, level: 13, city: false, terrain: 'land' },
   ch14: { x: 54, y: 10, level: 14, city: false, terrain: 'plateau' },
   ch15: { x: 46, y: 37, level: 15, city: true, terrain: 'land' },
+  // ===== 第二大章:北境(地图左上 / 正北方向) =====
+  ch16: { x: 22, y: 12, level: 16, city: false, terrain: 'land' },
+  ch17: { x: 10, y: 18, level: 17, city: false, terrain: 'plateau' },
+  ch18: { x: 8, y: 32, level: 18, city: false, terrain: 'land' },
+  ch19: { x: 16, y: 48, level: 19, city: false, terrain: 'plateau' },
+  ch20: { x: 30, y: 8, level: 20, city: false, terrain: 'land' },
+  ch21: { x: 40, y: 4, level: 21, city: false, terrain: 'plateau' },
+  ch22: { x: 52, y: 6, level: 22, city: true, terrain: 'land' },
+  ch23: { x: 64, y: 10, level: 23, city: false, terrain: 'land' },
+  ch24: { x: 76, y: 4, level: 24, city: true, terrain: 'land' },
+  ch25: { x: 68, y: 24, level: 25, city: false, terrain: 'land' },
+  ch26: { x: 80, y: 28, level: 26, city: false, terrain: 'land' },
+  ch27: { x: 56, y: 40, level: 27, city: true, terrain: 'land' },
 };
 
 /** 某地区的地形 */
@@ -94,6 +107,15 @@ export function stopDistance(i, j) {
 export function tripSeconds(dist, speedMul = 1) {
   const raw = (dist / WALK_SPEED) * speedMul;
   return Math.max(MIN_TRIP_SECONDS, Math.min(MAX_TRIP_SECONDS, Math.round(raw)));
+}
+
+/**
+ * 同一地区内两地点之间的真实耗时(秒)。
+ * 地区内短途移动要比地区间旅行轻快得多:夹在 [5, 19] 秒,载具还能更快。
+ */
+export function stopTripSeconds(dist, speedMul = 1) {
+  const raw = dist * 0.36 * speedMul;
+  return Math.max(5, Math.min(19, Math.round(raw)));
 }
 
 /**

@@ -91,6 +91,52 @@ export const CAREERS = [
     starterDeck: ['strike', 'defend', 'defend', 'bless', 'bless', 'insight', 'recover', 'pommel'],
     signatureCards: ['bless', 'judgement'],
   },
+  // ===== 第二大章解锁职业:治疗师(healer) =====
+  {
+    id: 'healer',
+    name: '治疗师',
+    root: '治疗',
+    title: '龙魂医者',
+    color: '#2ecc71',
+    icon: '✚',
+    maxHp: 70,
+    energyMax: 3,
+    mpMax: 4,
+    backstory: '在龙骨荒原,你得到了远古龙魂的祝福。那股温暖的力量不仅能增强你的攻击力,还能治愈伤口。在联军营地,你系统地学习了如何运用这股治疗之力,成为了联军里第一位「治疗师」——一个能用龙魂之力治愈伤口、提升士气的特殊职业。',
+    starterDeck: ['strike', 'defend', 'defend', 'heal_touch', 'heal_touch', 'sanctuary', 'insight', 'recover'],
+    signatureCards: ['heal_touch', 'group_heal'],
+    passive: { id: 'dragon_vitality', name: '龙魂活力', desc: '每次剧情推进(章节切换)额外恢复 2 点行动力' },
+  },
+  // ===== 法师进阶:白魔法师(white_mage) =====
+  {
+    id: 'white_mage',
+    name: '白魔法师',
+    root: '白魔',
+    title: '圣光使者',
+    color: '#ecf0f1',
+    icon: '☀',
+    maxHp: 62,
+    energyMax: 3,
+    mpMax: 7,
+    backstory: '你通过了龙神的试炼,成为了一名正式的白魔法师。你掌握了治愈与守护之力,获得了龙神的祝福和圣光之衣。从今往后,你将用这股力量,守护你所爱的人,守护这片大陆的和平。',
+    starterDeck: ['strike', 'defend', 'holy_light', 'holy_light', 'divine_shield', 'holy_smite', 'insight', 'recover'],
+    signatureCards: ['holy_light', 'holy_storm'],
+  },
+  // ===== 法师进阶:黑魔法师(black_mage) =====
+  {
+    id: 'black_mage',
+    name: '黑魔法师',
+    root: '黑魔',
+    title: '暗影使者',
+    color: '#8e44ad',
+    icon: '☾',
+    maxHp: 58,
+    energyMax: 3,
+    mpMax: 7,
+    backstory: '你通过了暗影试炼,成为了一名正式的黑魔法师。你掌握了破坏与毁灭之力,获得了龙神的祝福和暗影之袍。从今往后,你将用这股力量,扫清一切阻碍,赢得这场战争的胜利。',
+    starterDeck: ['strike', 'defend', 'shadow_bolt', 'shadow_bolt', 'curse', 'hellfire', 'insight', 'arcane_bolt'],
+    signatureCards: ['shadow_bolt', 'void_rift'],
+  },
 ];
 
 export const CAREER_MAP = Object.fromEntries(CAREERS.map((c) => [c.id, c]));

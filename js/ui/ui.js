@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001n';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001n';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001n';
-import { gradeOf } from '../data/grade.js?v=20261001n';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261001n';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001n';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001n';
-import { cardMpCost } from '../data/data.js?v=20261001n';
-import { ENDINGS } from '../narrative/engine.js?v=20261001n';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261001n';
-import { SceneView, paintCharacter } from './scene.js?v=20261001n';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001n';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001n';
-import { Minigame } from '../minigame/minigame.js?v=20261001n';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001n';
-import { TERRAIN_CN } from '../data/world.js?v=20261001n';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001n';
+import { GameState } from '../core/game.js?v=20261006c';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261006c';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261006c';
+import { gradeOf } from '../data/grade.js?v=20261006c';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261006c';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261006c';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261006c';
+import { cardMpCost } from '../data/data.js?v=20261006c';
+import { ENDINGS } from '../narrative/engine.js?v=20261006c';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261006c';
+import { SceneView, paintCharacter } from './scene.js?v=20261006c';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261006c';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261006c';
+import { Minigame } from '../minigame/minigame.js?v=20261006c';
+import { MODE_LABELS } from '../data/jobs.js?v=20261006c';
+import { TERRAIN_CN } from '../data/world.js?v=20261006c';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261006c';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -90,6 +90,9 @@ export class UI {
     this._intelOpen = false;      // 情报面板是否打开
     this._mailOpen = false;       // 邮箱弹窗是否打开
     this._redeemOpen = false;     // 兑换码弹窗是否打开
+    this._memorialOpen = false;   // 回忆(剧情回顾)弹窗是否打开
+    this._wardrobeOpen = false;   // 衣橱(更换时装)弹窗是否打开
+    this._wardrobeData = null;    // 衣橱弹窗数据(含外观与各槽可选列表)
     this._aboutOpen = false;      // 关于 · 条款弹窗是否打开
     this._aboutId = null;         // 当前阅读的文档 id
     this._chestId = null;         // 当前宝箱 id
@@ -241,6 +244,14 @@ export class UI {
       mailbox: $('mailbox'),
       mailNote: $('mail-note'),
       mailList: $('mail-list'),
+      // 左下角功能坞:回忆(剧情回顾) / 衣橱(更换时装)
+      memorial: $('memorial'),
+      memorialNote: $('memorial-note'),
+      memorialList: $('memorial-list'),
+      wardrobe: $('wardrobe'),
+      wardrobeCanvas: $('wardrobe-canvas'),
+      wardrobeLook: $('wardrobe-look'),
+      wardrobeSlots: $('wardrobe-slots'),
       redeem: $('redeem'),
       redeemInput: $('redeem-input'),
       redeemMsg: $('redeem-msg'),
@@ -297,6 +308,8 @@ export class UI {
       hotelNote: $('hotel-note'),
       hotelRooms: $('hotel-rooms'),
       hotelOutfits: $('hotel-outfits'),
+      hotelRecaps: $('hotel-recaps'),
+      hotelStorage: $('hotel-storage'),
       btnHotelBack: $('btn-hotel-back'),
       marketpoiTitle: $('marketpoi-title'),
       marketpoiRes: $('marketpoi-res'),
@@ -403,6 +416,15 @@ export class UI {
     on('btn-mailbox', 'click', () => this.bus.emit('ui:open-mailbox'));
     on('btn-redeem', 'click', () => this.bus.emit('ui:open-redeem'));
     on('btn-about', 'click', () => this.openAbout());
+    // 左下角功能坞:回忆(剧情回顾) / 衣橱(更换时装)
+    on('btn-memorial', 'click', () => this.bus.emit('ui:open-memorial'));
+    on('btn-wardrobe', 'click', () => this.bus.emit('ui:open-wardrobe'));
+    document.querySelectorAll('[data-memorial-close]').forEach((b) => {
+      b.addEventListener('click', () => this.closeMemorial());
+    });
+    document.querySelectorAll('[data-wardrobe-close]').forEach((b) => {
+      b.addEventListener('click', () => this.closeWardrobe());
+    });
     on('btn-redeem-confirm', 'click', () => this._submitRedeem());
     // 允许外部(如年龄门)请求打开指定文档
     document.addEventListener('about:open', (e) => this.openAbout(e.detail && e.detail.id));
@@ -558,6 +580,14 @@ export class UI {
       }
       if (this._redeemOpen) {
         if (e.key === 'Escape') { e.preventDefault(); this.bus.emit('ui:redeem-close'); }
+        return;
+      }
+      if (this._memorialOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.closeMemorial(); }
+        return;
+      }
+      if (this._wardrobeOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.closeWardrobe(); }
         return;
       }
       // 小游戏自行处理方向键 / 跳跃键,这里仅响应 Esc 退出
@@ -849,6 +879,161 @@ export class UI {
     if (!box) return;
     box.classList.remove('is-open');
     setTimeout(() => { if (!this._mailOpen) box.hidden = true; }, 200);
+  }
+
+  // ===== 左下角:回忆(剧情回顾) / 衣橱(更换时装) =====
+  /**
+   * 渲染并打开「回忆」弹窗。
+   * data: { chapters:[{ id,no,title,recap,status:'cleared'|'current'|'locked' }], clearedCount,total }
+   */
+  renderMemorial(data = {}) {
+    const list = this.el.memorialList;
+    if (this.el.memorialNote) {
+      const { clearedCount = 0, total = 0 } = data;
+      this.el.memorialNote.textContent = total
+        ? `已通关 ${clearedCount} / ${total} 个大章。走过的每一步,都记在这里。`
+        : '走过的每一个大章,都记在这里。';
+    }
+    if (!list) return;
+    list.innerHTML = '';
+    const chapters = data.chapters || [];
+    if (!chapters.length) {
+      const empty = document.createElement('p');
+      empty.className = 'memorial-empty';
+      empty.textContent = '旅程尚未启程。';
+      list.appendChild(empty);
+    } else {
+      chapters.forEach((c) => list.appendChild(this._memorialCardEl(c)));
+    }
+    this.openMemorial();
+  }
+
+  /** 单章回顾卡片 */
+  _memorialCardEl(c) {
+    const card = document.createElement('div');
+    card.className = `memorial-card is-${c.status}`;
+    if (c.status === 'cleared') {
+      card.innerHTML = `
+        <div class="memorial-head">
+          <span class="memorial-no">${this._escapeHtml(c.no)}</span>
+          <span class="memorial-title">${this._escapeHtml(c.title)}</span>
+          <span class="memorial-state">已通关</span>
+        </div>
+        <div class="memorial-body">${this._escapeHtml(c.recap || '')}</div>
+      `;
+    } else if (c.status === 'current') {
+      card.innerHTML = `
+        <div class="memorial-head">
+          <span class="memorial-no">${this._escapeHtml(c.no)}</span>
+          <span class="memorial-title">${this._escapeHtml(c.title)}</span>
+          <span class="memorial-state is-current">进行中</span>
+        </div>
+        <div class="memorial-body">这一章尚未走完,通关后在此回看全章回顾。</div>
+      `;
+    } else {
+      card.innerHTML = `
+        <div class="memorial-head">
+          <span class="memorial-no">${this._escapeHtml(c.no)}</span>
+          <span class="memorial-title">${this._escapeHtml(c.title)}</span>
+          <span class="memorial-state is-locked">未解锁</span>
+        </div>
+        <div class="memorial-body">前路尚未展开……</div>
+      `;
+    }
+    return card;
+  }
+
+  openMemorial() {
+    const box = this.el.memorial;
+    if (!box) return;
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._memorialOpen = true;
+  }
+
+  closeMemorial() {
+    const box = this.el.memorial;
+    this._memorialOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._memorialOpen) box.hidden = true; }, 200);
+  }
+
+  /**
+   * 渲染并打开「衣橱」弹窗。
+   * data: { appearance, careerId, lookLabel,
+   *         slots: { [slot]: { current:{id,name,icon,level,tint}|null, options:[{id,name,icon,level,tint}] } } }
+   */
+  renderWardrobe(data = {}) {
+    this._wardrobeData = data;
+    this._paintWardrobe();
+    this._renderWardrobeSlots();
+    this.openWardrobe();
+  }
+
+  /** 衣橱预览:按当前外观绘制像素小人 */
+  _paintWardrobe() {
+    const d = this._wardrobeData;
+    if (!d) return;
+    const canvas = this.el.wardrobeCanvas;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      paintCharacter(ctx, 2, d.careerId, d.appearance);
+    }
+    if (this.el.wardrobeLook) this.el.wardrobeLook.textContent = d.lookLabel || '';
+  }
+
+  /** 七个防具外观槽 */
+  _renderWardrobeSlots() {
+    const d = this._wardrobeData;
+    const box = this.el.wardrobeSlots;
+    if (!box || !d) return;
+    box.innerHTML = '';
+    for (const slot of ARMOR_SLOTS) {
+      const info = (d.slots && d.slots[slot]) || { current: null, options: [] };
+      const cur = info.current;
+      const opts = info.options || [];
+      const section = document.createElement('div');
+      section.className = 'wardrobe-slot';
+      section.innerHTML = `
+        <div class="wardrobe-slot-head">
+          <span class="wardrobe-slot-name">${ARMOR_SLOT_CN[slot]}</span>
+          <span class="wardrobe-slot-cur">${cur ? `${this._escapeHtml(cur.icon)} ${this._escapeHtml(cur.name)}` : '不显示'}</span>
+        </div>
+        <div class="wardrobe-opts">
+          <button class="wardrobe-opt${cur ? '' : ' is-active'}" type="button" data-slot="${slot}" data-id="">
+            <span class="wardrobe-opt-icon">🚫</span>
+            <span class="wardrobe-opt-text">不显示</span>
+          </button>
+          ${opts.map((o) => `
+            <button class="wardrobe-opt${cur && cur.id === o.id ? ' is-active' : ''}" type="button" data-slot="${slot}" data-id="${o.id}" title="${this._escapeHtml(o.name)}">
+              <span class="wardrobe-opt-icon" ${o.tint ? `style="color:${o.tint}"` : ''}>${o.icon}</span>
+              <span class="wardrobe-opt-text">${this._escapeHtml(o.name)}</span>
+            </button>`).join('')}
+        </div>
+      `;
+      box.appendChild(section);
+    }
+    box.querySelectorAll('[data-slot]').forEach((b) => {
+      b.addEventListener('click', () => this.bus.emit('ui:cosmetic-set', { slot: b.dataset.slot, id: b.dataset.id || null }));
+    });
+  }
+
+  openWardrobe() {
+    const box = this.el.wardrobe;
+    if (!box) return;
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._wardrobeOpen = true;
+  }
+
+  closeWardrobe() {
+    const box = this.el.wardrobe;
+    this._wardrobeOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._wardrobeOpen) box.hidden = true; }, 200);
   }
 
   /** 渲染并打开兑换码面板。msg 为提示文案,kind ∈ '' | 'ok' | 'bad' */
@@ -1276,7 +1461,7 @@ export class UI {
       isStoryRegion, npcs, chest, stopChests, intelCount, economy, venue, stalls,
     } = state;
     if (!region) return;
-    if (this.el.mapRegionName) this.el.mapRegionName.textContent = `第${chapterNum}章 · ${region.name}`;
+    if (this.el.mapRegionName) this.el.mapRegionName.textContent = region.name;
 
     const obj = objectiveIndex >= 0 ? region.stops[objectiveIndex] : null;
     if (this.el.mapHint) {
@@ -1338,7 +1523,7 @@ export class UI {
       // 市场:全品类的玩家集市,处处可去(另收管理费)
       this.el.mapServices.appendChild(mk('市 场', 'ui:map-market', true));
       this.el.mapServices.appendChild(mk('打 工', 'ui:map-job', !!svc.job));
-      this.el.mapServices.appendChild(mk('休 息', 'ui:map-rest', !!svc.rest));
+      // 「休息」操作已下线:行动力由 剧情推进 / NPC赠予 / 食品 / 酒店休整 恢复
       // 铁匠铺 / 宝石商 / 精益师(主城全有;其他地区固定 + 流动摊位)
       (stalls || []).forEach((type) => {
         if (type === 'blacksmith') this.el.mapServices.appendChild(mk('🔨 铁匠铺', 'ui:map-blacksmith', true));
@@ -1460,7 +1645,6 @@ export class UI {
     const tags = [];
     if (services.shop) tags.push('<span class="svc">商店</span>');
     if (services.job) tags.push('<span class="svc">打工</span>');
-    if (services.rest) tags.push('<span class="svc">休息</span>');
     return tags.join('') || '<span class="svc is-off">无</span>';
   }
 
@@ -2485,9 +2669,9 @@ export class UI {
   }
 
   // ===== POI:酒店 =====
-  renderHotel({ name, rooms, outfits, equipped, economy }) {
+  renderHotel({ name, rooms, outfits, equipped, economy, recaps: recapsParam }) {
     if (this.el.hotelTitle) this.el.hotelTitle.textContent = `🏨 ${name || '酒店'}`;
-    if (this.el.hotelNote) this.el.hotelNote.textContent = '选择房型休息(恢复效果与耗时各异),换装仅限酒店';
+    if (this.el.hotelNote) this.el.hotelNote.textContent = '选择房型休息恢复行动力,亦可在此更换服饰、回忆剧情、存放金币与道具';
     // 房型列表
     const box = this.el.hotelRooms;
     if (box) {
@@ -2563,6 +2747,95 @@ export class UI {
         const btn = row.querySelector('[data-outfit]');
         if (btn && afford && !isEquipped) btn.addEventListener('click', () => this.bus.emit('ui:hotel-outfit', it.id));
         obox.appendChild(row);
+      });
+    }
+    // ===== 回忆剧情 =====
+    const rbox = this.el.hotelRecaps;
+    if (rbox) {
+      rbox.innerHTML = '';
+      const recaps = (recapsParam || []).filter((r) => r.cleared);
+      if (!recaps.length) {
+        const empty = document.createElement('div');
+        empty.className = 'item-row';
+        empty.innerHTML = '<div class="item-desc" style="opacity:.6">尚无已通关的大章可回忆</div>';
+        rbox.appendChild(empty);
+      } else {
+        recaps.forEach((r) => {
+          const row = document.createElement('div');
+          row.className = 'item-row';
+          row.innerHTML = `
+            <div class="item-icon">📖</div>
+            <div class="item-body">
+              <div class="item-name">${this._escapeHtml(r.no)} · ${this._escapeHtml(r.title)}</div>
+              <div class="item-desc">${this._escapeHtml(r.recap)}</div>
+            </div>
+          `;
+          rbox.appendChild(row);
+        });
+      }
+    }
+    // ===== 仓库(存放金币与道具)=====
+    const sbox = this.el.hotelStorage;
+    if (sbox) {
+      sbox.innerHTML = '';
+      // 金币存取
+      const goldRow = document.createElement('div');
+      goldRow.className = 'item-row';
+      goldRow.innerHTML = `
+        <div class="item-icon">🪙</div>
+        <div class="item-body">
+          <div class="item-name">金币<span class="item-cat">仓 ${economy.storageGold || 0}</span></div>
+          <div class="item-desc">持有 ${economy.gold} · 仓 ${economy.storageGold || 0}</div>
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-ghost btn-sm" data-store-gold>存全部</button>
+          <button class="btn btn-ghost btn-sm" data-withdraw-gold>取全部</button>
+        </div>
+      `;
+      goldRow.querySelector('[data-store-gold]')?.addEventListener('click', () => this.bus.emit('ui:hotel-store-gold', economy.gold));
+      goldRow.querySelector('[data-withdraw-gold]')?.addEventListener('click', () => this.bus.emit('ui:hotel-withdraw-gold', economy.storageGold || 0));
+      sbox.appendChild(goldRow);
+      // 背包物品 → 存入
+      const bagEntries = [...economy.bag.entries()].filter(([id]) => ITEMS[id]);
+      bagEntries.forEach(([id, qty]) => {
+        const it = ITEMS[id];
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <div class="item-icon">${it.icon || '📦'}</div>
+          <div class="item-body">
+            <div class="item-name">${this._escapeHtml(it.name)}<span class="item-cat">×${qty}</span></div>
+            <div class="item-desc">${this._escapeHtml(it.desc || it.category || '')}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-ghost btn-sm" data-store>存 1</button>
+            <button class="btn btn-ghost btn-sm" data-store-all>全存</button>
+          </div>
+        `;
+        row.querySelector('[data-store]')?.addEventListener('click', () => this.bus.emit('ui:hotel-store-item', id, 1));
+        row.querySelector('[data-store-all]')?.addEventListener('click', () => this.bus.emit('ui:hotel-store-item', id, qty));
+        sbox.appendChild(row);
+      });
+      // 仓库物品 → 取出
+      const storageEntries = [...economy.storage.entries()].filter(([id]) => ITEMS[id]);
+      storageEntries.forEach(([id, qty]) => {
+        const it = ITEMS[id];
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <div class="item-icon">${it.icon || '📦'}</div>
+          <div class="item-body">
+            <div class="item-name">${this._escapeHtml(it.name)}<span class="item-cat">仓×${qty}</span></div>
+            <div class="item-desc">${this._escapeHtml(it.desc || it.category || '')}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-ghost btn-sm" data-withdraw>取 1</button>
+            <button class="btn btn-ghost btn-sm" data-withdraw-all>全取</button>
+          </div>
+        `;
+        row.querySelector('[data-withdraw]')?.addEventListener('click', () => this.bus.emit('ui:hotel-withdraw-item', id, 1));
+        row.querySelector('[data-withdraw-all]')?.addEventListener('click', () => this.bus.emit('ui:hotel-withdraw-item', id, qty));
+        sbox.appendChild(row);
       });
     }
     this.renderResources(economy);
@@ -3004,10 +3277,34 @@ export class UI {
     void this.el.energy.offsetWidth;
     this.el.energy.classList.add('pulse');
 
+    // 敌人区域:渲染所有敌人(群体作战时可点击选择目标)
     this.el.enemyZone.innerHTML = '';
-    this.el.enemyZone.appendChild(this._entityCard(snap.enemy, true));
+    const enemies = snap.enemies && snap.enemies.length ? snap.enemies : (snap.enemy ? [snap.enemy] : []);
+    enemies.forEach((e, i) => {
+      if (!e.alive && e.alive !== undefined) return; // 跳过死亡敌人(若有 alive 字段)
+      const card = this._entityCard(e, true);
+      if (snap.groupMode) {
+        card.classList.toggle('is-selected', i === snap.selectedEnemyIndex);
+        card.style.cursor = 'pointer';
+        card.title = '点击选择攻击目标';
+        card.addEventListener('click', () => {
+          if (this.battle) this.battle.selectEnemy(i);
+        });
+      }
+      this.el.enemyZone.appendChild(card);
+    });
+
+    // 玩家区域:玩家 + 队友
     this.el.playerZone.innerHTML = '';
     this.el.playerZone.appendChild(this._entityCard({ ...snap.player, name: this._playerName() }, false));
+    // 渲染队友
+    if (snap.allies && snap.allies.length) {
+      for (const a of snap.allies) {
+        if (!a.alive) continue;
+        const allyCard = this._allyCard(a);
+        this.el.playerZone.appendChild(allyCard);
+      }
+    }
 
     this.el.hand.innerHTML = '';
     for (const card of snap.hand) {
@@ -3015,8 +3312,26 @@ export class UI {
     }
 
     this._renderBattleItems();
-    this._lastEnemyHp = snap.enemy.hp;
+    // 记录所有敌人 HP 用于受击动画
+    this._lastEnemyHpMap = {};
+    enemies.forEach((e, i) => { this._lastEnemyHpMap[i] = e.hp; });
     this._lastPlayerHp = snap.player.hp;
+  }
+
+  /** 队友卡片(简化版:头像 + 血条) */
+  _allyCard(ally) {
+    const card = document.createElement('div');
+    card.className = 'entity-card is-ally';
+    const hpPct = Math.max(0, Math.round((ally.hp / ally.maxHp) * 100));
+    card.innerHTML = `
+      <div class="entity-top">
+        <div class="entity-avatar">${ally.icon || '⚔'}</div>
+        <div class="entity-name">${this._escapeHtml(ally.name)}</div>
+      </div>
+      <div class="hpbar"><i style="width:${hpPct}%"></i><span>${ally.hp}/${ally.maxHp}</span></div>
+      <div class="entity-intent"><span class="intent-icon">⚔</span><span>攻击 ${ally.atk}</span></div>
+    `;
+    return card;
   }
 
   /** 战斗中可用的药品(恢复生命 / 魔力 / 战斗专用药剂),点击即用 */
@@ -3153,8 +3468,27 @@ export class UI {
 
   /** 伤害 / 护甲 / 治疗飘字 */
   _playBattleFx(fx) {
-    const zone = fx.target === 'enemy' ? this.el.enemyZone : this.el.playerZone;
-    const card = zone.querySelector('.entity-card');
+    let card;
+    if (fx.target === 'enemy') {
+      const cards = this.el.enemyZone.querySelectorAll('.entity-card');
+      // 群体作战:根据 enemyIndex 定位;否则取第一个
+      if (fx.enemyIndex !== undefined && cards[fx.enemyIndex]) {
+        card = cards[fx.enemyIndex];
+      } else {
+        card = cards[0];
+      }
+    } else if (fx.target === 'ally') {
+      const cards = this.el.playerZone.querySelectorAll('.entity-card.is-ally');
+      // 根据 allyId 定位队友卡片
+      for (const c of cards) {
+        const nameEl = c.querySelector('.entity-name');
+        if (nameEl && nameEl.textContent.includes(fx.allyId ? '' : '')) { card = c; break; }
+      }
+      if (!card) card = cards[0];
+    } else {
+      // player
+      card = this.el.playerZone.querySelector('.entity-card.is-player');
+    }
     if (!card) return;
     const span = document.createElement('div');
     span.className = `dmg-float ${fx.kind}`;

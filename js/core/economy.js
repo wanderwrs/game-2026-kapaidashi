@@ -11,13 +11,13 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261001n';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261001n';
-import { GEM_EFFECT } from '../data/gems.js?v=20261001n';
-import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261001n';
-import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261001n';
-import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261001n';
-import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261001n';
+import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261006c';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261006c';
+import { GEM_EFFECT } from '../data/gems.js?v=20261006c';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261006c';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261006c';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261006c';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261006c';
 
 /** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
 const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
@@ -71,6 +71,12 @@ export class Economy {
     // ===== 宠物 =====
     this.pets = new Map();           // petId -> 拥有数量
     this.petActive = null;           // 出战宠物 id
+    // ===== 衣橱 · 防具外观(纯装饰,不提供任何数值) =====
+    // 「角色」弹窗的防具位只给数值、不影响外观;外观由这里的 cosmetic 槽决定。
+    this.cosmetic = { head: null, body: null, hands: null, legs: null, feet: null, ring: null, earring: null };
+    // ===== 酒店仓库(储存金币与道具)=====
+    this.storageGold = 0;       // 仓库金币
+    this.storage = new Map();   // 仓库物品:itemId -> qty
   }
 
   // ===== 角色名 / 形象 =====
@@ -88,7 +94,7 @@ export class Economy {
     return true;
   }
 
-  // ===== 职业等级(各职业各记各的,互不相通)=====
+  // ===== 职业等级(各职业等级同步,切换时自动对齐)=====
   /** 设定当前职业(职业分配 / 切换 / 读档时由 Game 调用) */
   setCareer(careerId) {
     if (!careerId) return;
@@ -100,6 +106,13 @@ export class Economy {
     this._legacyLevel = null;
     this._legacyExp = null;
     this.careerId = careerId;
+    // 等级同步:切换到的职业若等级低于当前最高等级,则对齐到最高等级
+    const curLevel = this.careerLevelOf(careerId);
+    const maxLevel = Math.max(1, ...Object.values(this.careerLevels).map((v) => Number(v) || 1));
+    if (curLevel < maxLevel) {
+      this.careerLevels[careerId] = maxLevel;
+      this.careerExps[careerId] = 0;
+    }
   }
 
   /** 计入档位的键(缺省取当前职业) */
@@ -145,6 +158,7 @@ export class Economy {
     }
     if (level >= CAREER_MAX_LEVEL) exp = 0;
     this._saveCareer(key, level, exp);
+    this._syncCareerLevels(level, exp);
     return { level, promotions };
   }
 
@@ -169,7 +183,16 @@ export class Economy {
       }
     }
     this._saveCareer(key, level, this.careerExpOf(key));
+    this._syncCareerLevels(level, this.careerExpOf(key));
     return { level, promotions, blocked };
+  }
+
+  /** 把等级 / 经验同步到所有已记录的职业(保证各职业等级一致) */
+  _syncCareerLevels(level, exp) {
+    for (const k of Object.keys(this.careerLevels)) {
+      this.careerLevels[k] = Math.max(1, Math.min(CAREER_MAX_LEVEL, level));
+      this.careerExps[k] = Math.max(0, exp || 0);
+    }
   }
 
   // ===== 宠物 =====
@@ -225,7 +248,13 @@ export class Economy {
   removeItem(id, qty = 1) {
     const cur = this.count(id);
     if (cur < qty) return false;
-    if (cur === qty) this.bag.delete(id);
+    if (cur === qty) {
+      this.bag.delete(id);
+      // 物品已不在背包:清掉以其为外观的衣橱槽(纯装饰,无需补偿)
+      for (const slot of ARMOR_SLOTS) {
+        if (this.cosmetic[slot] === id) this.cosmetic[slot] = null;
+      }
+    }
     else this.bag.set(id, cur - qty);
     return true;
   }
@@ -250,6 +279,50 @@ export class Economy {
     this.addItem(id, 1);
     return true;
   }
+
+  // ===== 酒店仓库(储存金币与道具)=====
+  /** 存入金币 */
+  storeGold(amount) {
+    const n = Math.max(0, Math.floor(amount || 0));
+    if (n <= 0 || this.gold < n) return 0;
+    this.gold -= n;
+    this.storageGold += n;
+    return n;
+  }
+
+  /** 取出金币 */
+  withdrawGold(amount) {
+    const n = Math.max(0, Math.floor(amount || 0));
+    if (n <= 0 || this.storageGold < n) return 0;
+    this.storageGold -= n;
+    this.gold += n;
+    return n;
+  }
+
+  /** 存入道具 */
+  storeItem(id, qty = 1) {
+    const n = Math.max(1, Math.floor(qty || 1));
+    if (!this.has(id, n)) return 0;
+    this.removeItem(id, n);
+    this.storage.set(id, (this.storage.get(id) || 0) + n);
+    return n;
+  }
+
+  /** 取出道具 */
+  withdrawItem(id, qty = 1) {
+    const n = Math.max(1, Math.floor(qty || 1));
+    const stored = this.storage.get(id) || 0;
+    if (n > stored) return 0;
+    // 取出时需检查背包是否还能装下(按种类计数)
+    if (!this.bag.has(id) && this.bag.size >= this.bagCap) return 0;
+    this.storage.set(id, stored - n);
+    if (this.storage.get(id) <= 0) this.storage.delete(id);
+    this.addItem(id, n);
+    return n;
+  }
+
+  /** 仓库某物品数量 */
+  storageCount(id) { return this.storage.get(id) || 0; }
 
   // ===== 市场 / 专属交易场所(买卖均额外收管理费) =====
   /** 市场买入价:原价 + 管理费 */
@@ -506,6 +579,23 @@ export class Economy {
     return true;
   }
 
+  // ===== 衣橱 · 防具外观 =====
+  /**
+   * 指定某防具槽位的「外观」(纯装饰,不给数值;物品留在背包,可同时用于数值装配)。
+   * @param {string} slot 防具槽位(head/body/hands/legs/feet/ring/earring)
+   * @param {string|null} id 物品 id;null 表示卸下该部位外观
+   */
+  setCosmetic(slot, id) {
+    if (!ARMOR_SLOTS.includes(slot)) return false;
+    if (id == null) { this.cosmetic[slot] = null; return true; }
+    const it = ITEMS[id];
+    // 必须是已拥有、且槽位相符的防具
+    if (!it || it.category !== 'armor' || !this.has(id)) return false;
+    if (armorSlotOf(id) !== slot) return false;
+    this.cosmetic[slot] = id;
+    return true;
+  }
+
   /** 汇总装备加成 */
   equipStats() {
     const total = { atkPower: 0, maxHp: 0, maxMp: 0, apMax: 0, travelDiscount: 0, shopDiscount: 0, goldBonus: 0, restBonus: 0, startBlock: 0 };
@@ -582,15 +672,16 @@ export class Economy {
       if (hat.hide) a.hideHat = true;
       else if (hat.look) { a.hat = hat.look.hat ?? null; a.hatHi = hat.look.hatHi ?? null; a.hatStyle = hat.look.style ?? null; }
     }
-    // 防具与服饰各画各的:防具按「等级档位」取色(见 data/armor.js 的 armorBand),
+    // 防具外观由「衣橱」决定(cosmetic 槽,纯装饰);数值装配位(equipped)不再影响外观。
+    // 防具按「等级档位」取色(见 data/armor.js 的 armorBand),
     // 与服饰配色互不覆盖,故同一个部位可以「里衣外甲」同时可见。
     a.armor = {};
     for (const slot of ARMOR_SLOTS) {
-      const it = ITEMS[this.equipped[slot]];
+      const it = ITEMS[this.cosmetic[slot]];
       if (!it || it.category !== 'armor') continue;
       a.armor[slot] = armorBand(it.level || 1).tint;
     }
-    const armorNames = ARMOR_SLOTS.map((s) => ITEMS[this.equipped[s]]?.name).filter(Boolean);
+    const armorNames = ARMOR_SLOTS.map((s) => ITEMS[this.cosmetic[s]]?.name).filter(Boolean);
     const names = OUTFIT_SLOTS.map((s) => ITEMS[this.equipped[s]]?.name).filter(Boolean);
     const all = [...armorNames, ...names];
     a.label = all.length ? all.join(' · ') : null;
@@ -755,9 +846,9 @@ export class Economy {
       case 'dream': {
         return { ok: true, prompt: 'dream', msg: '' };
       }
-      // ===== 记忆之书:跳过对应大章(交由 game 处理,此处不消耗) =====
+      // ===== 记忆之书:跳过对应区间主线(交由 game 处理,此处不消耗) =====
       case 'skip_chapter': {
-        return { ok: true, prompt: 'skip_chapter', chapter: it.effect.chapter, msg: '' };
+        return { ok: true, prompt: 'skip_chapter', from: it.effect.from, to: it.effect.to, next: it.effect.next, msg: '' };
       }
       // ===== 职业等级药水 / 星辉秘典 =====
       case 'career_exp': {
@@ -857,6 +948,11 @@ export class Economy {
       careerExps: { ...this.careerExps },
       pets: Object.fromEntries(this.pets),
       petActive: this.petActive,
+      // 衣橱 · 防具外观(纯装饰)
+      cosmetic: { ...this.cosmetic },
+      // 酒店仓库
+      storageGold: this.storageGold,
+      storage: Object.fromEntries(this.storage),
     };
   }
 
@@ -940,6 +1036,21 @@ export class Economy {
       }
     }
     eco.petActive = eco.pets.has(data.petActive) ? data.petActive : null;
+    // 衣橱 · 防具外观(纯装饰):仅接受背包里仍拥有的防具
+    if (data.cosmetic && typeof data.cosmetic === 'object') {
+      for (const slot of ARMOR_SLOTS) {
+        const id = data.cosmetic[slot];
+        if (id && eco.bag.has(id) && ITEMS[id]?.category === 'armor') eco.cosmetic[slot] = id;
+      }
+    }
+    // 酒店仓库
+    eco.storageGold = Number(data.storageGold ?? 0);
+    eco.storage = new Map();
+    if (data.storage && typeof data.storage === 'object') {
+      for (const [id, qty] of Object.entries(data.storage)) {
+        if (ITEMS[id] && Number(qty) > 0) eco.storage.set(id, Math.floor(Number(qty)));
+      }
+    }
     return eco;
   }
 }

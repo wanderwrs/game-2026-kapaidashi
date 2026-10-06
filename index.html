@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261001n" />
+  <link rel="stylesheet" href="css/style.css?v=20261006c" />
 </head>
 <body>
   <!-- 游戏前 · 年龄限制与内容警告门(每次打开页面都需通过;需真人验证) -->
@@ -333,10 +333,14 @@
         <h2 class="view-title" id="hotel-title">酒 店</h2>
         <div id="hotel-res" class="map-res"></div>
       </div>
-      <p id="hotel-note" class="view-sub">选择房型休息,或在此更换服饰</p>
+      <p id="hotel-note" class="view-sub">选择房型休息恢复行动力,亦可在此更换服饰、回忆剧情、存放金币与道具</p>
       <div id="hotel-rooms" class="shop-list"></div>
       <div class="shop-section-title">换装(仅限酒店)</div>
       <div id="hotel-outfits" class="bag-list"></div>
+      <div class="shop-section-title">回忆剧情</div>
+      <div id="hotel-recaps" class="bag-list"></div>
+      <div class="shop-section-title">仓库(存放金币与道具)</div>
+      <div id="hotel-storage" class="bag-list"></div>
       <div class="panel-actions">
         <button id="btn-hotel-back" class="btn btn-ghost">离 开</button>
       </div>
@@ -729,7 +733,7 @@
             </li>
             <li>
               <span class="guide-key">行动力 ⚡</span>
-              <span class="guide-desc">旅行与打工消耗;休息或吃食品可恢复(休息需实打实等 5 分钟,期间可能遇怪或捡到小奖励)</span>
+              <span class="guide-desc">旅行与打工消耗;推进剧情、吃食品、酒店休息可恢复,本地人有时也会赠些干粮;通关一大章行动力回满</span>
             </li>
             <li>
               <span class="guide-key">背包</span>
@@ -753,11 +757,19 @@
             </li>
             <li>
               <span class="guide-key">加速药水</span>
-              <span class="guide-desc">醒神香 / 长明香把之后的休息耗时缩到四分之一;疾风饮让下一段旅途耗时减半 —— 等不起时先喝一口</span>
+              <span class="guide-desc">醒神香 / 长明香把之后在酒店休整的耗时缩到四分之一;疾风饮让下一段旅途耗时减半 —— 等不起时先喝一口</span>
             </li>
             <li>
               <span class="guide-key">邮箱 📮</span>
-              <span class="guide-desc">右下角圆形图标打开邮箱,读取来信;带奖励的信件点「领取」即可入袋</span>
+              <span class="guide-desc">右下角圆形图标打开邮箱,读取来信;带奖励的信件点「领取」即可入袋;每通关一大章,驿站都会寄来一封「通关谢仪」</span>
+            </li>
+            <li>
+              <span class="guide-key">回忆 📖</span>
+              <span class="guide-desc">左下角圆形图标打开「回忆」,回看已通关大章的剧情回顾;当前进行中的一章与尚未解锁的章节也会标出</span>
+            </li>
+            <li>
+              <span class="guide-key">衣橱 🧥</span>
+              <span class="guide-desc">左下角圆形图标打开「衣橱」,为七个防具部位挑选背包中防具的<b>外观</b>(纯装饰,不给数值,可随时换、可隐藏);防具的实际数值须在「角色」的装配位生效,装配位不改变外观</span>
             </li>
             <li>
               <span class="guide-key">兑换码 🎁</span>
@@ -838,6 +850,7 @@
           <div class="cs-slot cs-area-body" data-slot="body"></div>
           <div class="cs-slot cs-area-legs" data-slot="legs"></div>
           <div class="cs-slot cs-area-feet" data-slot="feet"></div>
+          <p class="cs-armor-note">七格防具只提供数值,不改变外观;防具外观请到左下角「衣橱」更换。</p>
         </div>
         <!-- 右:职业 / 服饰 / 形象 -->
         <div class="cs-side">
@@ -878,6 +891,58 @@
     <button id="btn-about" class="dock-btn" type="button" title="关于 · 条款与声明" aria-label="关于">
       <span class="dock-icon" aria-hidden="true">📜</span>
     </button>
+  </div>
+
+  <!-- 左下角功能坞:回忆(剧情回顾) / 衣橱(更换时装) -->
+  <div id="dock-left" class="dock dock-left" aria-label="回忆与衣橱">
+    <button id="btn-memorial" class="dock-btn" type="button" title="回忆 · 剧情回顾" aria-label="回忆 · 剧情回顾">
+      <span class="dock-icon" aria-hidden="true">📖</span>
+    </button>
+    <button id="btn-wardrobe" class="dock-btn" type="button" title="衣橱 · 更换时装" aria-label="衣橱 · 更换时装">
+      <span class="dock-icon" aria-hidden="true">🧥</span>
+    </button>
+  </div>
+
+  <!-- 回忆 · 剧情回顾 -->
+  <div id="memorial" class="modal" hidden>
+    <div class="modal-backdrop" data-memorial-close></div>
+    <section class="modal-panel modal-panel-wide" role="dialog" aria-modal="true" aria-labelledby="memorial-title">
+      <header class="modal-head">
+        <h2 id="memorial-title" class="modal-title">回 忆 · 剧 情 回 顾</h2>
+        <button class="modal-close" type="button" data-memorial-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <p id="memorial-note" class="memorial-note">走过的每一个大章,都记在这里。</p>
+        <div id="memorial-list" class="memorial-list"></div>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-ghost" type="button" data-memorial-close>关 闭</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 衣橱 · 更换时装 -->
+  <div id="wardrobe" class="modal" hidden>
+    <div class="modal-backdrop" data-wardrobe-close></div>
+    <section class="modal-panel modal-panel-wide" role="dialog" aria-modal="true" aria-labelledby="wardrobe-title">
+      <header class="modal-head">
+        <h2 id="wardrobe-title" class="modal-title">衣 橱 · 更 换 时 装</h2>
+        <button class="modal-close" type="button" data-wardrobe-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <p class="wardrobe-note">此处更换的防具仅作装饰,不影响任何数值;防具的实际效果须在「角色」的装配位生效,且装配位不改变外观。</p>
+        <div class="wardrobe-layout">
+          <div class="wardrobe-side">
+            <canvas id="wardrobe-canvas" class="scene-canvas" width="96" height="128"></canvas>
+            <div id="wardrobe-look" class="wardrobe-look">—</div>
+          </div>
+          <div id="wardrobe-slots" class="wardrobe-slots"></div>
+        </div>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-ghost" type="button" data-wardrobe-close>关 闭</button>
+      </div>
+    </section>
   </div>
 
   <!-- 邮箱 -->
@@ -942,6 +1007,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20261001n"></script>
+  <script type="module" src="js/main.js?v=20261006c"></script>
 </body>
 </html>

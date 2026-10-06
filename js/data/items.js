@@ -26,11 +26,11 @@
  * sell 未填时按 price 的 50% 计算。
  */
 
-import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261001n';
-import { GEM_ITEMS } from './gems.js?v=20261001n';
-import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261001n';
-import { isSellLockedLevel } from './grade.js?v=20261001n';
-import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261001n';
+import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261006c';
+import { GEM_ITEMS } from './gems.js?v=20261006c';
+import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261006c';
+import { isSellLockedLevel } from './grade.js?v=20261006c';
+import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261006c';
 
 export const ITEM_CATEGORY_CN = {
   potion: '药品',
@@ -90,9 +90,9 @@ export const ITEMS = {
   smoke_bomb:  { id: 'smoke_bomb',  name: '烟雾弹',   category: 'potion', price: 80, icon: '💨', desc: '战斗中使用,立即逃离当前战斗(剧情战斗可重试)。', effect: { kind: 'escape', amount: 0 } },
   lucky_coin:  { id: 'lucky_coin',  name: '幸运币',   category: 'potion', price: 120, icon: '🪙', rare: true, desc: '下场战斗胜利时金币收益翻倍。', effect: { kind: 'gold_luck', amount: 1 } },
 
-  // ===== 加速恢复(缩短休息 / 旅途的真实耗时) =====
-  swift_incense:{ id: 'swift_incense', name: '醒神香', category: 'potion', price: 90,  icon: '🕯️', desc: '点上一支,下一次休息的耗时缩短至四分之一。', effect: { kind: 'rest_haste',   amount: 1 } },
-  long_incense: { id: 'long_incense',  name: '长明香', category: 'potion', price: 160, icon: '🪔', desc: '能烧一整夜。接下来 2 次休息的耗时缩短至四分之一。', effect: { kind: 'rest_haste', amount: 2 } },
+  // ===== 加速恢复(缩短酒店休整 / 旅途的真实耗时) =====
+  swift_incense:{ id: 'swift_incense', name: '醒神香', category: 'potion', price: 90,  icon: '🕯️', desc: '点上一支,下一次在酒店休整的耗时缩短至四分之一。', effect: { kind: 'rest_haste',   amount: 1 } },
+  long_incense: { id: 'long_incense',  name: '长明香', category: 'potion', price: 160, icon: '🪔', desc: '能烧一整夜。接下来 2 次在酒店休整的耗时缩短至四分之一。', effect: { kind: 'rest_haste', amount: 2 } },
   wind_tonic:   { id: 'wind_tonic',    name: '疾风饮', category: 'potion', price: 110, icon: '🥤', desc: '一口气灌下,下一段旅途的耗时减半。', effect: { kind: 'travel_haste', amount: 1 } },
 
   // ===== 食品(恢复行动力) =====
@@ -189,11 +189,9 @@ export const ITEMS = {
   gale_boots:       { id: 'gale_boots',       name: '疾风长靴', category: 'outfit', price: 820,  icon: '👢', rare: true, desc: '生命 +14,魔力 +3,战力 +2。特殊:旅行行动力消耗 −5。落地无声。', equipment: { slot: 'shoes', stats: { maxHp: 14, maxMp: 3, atkPower: 2, travelDiscount: 5 } }, look: { boot: '#20404a' } },
   sage_stone:       { id: 'sage_stone',       name: '贤者之石', category: 'misc',   price: 880,  icon: '💎', rare: true, desc: '握久了他做梦。卖给识货者可换大钱。' },
 
-  // ===== 记忆之书(圣物):使用后跳过对应大章,获取该章全部奖励,并以一卷书页简述所发生的故事 =====
-  memory_book_a: { id: 'memory_book_a', name: '记忆之书·壹', category: 'relic', price: 800,  icon: '📕', desc: '翻开后可跳过第一章「家园破碎」,获取该章全部奖励。仅第一章可用。', effect: { kind: 'skip_chapter', chapter: 'ch01' } },
-  memory_book_b: { id: 'memory_book_b', name: '记忆之书·贰', category: 'relic', price: 1200, icon: '📗', desc: '翻开后可跳过第二章「边境孤驿」,获取该章全部奖励。仅第二章可用。', effect: { kind: 'skip_chapter', chapter: 'ch02' } },
-  memory_book_c: { id: 'memory_book_c', name: '记忆之书·叁', category: 'relic', price: 1600, icon: '📘', desc: '翻开后可跳过第三章「王城旧友」,获取该章全部奖励。仅第三章可用。', effect: { kind: 'skip_chapter', chapter: 'ch03' } },
-  memory_book_d: { id: 'memory_book_d', name: '记忆之书·肆', category: 'relic', price: 2000, icon: '📙', desc: '翻开后可跳过第四章「渔港寻亲」,获取该章全部奖励。仅第四章可用。', effect: { kind: 'skip_chapter', chapter: 'ch04' } },
+  // ===== 记忆之书(圣物):使用后跳过对应区间的主线剧情,获取该区间全部奖励,并以一卷书页简述所发生的故事 =====
+  memory_book_a: { id: 'memory_book_a', name: '记忆之书·壹', category: 'relic', price: 2000, icon: '📕', desc: '翻开后可跳过主线剧情第 1~14 章,获取全部奖励,直达第十五章。仅在第 1~14 章境内可用。', effect: { kind: 'skip_chapter', from: 'ch01', to: 'ch14', next: 'ch15' } },
+  memory_book_b: { id: 'memory_book_b', name: '记忆之书·贰', category: 'relic', price: 3000, icon: '📗', desc: '翻开后可跳过主线剧情第 15~26 章,获取全部奖励,直达最终决战第二十七章。仅在第 15~26 章境内可用。', effect: { kind: 'skip_chapter', from: 'ch15', to: 'ch26', next: 'ch27' } },
 
   // ===== 特殊交易币(专属交易场所专用;不能换成金币,只能在对应主题的集市里花) =====
   token_village:  { id: 'token_village',  name: '谷币',   category: 'token', price: 280, icon: '🌾', sell: 0, desc: '村集通行的凭票,只在乡野的专属集市里认。' },

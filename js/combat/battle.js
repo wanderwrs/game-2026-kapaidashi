@@ -3,10 +3,16 @@
  * 流程:开始回合(抽5/补能/清甲) -> 玩家出牌 -> 结束回合 -> 敌人行动 -> 下一回合。
  * 通过 bus 广播 snapshot,UI 据此渲染,无需反向耦合。
  * 支持自动战斗模式:AI 自动选取最优卡牌并结束回合。
+ *
+ * 群体作战(ch19 之后开启):
+ *   · 可同时出现多个敌人(enemies 数组)
+ *   · 己方队友(allies)每回合自动攻击敌人
+ *   · 玩家可选择攻击目标(selectEnemy)
+ *   · 敌人会随机攻击玩家或队友
  */
 
-import { Enemy } from './entity.js?v=20261001n';
-import { cardMpCost } from '../data/data.js?v=20261001n';
+import { Enemy } from './entity.js?v=20261006c';
+import { cardMpCost } from '../data/data.js?v=20261006c';
 
 const STATUS_CN = {
   vulnerable: '易伤',
@@ -18,22 +24,96 @@ const STATUS_CN = {
 /** 自动战斗每步延迟(毫秒),让玩家能看清动作 */
 const AUTO_STEP_DELAY = 650;
 
+/** 队友模板:弟弟 / 守将 / 朋友 */
+const ALLY_TEMPLATES = {
+  brother: { name: '弟弟', icon: '🗡', maxHp: 40, atk: 5 },
+  general: { name: '守将', icon: '🛡', maxHp: 55, atk: 8 },
+  friend:  { name: '同伴', icon: '⚔', maxHp: 45, atk: 6 },
+};
+
 export class Battle {
-  constructor({ player, deck, enemyDef, rng, bus, bonusStrength = 0, pet = null }) {
+  /**
+   * @param {object} opts
+   * @param {Player} opts.player
+   * @param {Deck} opts.deck
+   * @param {object|object[]} [opts.enemyDef] 单个敌人定义(向后兼容)
+   * @param {object[]} [opts.enemyDefs] 多个敌人定义(群体作战)
+   * @param {string[]} [opts.allyIds] 队友 id 列表(brother/general/friend)
+   * @param {Rng} opts.rng
+   * @param {EventBus} opts.bus
+   * @param {number} [opts.bonusStrength]
+   * @param {object} [opts.pet]
+   */
+  constructor({ player, deck, enemyDef, enemyDefs, allyIds, rng, bus, bonusStrength = 0, pet = null }) {
     this.player = player;
     this.deck = deck;
-    this.enemy = new Enemy(enemyDef, rng);
     this.rng = rng;
     this.bus = bus;
-    this.bonusStrength = bonusStrength;   // 装备战力 + 战力药剂
-    this.pet = pet;                       // 出战宠物 { name, icon, skills:[{kind,amount}] }
+    this.bonusStrength = bonusStrength;
+    this.pet = pet;
     this.turn = 0;
     this.over = false;
     this.result = null;
-    this._fxQueue = [];   // 伤害飘字等特效,待 DOM 刷新后再广播
-    this.autoMode = false;        // 自动战斗开关
-    this._autoTimer = null;       // 自动战斗定时器
-    this._autoBusy = false;       // 防止自动逻辑重入
+    this._fxQueue = [];
+    this.autoMode = false;
+    this._autoTimer = null;
+    this._autoBusy = false;
+
+    // 敌人:优先使用 enemyDefs(数组);否则用 enemyDef(单个,向后兼容)
+    const defs = enemyDefs || (enemyDef ? [enemyDef] : []);
+    this.enemies = defs.map((def) => new Enemy(def, rng));
+    this.selectedEnemyIndex = 0;
+
+    // 队友:根据 allyIds 创建
+    this.allies = (allyIds || []).map((id) => {
+      const tpl = ALLY_TEMPLATES[id] || ALLY_TEMPLATES.friend;
+      return {
+        id,
+        name: tpl.name,
+        icon: tpl.icon,
+        maxHp: tpl.maxHp,
+        hp: tpl.maxHp,
+        atk: tpl.atk,
+        block: 0,
+        statuses: {},
+      };
+    });
+
+    // 群体作战模式:多个敌人或有队友
+    this.groupMode = this.enemies.length > 1 || this.allies.length > 0;
+  }
+
+  /** 当前选中的敌人(向后兼容) */
+  get enemy() {
+    return this.enemies[this.selectedEnemyIndex] || this.enemies[0];
+  }
+
+  /** 选择攻击目标 */
+  selectEnemy(index) {
+    if (index >= 0 && index < this.enemies.length && this.enemies[index].isAlive()) {
+      this.selectedEnemyIndex = index;
+      this._refresh();
+    }
+  }
+
+  /** 获取存活的敌人列表 */
+  _aliveEnemies() {
+    return this.enemies.filter((e) => e.isAlive());
+  }
+
+  /** 获取存活的队友列表 */
+  _aliveAllies() {
+    return this.allies.filter((a) => a.hp > 0);
+  }
+
+  /** 选中的敌人若已死亡,自动切换到下一个存活敌人 */
+  _ensureTarget() {
+    if (!this.enemy || !this.enemy.isAlive()) {
+      const alive = this._aliveEnemies();
+      if (alive.length > 0) {
+        this.selectedEnemyIndex = this.enemies.indexOf(alive[0]);
+      }
+    }
   }
 
   start() {
@@ -41,10 +121,16 @@ export class Battle {
     this.player.clearBlock();
     this.player.resetEnergy();
     this.player.resetMp();
-    this.player.statuses = {};   // 状态为战斗内资源,开战清零
+    this.player.statuses = {};
     if (this.bonusStrength > 0) this.player.applyStatus('strength', this.bonusStrength);
-    this.enemy.clearBlock();
-    this.enemy.rollIntent();
+    for (const e of this.enemies) {
+      e.clearBlock();
+      e.rollIntent();
+    }
+    for (const a of this.allies) {
+      a.block = 0;
+      a.statuses = {};
+    }
     this.deck.draw(5);
     this.turn = 1;
     if (this.pet) {
@@ -55,11 +141,13 @@ export class Battle {
       this._petTurnStart();
       this._checkEnd();
     }
+    // 群体作战:首回合队友先行动
+    if (this.groupMode) this._allyTurn();
     this._refresh();
     this._flushFx();
   }
 
-  /** 宠物每回合开始的效果:回血 / 回蓝 / 自动攻击 */
+  /** 宠物每回合开始的效果 */
   _petTurnStart() {
     if (!this.pet || this.over) return;
     for (const sk of this.pet.skills || []) {
@@ -70,10 +158,28 @@ export class Battle {
       } else if (sk.kind === 'mp_regen') {
         this.player.mp = Math.min(this.player.maxMp, this.player.mp + sk.amount);
       } else if (sk.kind === 'auto_attack') {
-        const dealt = this.enemy.takeDamage(sk.amount);
-        this._queueFx({ target: 'enemy', kind: 'damage', value: dealt });
-        this.bus.emit('battle:log', `${this.pet.name} 扑上去,造成 ${dealt} 伤害`);
+        const target = this._aliveEnemies()[0];
+        if (target) {
+          const dealt = target.takeDamage(sk.amount);
+          this._queueFx({ target: 'enemy', kind: 'damage', value: dealt, enemyIndex: this.enemies.indexOf(target) });
+          this.bus.emit('battle:log', `${this.pet.name} 扑上去,造成 ${dealt} 伤害`);
+        }
       }
+    }
+  }
+
+  /** 队友回合:每个存活队友自动攻击一个随机存活敌人 */
+  _allyTurn() {
+    if (!this.groupMode) return;
+    for (const ally of this._aliveAllies()) {
+      if (this.over) break;
+      const targets = this._aliveEnemies();
+      if (targets.length === 0) break;
+      const target = targets[Math.floor(this.rng.next() * targets.length)];
+      const dealt = target.takeDamage(ally.atk);
+      this._queueFx({ target: 'enemy', kind: 'damage', value: dealt, enemyIndex: this.enemies.indexOf(target) });
+      this.bus.emit('battle:log', `${ally.name} 攻击 ${target.name},造成 ${dealt} 伤害`);
+      this._checkEnd();
     }
   }
 
@@ -90,6 +196,7 @@ export class Battle {
       this.bus.emit('battle:log', '魔力不足,无法打出该牌');
       return false;
     }
+    this._ensureTarget();
     this.player.energy -= card.cost;
     if (mpCost > 0) this.player.mp -= mpCost;
     this._applyEffects(card.effects);
@@ -107,12 +214,12 @@ export class Battle {
     this.deck.discardHand();
     this.player.clearBlock();
     this.player.tickStatuses();
+    for (const a of this.allies) { a.block = 0; }
     this._refresh();
-    // 留一点延迟,让 UI 能呈现"敌人即将行动"
     setTimeout(() => this._enemyTurn(), 350);
   }
 
-  /** 逃离战斗(仅遭遇战有效;由烟雾弹触发) */
+  /** 逃离战斗 */
   _escape() {
     if (this.over) return false;
     this.over = true;
@@ -122,51 +229,65 @@ export class Battle {
     return true;
   }
 
+  /** 敌人回合:所有存活敌人依次行动 */
   _enemyTurn() {
     if (this.over) return;
-    this.enemy.clearBlock();
-    const intent = this.enemy.intent;
-    if (intent) {
-      if (intent.kind === 'attack') {
-        let dmg = intent.value;
-        if (this.enemy.getStatus('weak') > 0) dmg = Math.floor(dmg * 0.75);
-        const dealt = this.player.takeDamage(dmg);
-        this._queueFx({ target: 'player', kind: 'damage', value: dealt });
-        this.bus.emit('battle:log', `${this.enemy.name} 攻击,造成 ${dealt} 伤害`);
-      } else if (intent.kind === 'block') {
-        this.enemy.addBlock(intent.value);
-        this._queueFx({ target: 'enemy', kind: 'block', value: intent.value });
-        this.bus.emit('battle:log', `${this.enemy.name} 获得 ${intent.value} 护甲`);
-      } else if (intent.kind === 'buff') {
-        this.enemy.applyStatus(intent.name, intent.stacks);
-        this.bus.emit('battle:log', `${this.enemy.name} 强化「${STATUS_CN[intent.name] || intent.name}」`);
+    for (const enemy of this._aliveEnemies()) {
+      if (this.over) break;
+      enemy.clearBlock();
+      const intent = enemy.intent;
+      if (intent) {
+        if (intent.kind === 'attack') {
+          let dmg = intent.value;
+          if (enemy.getStatus('weak') > 0) dmg = Math.floor(dmg * 0.75);
+          // 群体模式:敌人有概率攻击队友,否则攻击玩家
+          const targets = [{ kind: 'player', obj: this.player }];
+          for (const a of this._aliveAllies()) targets.push({ kind: 'ally', obj: a });
+          // 30% 概率攻击队友(如果有队友)
+          const t = (this.groupMode && this.rng.next() < 0.3 && targets.length > 1)
+            ? targets[1 + Math.floor(this.rng.next() * (targets.length - 1))]
+            : targets[0];
+          const dealt = t.obj.takeDamage(dmg);
+          this._queueFx({ target: t.kind, kind: 'damage', value: dealt, allyId: t.kind === 'ally' ? t.obj.id : undefined });
+          this.bus.emit('battle:log', `${enemy.name} 攻击 ${t.kind === 'player' ? '你' : t.obj.name},造成 ${dealt} 伤害`);
+        } else if (intent.kind === 'block') {
+          enemy.addBlock(intent.value);
+          this._queueFx({ target: 'enemy', kind: 'block', value: intent.value, enemyIndex: this.enemies.indexOf(enemy) });
+          this.bus.emit('battle:log', `${enemy.name} 获得 ${intent.value} 护甲`);
+        } else if (intent.kind === 'buff') {
+          enemy.applyStatus(intent.name, intent.stacks);
+          this.bus.emit('battle:log', `${enemy.name} 强化「${STATUS_CN[intent.name] || intent.name}」`);
+        }
       }
+      enemy.tickStatuses();
+      enemy.rollIntent();
+      this._checkEnd();
     }
-    this.enemy.tickStatuses();
-    this.enemy.rollIntent();
-    this._checkEnd();
     if (!this.over) {
       this.turn += 1;
       this.player.resetEnergy();
       this.player.clearBlock();
       this.deck.draw(5);
       this._petTurnStart();
+      if (this.groupMode) this._allyTurn();
       this._checkEnd();
       this._refresh();
-      // 自动战斗:新回合开始后继续
       if (this.autoMode) this._scheduleAutoStep();
     }
     this._flushFx();
   }
 
-  /** 解释卡牌 effects 并应用 */
+  /** 解释卡牌 effects 并应用(伤害效果作用于当前选中的敌人) */
   _applyEffects(effects) {
     const str = this.player.getStatus('strength');
+    const target = this.enemy;
     for (const e of effects) {
       switch (e.kind) {
         case 'damage': {
-          const dealt = this.enemy.takeDamage(e.amount + str);
-          this._queueFx({ target: 'enemy', kind: 'damage', value: dealt });
+          if (target) {
+            const dealt = target.takeDamage(e.amount + str);
+            this._queueFx({ target: 'enemy', kind: 'damage', value: dealt, enemyIndex: this.selectedEnemyIndex });
+          }
           break;
         }
         case 'block':
@@ -174,8 +295,10 @@ export class Battle {
           this._queueFx({ target: 'player', kind: 'block', value: e.amount });
           break;
         case 'status_enemy':
-          this.enemy.applyStatus(e.name, e.stacks);
-          this.bus.emit('battle:log', `${this.enemy.name} 被施加「${STATUS_CN[e.name] || e.name}」×${e.stacks}`);
+          if (target) {
+            target.applyStatus(e.name, e.stacks);
+            this.bus.emit('battle:log', `${target.name} 被施加「${STATUS_CN[e.name] || e.name}」×${e.stacks}`);
+          }
           break;
         case 'status_self':
           this.player.applyStatus(e.name, e.stacks);
@@ -196,12 +319,10 @@ export class Battle {
     }
   }
 
-  /** 入队一条战斗特效(待 DOM 刷新后再广播,避免被重建清掉) */
   _queueFx(fx) {
     if (fx && fx.value) this._fxQueue.push(fx);
   }
 
-  /** 广播已入队的特效 */
   _flushFx() {
     if (this._fxQueue.length === 0) return;
     const queue = this._fxQueue;
@@ -210,7 +331,7 @@ export class Battle {
   }
 
   _checkEnd() {
-    if (!this.enemy.isAlive()) {
+    if (this._aliveEnemies().length === 0) {
       this.over = true;
       this.result = 'victory';
       this._clearAutoTimer();
@@ -224,7 +345,6 @@ export class Battle {
   }
 
   // ===== 自动战斗 =====
-  /** 开启 / 关闭自动战斗 */
   setAutoMode(on) {
     this.autoMode = !!on;
     if (this.autoMode) {
@@ -246,39 +366,41 @@ export class Battle {
     this._autoTimer = setTimeout(() => this._autoStep(), AUTO_STEP_DELAY);
   }
 
-  /** 自动战斗单步:选出最优牌打出,无牌可出则结束回合 */
   _autoStep() {
     if (!this.autoMode || this.over) return;
     this._autoBusy = true;
     try {
       const card = this._pickAutoCard();
       if (card) {
+        // 自动战斗:优先攻击血量最低的敌人
+        this._autoSelectWeakestEnemy();
         this.playCard(card);
         this._scheduleAutoStep();
       } else {
-        // 没有可出的牌 → 结束回合
         this.endPlayerTurn();
-        // 结束回合后 _enemyTurn 会触发下一回合;在 _refresh 后再调度
       }
     } finally {
       this._autoBusy = false;
     }
   }
 
-  /**
-   * AI 选牌策略:
-   * 1. 生命危险(<35%)且有治疗牌 → 优先治疗
-   * 2. 敌人意图高伤攻击 且 自身护甲不足 → 优先防御
-   * 3. 敌人有易伤 → 优先高伤攻击
-   * 4. 否则按「伤害/费用比」选攻击牌,其次防御牌
-   */
+  /** 自动战斗:选中血量最低的存活敌人 */
+  _autoSelectWeakestEnemy() {
+    const alive = this._aliveEnemies();
+    if (alive.length === 0) return;
+    let weakest = alive[0];
+    for (const e of alive) {
+      if (e.hp < weakest.hp) weakest = e;
+    }
+    this.selectedEnemyIndex = this.enemies.indexOf(weakest);
+  }
+
   _pickAutoCard() {
     const hand = this.deck.hand;
     if (!hand.length) return null;
     const energy = this.player.energy;
     const mp = this.player.mp;
 
-    // 可出的牌(能量 + 魔力足够)
     const playable = hand.filter((c) => {
       const mpCost = cardMpCost(c);
       return c.cost <= energy && mpCost <= mp;
@@ -286,39 +408,34 @@ export class Battle {
     if (!playable.length) return null;
 
     const hpRatio = this.player.hp / this.player.maxHp;
-    const intent = this.enemy.intent;
-    const enemyVuln = this.enemy.getStatus('vulnerable') > 0;
+    const enemy = this.enemy;
+    const enemyVuln = enemy ? enemy.getStatus('vulnerable') > 0 : false;
+    const intent = enemy?.intent;
     const incomingDmg = intent?.kind === 'attack' ? intent.value : 0;
     const effectiveIncoming = incomingDmg - this.player.block;
 
-    // 1) 危险时优先治疗
     if (hpRatio < 0.35) {
       const heal = this._bestByEffect(playable, 'heal');
       if (heal) return heal;
     }
 
-    // 2) 高伤来袭且护甲不足 → 优先防御
     if (effectiveIncoming > this.player.maxHp * 0.25) {
       const block = this._bestByEffect(playable, 'block');
       if (block) return block;
     }
 
-    // 3) 敌人易伤 → 优先高伤攻击
     if (enemyVuln) {
       const atk = this._bestAttack(playable);
       if (atk) return atk;
     }
 
-    // 4) 默认:选最高伤害攻击牌;没有则选防御;再没有则随便出
     const atk = this._bestAttack(playable);
     if (atk) return atk;
     const block = this._bestByEffect(playable, 'block');
     if (block) return block;
-    // 兜底:出第一张能出的牌
     return playable[0];
   }
 
-  /** 在可出的牌中找某类效果数值最高的牌 */
   _bestByEffect(cards, kind) {
     let best = null, bestVal = -1;
     for (const c of cards) {
@@ -330,7 +447,6 @@ export class Battle {
     return best;
   }
 
-  /** 在可出的牌中找总伤害最高的攻击牌 */
   _bestAttack(cards) {
     let best = null, bestDmg = -1;
     for (const c of cards) {
@@ -346,12 +462,13 @@ export class Battle {
     this.bus.emit('battle:refresh', this.snapshot());
   }
 
-  /** 供 UI 渲染的不可变快照 */
   snapshot() {
     return {
       turn: this.turn,
       over: this.over,
       result: this.result,
+      groupMode: this.groupMode,
+      selectedEnemyIndex: this.selectedEnemyIndex,
       player: {
         hp: this.player.hp,
         maxHp: this.player.maxHp,
@@ -362,14 +479,35 @@ export class Battle {
         maxMp: this.player.maxMp,
         statuses: { ...this.player.statuses },
       },
-      enemy: {
+      enemies: this.enemies.map((e, i) => ({
+        index: i,
+        name: e.name,
+        hp: e.hp,
+        maxHp: e.maxHp,
+        block: e.block,
+        intent: e.intent ? { ...e.intent } : null,
+        statuses: { ...e.statuses },
+        alive: e.isAlive(),
+      })),
+      // 向后兼容:单敌人快照
+      enemy: this.enemy ? {
         name: this.enemy.name,
         hp: this.enemy.hp,
         maxHp: this.enemy.maxHp,
         block: this.enemy.block,
         intent: this.enemy.intent ? { ...this.enemy.intent } : null,
         statuses: { ...this.enemy.statuses },
-      },
+      } : null,
+      allies: this.allies.map((a) => ({
+        id: a.id,
+        name: a.name,
+        icon: a.icon,
+        hp: a.hp,
+        maxHp: a.maxHp,
+        block: a.block,
+        atk: a.atk,
+        alive: a.hp > 0,
+      })),
       pet: this.pet ? { name: this.pet.name, icon: this.pet.icon, skills: (this.pet.skills || []).slice() } : null,
       hand: this.deck.hand.slice(),
       drawCount: this.deck.drawPile.length,
