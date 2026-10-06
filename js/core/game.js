@@ -2256,7 +2256,7 @@ export class Game {
       outfitOptions[slot] = this._bagOf((id) => ITEMS[id]?.equipment?.slot === slot);
     }
     const unlocked = this.engine?.unlockedCareers || new Set();
-    // 各职业的等级互不相通,列表里一并标出各自的等级
+    // 各职业等级同步(切换/升级时自动对齐),列表里标出各自的等级
     const careers = CAREERS.map((c) => ({
       id: c.id, name: c.name,
       level: eco.careerLevelOf(c.id),

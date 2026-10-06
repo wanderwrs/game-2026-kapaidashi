@@ -94,7 +94,7 @@ export class Economy {
     return true;
   }
 
-  // ===== 职业等级(各职业各记各的,互不相通)=====
+  // ===== 职业等级(各职业等级同步,切换时自动对齐)=====
   /** 设定当前职业(职业分配 / 切换 / 读档时由 Game 调用) */
   setCareer(careerId) {
     if (!careerId) return;
@@ -106,6 +106,13 @@ export class Economy {
     this._legacyLevel = null;
     this._legacyExp = null;
     this.careerId = careerId;
+    // 等级同步:切换到的职业若等级低于当前最高等级,则对齐到最高等级
+    const curLevel = this.careerLevelOf(careerId);
+    const maxLevel = Math.max(1, ...Object.values(this.careerLevels).map((v) => Number(v) || 1));
+    if (curLevel < maxLevel) {
+      this.careerLevels[careerId] = maxLevel;
+      this.careerExps[careerId] = 0;
+    }
   }
 
   /** 计入档位的键(缺省取当前职业) */
@@ -151,6 +158,7 @@ export class Economy {
     }
     if (level >= CAREER_MAX_LEVEL) exp = 0;
     this._saveCareer(key, level, exp);
+    this._syncCareerLevels(level, exp);
     return { level, promotions };
   }
 
@@ -175,7 +183,16 @@ export class Economy {
       }
     }
     this._saveCareer(key, level, this.careerExpOf(key));
+    this._syncCareerLevels(level, this.careerExpOf(key));
     return { level, promotions, blocked };
+  }
+
+  /** 把等级 / 经验同步到所有已记录的职业(保证各职业等级一致) */
+  _syncCareerLevels(level, exp) {
+    for (const k of Object.keys(this.careerLevels)) {
+      this.careerLevels[k] = Math.max(1, Math.min(CAREER_MAX_LEVEL, level));
+      this.careerExps[k] = Math.max(0, exp || 0);
+    }
   }
 
   // ===== 宠物 =====
