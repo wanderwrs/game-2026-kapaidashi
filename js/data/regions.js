@@ -185,6 +185,102 @@ export const REGIONS = {
       { key: 'tower', name: '钟楼', theme: 'city', npc: null, node: 'n03', hint: '登上钟楼,为这一程收束。', services: { rest: true } },
     ],
   },
+  // ===== 第二大章 · 北境新程(4 节 · 共 10 个地图点) =====
+  ch16: {
+    name: '北境荒原', theme: 'mountain',
+    stops: [
+      { key: 'gate', name: '北境关隘', theme: 'mountain', npc: null, node: 'n01', hint: '穿过北境关隘,踏入人迹罕至的荒原。', services: { shop: true, job: true, rest: true } },
+      { key: 'ruin', name: '荒城断壁', theme: 'ruins', npc: '守关老兵', node: 'n04', hint: '荒原深处的断壁残垣里,有位老人记得旧事。', services: { rest: true } },
+      { key: 'well', name: '枯水井', theme: 'ruins', npc: null, node: 'n06', hint: '枯井旁似乎藏着什么——但得先弄清楚状况。', services: { job: true, rest: true } },
+    ],
+  },
+  ch17: {
+    name: '风蚀峡谷', theme: 'cliff',
+    stops: [
+      { key: 'mouth', name: '峡谷口', theme: 'cliff', npc: null, node: 'n01', hint: '风从峡谷深处灌出,卷起漫天黄沙。', services: { shop: true, rest: true } },
+      { key: 'ledge', name: '崖壁栈道', theme: 'cliff', npc: '峡谷向导', node: 'n03', hint: '栈道窄得仅容一人,那位向导说他能带你走过去。', services: { job: true, rest: true } },
+    ],
+  },
+  ch18: {
+    name: '黑曜矿城', theme: 'ruins',
+    stops: [
+      { key: 'gate', name: '矿城正门', theme: 'ruins', npc: null, node: 'n01', hint: '黑曜矿城的正门半掩着——门后似有人在等你。', services: { shop: true, job: true, rest: true } },
+      { key: 'forge', name: '旧日锻炉', theme: 'ruins', npc: '矿工头领', node: 'n03', hint: '矿城深处的锻炉还在冒火星,矿工头领想跟你谈笔交易。', services: { rest: true } },
+      { key: 'shaft', name: '黑曜矿井', theme: 'mountain', npc: null, node: 'n05', hint: '矿井最深处传来低沉的共鸣。', services: { job: true, rest: true } },
+    ],
+  },
+  ch19: {
+    name: '龙骨荒原', theme: 'mountain',
+    stops: [
+      { key: 'bone', name: '巨龙骨堆', theme: 'mountain', npc: null, node: 'n01', hint: '荒原上散落着远古巨龙的骸骨,骨缝间藏着旧时代的秘密。', services: { shop: true, rest: true } },
+      { key: 'temple', name: '龙骨神庙', theme: 'ruins', npc: '守庙人', node: 'n03', hint: '骨堆尽头是一座以龙骨为梁的神庙,守庙人已等候多时。', services: { job: true, rest: true } },
+    ],
+  },
+  // ===== 第二大章 · 卡斯特罗城邦战争(ch20~ch27) =====
+  ch20: {
+    name: '边境要塞', theme: 'city',
+    stops: [
+      { key: 'gate', name: '要塞城门', theme: 'city', npc: null, node: 'n01', hint: '边境要塞的城门紧闭,城头的旗帜换了新的——卡斯特罗的黑鹰旗。', services: { shop: true, job: true, rest: true } },
+      { key: 'wall', name: '北城墙', theme: 'city', npc: '守将', node: 'n03', hint: '北城墙的守将似乎有话要说,但他身边全是卡斯特罗的耳目。', services: { rest: true } },
+      { key: 'dungeon', name: '要塞地牢', theme: 'ruins', npc: null, node: 'n05', hint: '地牢深处传来熟悉的声音——那是被关押的友军。', services: { job: true, rest: true } },
+    ],
+  },
+  ch21: {
+    name: '卡斯特罗前哨', theme: 'mountain',
+    stops: [
+      { key: 'camp', name: '敌军前营', theme: 'mountain', npc: null, node: 'n01', hint: '卡斯特罗的前营扎在山口,篝火连成一片。', services: { shop: true, rest: true } },
+      { key: 'ridge', name: '山脊观察哨', theme: 'cliff', npc: null, node: 'n03', hint: '攀上山脊,可以俯瞰敌军的全部部署。', services: { rest: true } },
+      { key: 'cave', name: '山间暗道', theme: 'ruins', npc: '向导', node: 'n05', hint: '山间暗道直通敌后,但只有本地向导认得路。', services: { job: true, rest: true } },
+    ],
+  },
+  ch22: {
+    name: '中立城邦', theme: 'city',
+    stops: [
+      { key: 'gate', name: '城邦大门', theme: 'city', npc: null, node: 'n01', hint: '中立城邦的大门向所有旅人敞开,但里面暗流涌动。', services: { shop: true, job: true, rest: true } },
+      { key: 'council', name: '议政厅', theme: 'city', npc: '执政官', node: 'n03', hint: '议政厅里,执政官正在权衡战与和。', services: { rest: true } },
+      { key: 'market', name: '黑市巷', theme: 'city', npc: null, node: 'n05', hint: '黑市巷里什么都能买到——包括敌军的布防图。', services: { shop: true, job: true, rest: true } },
+    ],
+  },
+  ch23: {
+    name: '联盟营地', theme: 'village',
+    stops: [
+      { key: 'tent', name: '联军大帐', theme: 'village', npc: null, node: 'n01', hint: '联军大帐里,各路将领争得面红耳赤。', services: { shop: true, rest: true } },
+      { key: 'heal', name: '医疗帐篷', theme: 'village', npc: '医疗长', node: 'n03', hint: '医疗帐篷里躺满了伤兵,医疗长急需帮手。', services: { rest: true } },
+      { key: 'train', name: '演武场', theme: 'village', npc: null, node: 'n05', hint: '演武场上,新兵们正在操练——但他们需要一位真正的战士来带队。', services: { job: true, rest: true } },
+    ],
+  },
+  ch24: {
+    name: '卡斯特罗主城', theme: 'city',
+    stops: [
+      { key: 'gate', name: '主城正门', theme: 'city', npc: null, node: 'n01', hint: '卡斯特罗的主城正门高耸入云,黑鹰旗在城头猎猎作响。', services: { shop: true, job: true, rest: true } },
+      { key: 'barracks', name: '军械库', theme: 'city', npc: null, node: 'n03', hint: '军械库里堆满了攻城器械——一旦开战,后果不堪设想。', services: { rest: true } },
+      { key: 'keep', name: '城主堡', theme: 'city', npc: '卡斯特罗城主', node: 'n05', hint: '城主堡的主人,正是这场战争的始作俑者。', services: { rest: true } },
+    ],
+  },
+  ch25: {
+    name: '决战平原', theme: 'mountain',
+    stops: [
+      { key: 'line', name: '联军阵线', theme: 'mountain', npc: null, node: 'n01', hint: '联军阵线绵延数里,战旗在风中翻飞。', services: { shop: true, rest: true } },
+      { key: 'middle', name: '战场中央', theme: 'mountain', npc: null, node: 'n03', hint: '战场中央尸横遍野,但决战才刚刚开始。', services: { rest: true } },
+      { key: 'hill', name: '指挥高地', theme: 'cliff', npc: null, node: 'n05', hint: '指挥高地上,可以看清整个战局的走向。', services: { job: true, rest: true } },
+    ],
+  },
+  ch26: {
+    name: '卡斯特罗内城', theme: 'ruins',
+    stops: [
+      { key: 'breach', name: '城墙缺口', theme: 'ruins', npc: null, node: 'n01', hint: '城墙被轰开了一道缺口,联军正从这里涌入。', services: { shop: true, rest: true } },
+      { key: 'plaza', name: '中心广场', theme: 'ruins', npc: null, node: 'n03', hint: '中心广场上,敌军的精锐部队负隅顽抗。', services: { rest: true } },
+      { key: 'tower', name: '黑鹰塔', theme: 'city', npc: null, node: 'n05', hint: '黑鹰塔是卡斯特罗最后的据点,塔顶飘扬着那面不祥的旗帜。', services: { job: true, rest: true } },
+    ],
+  },
+  ch27: {
+    name: '和平之野', theme: 'village',
+    stops: [
+      { key: 'meadow', name: '停战草原', theme: 'village', npc: null, node: 'n01', hint: '战火熄灭后的草原,野花重新开了起来。', services: { shop: true, rest: true } },
+      { key: 'altar', name: '和平祭坛', theme: 'village', npc: '两国使者', node: 'n03', hint: '和平祭坛前,两国使者正在签署停战协议。', services: { rest: true } },
+      { key: 'monument', name: '英雄纪念碑', theme: 'village', npc: null, node: 'n05', hint: '英雄纪念碑下,人们为逝者默哀,也为新生祈福。', services: { job: true, rest: true } },
+    ],
+  },
 };
 
 /** 打工配置(含小游戏与难度档)见 data/jobs.js */

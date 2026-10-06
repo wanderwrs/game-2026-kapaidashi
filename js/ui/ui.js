@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261001n';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261001n';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261001n';
-import { gradeOf } from '../data/grade.js?v=20261001n';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261001n';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261001n';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261001n';
-import { cardMpCost } from '../data/data.js?v=20261001n';
-import { ENDINGS } from '../narrative/engine.js?v=20261001n';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261001n';
-import { SceneView, paintCharacter } from './scene.js?v=20261001n';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261001n';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261001n';
-import { Minigame } from '../minigame/minigame.js?v=20261001n';
-import { MODE_LABELS } from '../data/jobs.js?v=20261001n';
-import { TERRAIN_CN } from '../data/world.js?v=20261001n';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261001n';
+import { GameState } from '../core/game.js?v=20261006a';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261006a';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261006a';
+import { gradeOf } from '../data/grade.js?v=20261006a';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261006a';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261006a';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261006a';
+import { cardMpCost } from '../data/data.js?v=20261006a';
+import { ENDINGS } from '../narrative/engine.js?v=20261006a';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261006a';
+import { SceneView, paintCharacter } from './scene.js?v=20261006a';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261006a';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261006a';
+import { Minigame } from '../minigame/minigame.js?v=20261006a';
+import { MODE_LABELS } from '../data/jobs.js?v=20261006a';
+import { TERRAIN_CN } from '../data/world.js?v=20261006a';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261006a';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -3186,10 +3186,34 @@ export class UI {
     void this.el.energy.offsetWidth;
     this.el.energy.classList.add('pulse');
 
+    // 敌人区域:渲染所有敌人(群体作战时可点击选择目标)
     this.el.enemyZone.innerHTML = '';
-    this.el.enemyZone.appendChild(this._entityCard(snap.enemy, true));
+    const enemies = snap.enemies && snap.enemies.length ? snap.enemies : (snap.enemy ? [snap.enemy] : []);
+    enemies.forEach((e, i) => {
+      if (!e.alive && e.alive !== undefined) return; // 跳过死亡敌人(若有 alive 字段)
+      const card = this._entityCard(e, true);
+      if (snap.groupMode) {
+        card.classList.toggle('is-selected', i === snap.selectedEnemyIndex);
+        card.style.cursor = 'pointer';
+        card.title = '点击选择攻击目标';
+        card.addEventListener('click', () => {
+          if (this.battle) this.battle.selectEnemy(i);
+        });
+      }
+      this.el.enemyZone.appendChild(card);
+    });
+
+    // 玩家区域:玩家 + 队友
     this.el.playerZone.innerHTML = '';
     this.el.playerZone.appendChild(this._entityCard({ ...snap.player, name: this._playerName() }, false));
+    // 渲染队友
+    if (snap.allies && snap.allies.length) {
+      for (const a of snap.allies) {
+        if (!a.alive) continue;
+        const allyCard = this._allyCard(a);
+        this.el.playerZone.appendChild(allyCard);
+      }
+    }
 
     this.el.hand.innerHTML = '';
     for (const card of snap.hand) {
@@ -3197,8 +3221,26 @@ export class UI {
     }
 
     this._renderBattleItems();
-    this._lastEnemyHp = snap.enemy.hp;
+    // 记录所有敌人 HP 用于受击动画
+    this._lastEnemyHpMap = {};
+    enemies.forEach((e, i) => { this._lastEnemyHpMap[i] = e.hp; });
     this._lastPlayerHp = snap.player.hp;
+  }
+
+  /** 队友卡片(简化版:头像 + 血条) */
+  _allyCard(ally) {
+    const card = document.createElement('div');
+    card.className = 'entity-card is-ally';
+    const hpPct = Math.max(0, Math.round((ally.hp / ally.maxHp) * 100));
+    card.innerHTML = `
+      <div class="entity-top">
+        <div class="entity-avatar">${ally.icon || '⚔'}</div>
+        <div class="entity-name">${this._escapeHtml(ally.name)}</div>
+      </div>
+      <div class="hpbar"><i style="width:${hpPct}%"></i><span>${ally.hp}/${ally.maxHp}</span></div>
+      <div class="entity-intent"><span class="intent-icon">⚔</span><span>攻击 ${ally.atk}</span></div>
+    `;
+    return card;
   }
 
   /** 战斗中可用的药品(恢复生命 / 魔力 / 战斗专用药剂),点击即用 */
@@ -3335,8 +3377,27 @@ export class UI {
 
   /** 伤害 / 护甲 / 治疗飘字 */
   _playBattleFx(fx) {
-    const zone = fx.target === 'enemy' ? this.el.enemyZone : this.el.playerZone;
-    const card = zone.querySelector('.entity-card');
+    let card;
+    if (fx.target === 'enemy') {
+      const cards = this.el.enemyZone.querySelectorAll('.entity-card');
+      // 群体作战:根据 enemyIndex 定位;否则取第一个
+      if (fx.enemyIndex !== undefined && cards[fx.enemyIndex]) {
+        card = cards[fx.enemyIndex];
+      } else {
+        card = cards[0];
+      }
+    } else if (fx.target === 'ally') {
+      const cards = this.el.playerZone.querySelectorAll('.entity-card.is-ally');
+      // 根据 allyId 定位队友卡片
+      for (const c of cards) {
+        const nameEl = c.querySelector('.entity-name');
+        if (nameEl && nameEl.textContent.includes(fx.allyId ? '' : '')) { card = c; break; }
+      }
+      if (!card) card = cards[0];
+    } else {
+      // player
+      card = this.el.playerZone.querySelector('.entity-card.is-player');
+    }
     if (!card) return;
     const span = document.createElement('div');
     span.className = `dmg-float ${fx.kind}`;

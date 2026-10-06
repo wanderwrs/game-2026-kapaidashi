@@ -871,6 +871,10 @@ body {
   80% { transform: translateX(3px); }
 }
 .entity-card.is-dead { opacity: 0.35; filter: grayscale(0.8); }
+.entity-card.is-selected { border-color: #f1c40f; box-shadow: 0 0 12px rgba(241, 196, 15, 0.5); }
+.entity-card.is-ally { border-color: rgba(46, 204, 113, 0.4); min-width: 140px; }
+.entity-card.is-ally .entity-avatar { background: linear-gradient(160deg, #1e8449, #0b3d1e); }
+.entity-card.is-ally .hpbar > i { background: linear-gradient(90deg, #1e8449, #2ecc71); }
 
 .entity-top { display: flex; align-items: center; gap: var(--sp-8); margin-bottom: var(--sp-8); }
 .entity-avatar {

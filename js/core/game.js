@@ -11,42 +11,42 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261001n';
-import { EventBus } from './eventbus.js?v=20261001n';
-import { AudioEngine } from './audio.js?v=20261001n';
-import { Player } from '../combat/entity.js?v=20261001n';
-import { Deck } from '../card/deck.js?v=20261001n';
-import { Battle } from '../combat/battle.js?v=20261001n';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261001n';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261001n';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261001n';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261001n';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261001n';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261001n';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261001n';
-import { majorSetIds } from '../data/extras.js?v=20261001n';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261001n';
-import { lookLabel } from '../data/looks.js?v=20261001n';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261001n';
-import { TradeEngine } from './trade.js?v=20261001n';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261001n';
-import { REGIONS } from '../data/regions.js?v=20261001n';
-import { jobsFor } from '../data/jobs.js?v=20261001n';
+import { RNG, seedFromString } from './rng.js?v=20261006a';
+import { EventBus } from './eventbus.js?v=20261006a';
+import { AudioEngine } from './audio.js?v=20261006a';
+import { Player } from '../combat/entity.js?v=20261006a';
+import { Deck } from '../card/deck.js?v=20261006a';
+import { Battle } from '../combat/battle.js?v=20261006a';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261006a';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261006a';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261006a';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261006a';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261006a';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261006a';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261006a';
+import { majorSetIds } from '../data/extras.js?v=20261006a';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261006a';
+import { lookLabel } from '../data/looks.js?v=20261006a';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261006a';
+import { TradeEngine } from './trade.js?v=20261006a';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261006a';
+import { REGIONS } from '../data/regions.js?v=20261006a';
+import { jobsFor } from '../data/jobs.js?v=20261006a';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261001n';
-import { NPCS } from '../data/npcs.js?v=20261001n';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261001n';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261001n';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261001n';
-import { Economy } from './economy.js?v=20261001n';
-import { Travel } from './travel.js?v=20261001n';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261001n';
-import { CHAPTERS, CHAPTER_ORDER, chapterNumber } from '../narrative/chapters/index.js?v=20261001n';
-import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261001n';
-import { CAREERS } from '../narrative/careers.js?v=20261001n';
-import { UI } from '../ui/ui.js?v=20261001n';
+} from '../data/world.js?v=20261006a';
+import { NPCS } from '../data/npcs.js?v=20261006a';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261006a';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261006a';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261006a';
+import { Economy } from './economy.js?v=20261006a';
+import { Travel } from './travel.js?v=20261006a';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261006a';
+import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261006a';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261006a';
+import { CAREERS } from '../narrative/careers.js?v=20261006a';
+import { UI } from '../ui/ui.js?v=20261006a';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -2024,21 +2024,22 @@ export class Game {
   }
 
   // ===== 回忆(剧情回顾) / 衣橱(更换时装) =====
-  /** 回忆弹窗数据:全部主线大章的通关状态与回顾(未通关章显示「未解锁」) */
+  /** 回忆弹窗数据:全部大章的通关状态与回顾(未通关大章显示「未解锁」) */
   _memorialData() {
     const cleared = this.progress?.cleared || {};
     const curChapter = this.engine?.currentChapterId || this._storyChapter || this.regionId;
+    const curMajor = majorChapterOf(curChapter);
     let clearedCount = 0;
-    const chapters = CHAPTER_ORDER.map((id, i) => {
-      const n = chapterNumber(id);
-      const isCleared = !!cleared[id];
+    const chapters = MAJOR_CHAPTERS.map((mc) => {
+      const isCleared = !!cleared[mc.id];
       if (isCleared) clearedCount++;
-      const status = isCleared ? 'cleared' : (id === curChapter ? 'current' : 'locked');
+      const isCurrent = curMajor && curMajor.id === mc.id;
+      const status = isCleared ? 'cleared' : (isCurrent ? 'current' : 'locked');
       return {
-        id,
-        no: `第${n}章`,
-        title: CHAPTERS[id]?.title || `${n}章`,
-        recap: CHAPTER_RECAPS[id] || '',
+        id: mc.id,
+        no: mc.no,
+        title: mc.title,
+        recap: CHAPTER_RECAPS[mc.id] || '',
         status,
       };
     });
@@ -2457,7 +2458,8 @@ export class Game {
     this.currentBattle.setAutoMode(!this.currentBattle.autoMode);
   }
 
-  /** 剧情节点要求开战:按地区进度从敌人池中选取(小怪 → 首领),并叠加章节难度 */
+  /** 剧情节点要求开战:按地区进度从敌人池中选取(小怪 → 首领),并叠加章节难度。
+   *  ch20 起开启群体作战:多敌人 + 队友参战;玩家可自选攻击目标。 */
   _startNarrativeBattle({ poolKey }) {
     if (!this.deck) {
       const base = ['strike', 'strike', 'strike', 'defend', 'defend', 'cleave', 'pommel', 'shield_bash'];
@@ -2467,7 +2469,36 @@ export class Game {
     const region = REGIONS[this.regionId];
     const ratio = region && region.stops.length > 1 ? this.stopIndex / (region.stops.length - 1) : 0;
     const idx = Math.min(pool.length - 1, Math.round(ratio * (pool.length - 1)));
-    const def = scaleEnemy(pool[idx] || pool[0], this._chapterNum());
+    const chNum = this._chapterNum();
+
+    // ===== 群体作战(ch20 起)=====
+    // 多敌人:ch25 决战平原、ch26 内城之战固定多敌人;其他章节若池中有多个敌人则出 2 个
+    const groupMode = chNum >= 20;
+    let enemyDefs;
+    if (groupMode) {
+      if (poolKey === 'ch25') {
+        // 决战平原:3 个敌人(步兵+弓手+队长)
+        enemyDefs = pool.slice(0, 3).map((d) => scaleEnemy(d, chNum));
+      } else if (poolKey === 'ch26') {
+        // 内城之战:2 个敌人(卫兵+将军)
+        enemyDefs = pool.slice(0, 2).map((d) => scaleEnemy(d, chNum));
+      } else if (pool.length >= 2) {
+        // 其他章节:出 2 个敌人
+        enemyDefs = [pool[idx], pool[(idx + 1) % pool.length]].map((d) => scaleEnemy(d, chNum));
+      } else {
+        enemyDefs = [scaleEnemy(pool[idx] || pool[0], chNum)];
+      }
+    } else {
+      enemyDefs = [scaleEnemy(pool[idx] || pool[0], chNum)];
+    }
+
+    // 队友:ch23 起(联军营地)解锁队友参战
+    let allyIds = null;
+    if (groupMode && chNum >= 23) {
+      allyIds = ['brother'];
+      if (chNum >= 24) allyIds.push('general');
+      if (chNum >= 25) allyIds.push('friend');
+    }
 
     // 战力 = 装备加成 + 战力药剂(一次性)
     this.player.power = this.economy.equipStats().atkPower;
@@ -2476,7 +2507,8 @@ export class Game {
     this.currentBattle = new Battle({
       player: this.player,
       deck: this.deck,
-      enemyDef: def,
+      enemyDefs,
+      allyIds,
       rng: this.rng,
       bus: this.bus,
       bonusStrength,
@@ -2788,76 +2820,70 @@ export class Game {
     // narrative:career-chosen 监听器会重建牌组并刷新 UI
   }
 
-  /** 主菜单两大章条目(含通关 / 解锁状态) */
+  /** 主菜单大章条目(含通关 / 解锁状态) */
   _chapterEntries() {
     const cleared = this.progress?.cleared || {};
-    return [
-      {
-        id: 'ch01',
-        badge: '第一大章',
-        title: '家园破碎',
-        sub: '第一章 · 主线 + 4 条支线 · 约 5 万字',
-        locked: false,
-        cleared: !!cleared.ch01,
-      },
-      {
-        id: 'ch02',
-        badge: '第二大章',
-        title: '踏上旅程',
-        sub: '第二章 · 主线 + 2 条支线 · 约 11 万字',
-        locked: !cleared.ch01,
-        cleared: !!cleared.ch02,
-      },
-    ];
+    return MAJOR_CHAPTERS.map((mc, idx) => {
+      const prev = idx > 0 ? MAJOR_CHAPTERS[idx - 1] : null;
+      return {
+        id: mc.id,
+        badge: mc.no,
+        title: mc.title,
+        sub: `${mc.chapters.length} 节 · 主线剧情`,
+        locked: prev ? !cleared[prev.id] : false,
+        cleared: !!cleared[mc.id],
+      };
+    });
   }
 
   /** 速通:把指定大章标记为已通关(写入进度,解锁后续大章);返回是否为新标记 */
-  _markChapterCleared(chapterId) {
-    if (this.progress?.cleared?.[chapterId]) return false;
-    this.progress = markChapterCleared(chapterId);
+  _markChapterCleared(majorId) {
+    if (this.progress?.cleared?.[majorId]) return false;
+    this.progress = markChapterCleared(majorId);
     this.ui.renderChapterSelect(this._chapterEntries(), this._saveInfo());
     return true;
   }
 
   /**
-   * 剧情快照推进时检测「跨大章」:离开某个主线大章(进入下一章或支线地区)
+   * 剧情快照推进时检测「跨大章」:玩家离开某大章的最后一节(进入下一大章或结局)
    * 即视为该大章通关 —— 记录通关进度、行动力回满、寄出「通关谢仪」到邮箱。
-   * 支线地区(ch02b / ch04b / ch05b)不计入主线进度,只作为进出主章的中转。
+   * 支线地区(ch02b / ch04b / ch05b)与非末尾小节的切换不触发通关。
    */
   _checkChapterClear(snap) {
     const cur = snap?.chapter;
     const prev = this._storyChapter;
     if (!cur || !prev || cur === prev) return;
     this._storyChapter = cur;
-    // 只结算主线大章;支线地区不触发通关
-    if (!CHAPTER_ORDER.includes(prev)) return;
-    if (this.progress?.cleared?.[prev]) return;
-    this.progress = markChapterCleared(prev);
+    // 只在离开「某大章最后一节」时结算该大章
+    const prevMajor = majorChapterOf(prev);
+    if (!prevMajor || prevMajor.lastChapter !== prev) return;
+    if (this.progress?.cleared?.[prevMajor.id]) return;
+    this.progress = markChapterCleared(prevMajor.id);
     this.ui.renderChapterSelect(this._chapterEntries(), this._saveInfo());
-    // 用章节定义中的标题(如「第一章 · 家园破碎」)提示通关;行动力回满
-    const title = CHAPTERS[prev]?.title || `${prev}`;
+    const title = `${prevMajor.no} · ${prevMajor.title}`;
     const apGot = this.economy ? this.economy.addAp(this.economy.apCap()) : 0;
     // 通关谢仪:寄到「邮箱」,点「领取」才入袋
-    this._sendChapterMail(prev);
+    this._sendChapterMail(prevMajor.id);
     this.ui.showToast(`✦ ${title} 已通关${apGot ? ' · 行动力已回满' : ''} · 驿站寄来通关谢仪`);
     // 通关第一大章:在世界地图上随机出现餐厅 / 酒店 / 商市
-    if (prev === 'ch01') this._generatePois();
+    if (prevMajor.id === 'mc1') this._generatePois();
   }
 
   /** 大章通关:把「通关谢仪」信(含奖励与剧情回顾)寄到邮箱;已寄过则不重发 */
-  _sendChapterMail(chapterId) {
-    const reward = CHAPTER_CLEAR_REWARDS[chapterId];
-    const recap = CHAPTER_RECAPS[chapterId];
+  _sendChapterMail(majorId) {
+    const reward = CHAPTER_CLEAR_REWARDS[majorId];
+    const recap = CHAPTER_RECAPS[majorId];
     if (!reward && !recap) return;
     if (!this.mailState) this.mailState = loadMailState();
     this.mailState.granted = this.mailState.granted || {};
-    const id = `clear_${chapterId}`;
+    const id = `clear_${majorId}`;
     if (this.mailState.granted[id]) return;
-    const n = chapterNumber(chapterId);
-    const title = CHAPTERS[chapterId]?.title || `第${n}章`;
+    const n = majorId === 'mc1' ? 1 : majorId === 'mc2' ? 2 : 0;
+    const mc = MAJOR_CHAPTERS.find((m) => m.id === majorId);
+    const title = mc ? `${mc.no} · ${mc.title}` : majorId;
     this.mailState.granted[id] = {
       id,
-      no: `C${String(n).padStart(2, '0')}`,
+      no: `M${String(n).padStart(2, '0')}`,
       from: '守约 · 驿站',
       title: `${title} · 通关谢仪`,
       body: `${recap}\n大章既已走完,驿站随信附上这一程的谢仪。点「领取」收入行囊,再启新程。`,
@@ -3193,7 +3219,12 @@ export class Game {
   }
 
   _bindUI() {
-    this.bus.on('ui:start-chapter', (id) => this.startNewRun(undefined, id));
+    this.bus.on('ui:start-chapter', (id) => {
+      // id 可能是大章 id(mc1/mc2)或小节 id(chXX);统一解析为起始小节
+      const mc = MAJOR_CHAPTERS.find((m) => m.id === id);
+      const startId = mc ? mc.chapters[0] : id;
+      this.startNewRun(undefined, startId);
+    });
     this.bus.on('ui:continue-save', () => {
       const ok = this.loadGameState();
       if (!ok) this.ui.showToast('没有可继续的存档,或存档已损坏');

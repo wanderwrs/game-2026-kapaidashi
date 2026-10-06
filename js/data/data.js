@@ -49,6 +49,27 @@ export const CARDS = {
   maelstrom:   { id: 'maelstrom',   name: '涡旋',     cost: 3, type: 'attack', description: '造成 17 伤害,1 虚弱。',        effects: [{ kind: 'damage', amount: 17 }, { kind: 'status_enemy', name: 'weak', stacks: 1 }],       rarity: 'rare', career: 'mariner' },
   holy_fire:   { id: 'holy_fire',   name: '净火',     cost: 3, type: 'attack', description: '造成 15 伤害,恢复 5 HP。',     effects: [{ kind: 'damage', amount: 15 }, { kind: 'heal', amount: 5 }],                            rarity: 'rare', career: 'theologian' },
 
+  // ===== 治疗师职业卡 =====
+  heal_touch:  { id: 'heal_touch',  name: '治愈之手', cost: 1, type: 'skill',  description: '恢复 8 HP。',                  effects: [{ kind: 'heal', amount: 8 }],                                               rarity: 'common', career: 'healer' },
+  sanctuary:   { id: 'sanctuary',   name: '庇护结界', cost: 1, type: 'skill',  description: '获得 8 护甲,恢复 3 HP。',      effects: [{ kind: 'block', amount: 8 }, { kind: 'heal', amount: 3 }],                      rarity: 'common', career: 'healer' },
+  bless_aura:  { id: 'bless_aura',  name: '祝福光环', cost: 1, type: 'skill',  description: '获得 1 力量,恢复 4 HP。',      effects: [{ kind: 'status_self', name: 'strength', stacks: 1 }, { kind: 'heal', amount: 4 }], rarity: 'uncommon', career: 'healer' },
+  group_heal:  { id: 'group_heal',  name: '群体治愈', cost: 2, type: 'skill',  description: '恢复 15 HP,获得 4 护甲。',     effects: [{ kind: 'heal', amount: 15 }, { kind: 'block', amount: 4 }],                     rarity: 'rare', career: 'healer' },
+  life_force:  { id: 'life_force',  name: '生命之力', cost: 2, type: 'power',  description: '每回合开始恢复 4 HP。',        effects: [],                                                                            rarity: 'rare', career: 'healer' },
+
+  // ===== 白魔法师职业卡 =====
+  holy_light:  { id: 'holy_light',  name: '圣光术',   cost: 1, type: 'skill',  description: '恢复 10 HP,获得 3 护甲。',     effects: [{ kind: 'heal', amount: 10 }, { kind: 'block', amount: 3 }],                     rarity: 'common', career: 'white_mage' },
+  divine_shield:{ id: 'divine_shield',name: '神圣护盾',cost: 1, type: 'skill', description: '获得 12 护甲。',               effects: [{ kind: 'block', amount: 12 }],                                              rarity: 'common', career: 'white_mage' },
+  holy_smite:  { id: 'holy_smite',  name: '圣光打击', cost: 1, type: 'attack', description: '造成 8 伤害,恢复 4 HP。',     effects: [{ kind: 'damage', amount: 8 }, { kind: 'heal', amount: 4 }],                      rarity: 'uncommon', career: 'white_mage' },
+  holy_storm:  { id: 'holy_storm',  name: '圣光风暴', cost: 3, type: 'attack', description: '造成 18 伤害,施加 2 易伤。', effects: [{ kind: 'damage', amount: 18 }, { kind: 'status_enemy', name: 'vulnerable', stacks: 2 }], rarity: 'rare', career: 'white_mage' },
+  divine_grace:{ id: 'divine_grace',name: '神圣恩典', cost: 2, type: 'power',  description: '每回合开始恢复 6 HP,获得 1 力量。', effects: [],                                                              rarity: 'rare', career: 'white_mage' },
+
+  // ===== 黑魔法师职业卡 =====
+  shadow_bolt: { id: 'shadow_bolt', name: '暗影箭',   cost: 1, type: 'attack', description: '造成 10 伤害。',              effects: [{ kind: 'damage', amount: 10 }],                                             rarity: 'common', career: 'black_mage' },
+  curse:       { id: 'curse',       name: '虚弱诅咒', cost: 1, type: 'skill',  description: '施加 2 虚弱,造成 3 伤害。',   effects: [{ kind: 'status_enemy', name: 'weak', stacks: 2 }, { kind: 'damage', amount: 3 }], rarity: 'common', career: 'black_mage' },
+  hellfire:    { id: 'hellfire',    name: '地狱火',   cost: 2, type: 'attack', description: '造成 14 伤害,施加 1 易伤。', effects: [{ kind: 'damage', amount: 14 }, { kind: 'status_enemy', name: 'vulnerable', stacks: 1 }], rarity: 'uncommon', career: 'black_mage' },
+  void_rift:   { id: 'void_rift',   name: '毁灭黑洞', cost: 3, type: 'attack', description: '造成 20 伤害,施加 2 虚弱。', effects: [{ kind: 'damage', amount: 20 }, { kind: 'status_enemy', name: 'weak', stacks: 2 }],       rarity: 'rare', career: 'black_mage' },
+  dark_pact:   { id: 'dark_pact',   name: '黑暗契约', cost: 1, type: 'power',  description: '获得 2 力量,损失 3 HP。',     effects: [{ kind: 'status_self', name: 'strength', stacks: 2 }],                          rarity: 'rare', career: 'black_mage' },
+
   // ===== 剧情奖励卡(战斗胜利后可选) =====
   dragon_slash: { id: 'dragon_slash', name: '屠龙斩',  cost: 2, type: 'attack', description: '造成 13 伤害。屠龙者印记。',    effects: [{ kind: 'damage', amount: 13 }],                                            rarity: 'rare' },
   faith_shield: { id: 'faith_shield', name: '信仰之盾', cost: 1, type: 'skill',  description: '获得 6 护甲,恢复 3 HP。',     effects: [{ kind: 'block', amount: 6 }, { kind: 'heal', amount: 3 }],                            rarity: 'uncommon' },
@@ -134,6 +155,64 @@ export const ENEMIES = {
   ],
   ch15: [
     { name: '残党余孽', hp: 35, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 6 }] },
+  ],
+  // ===== 第二大章敌人池 =====
+  ch16: [
+    { name: '荒原游骑', hp: 38, actions: [{ kind: 'attack', value: 10 }, { kind: 'attack', value: 7 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+    { name: '教团斥候', hp: 32, actions: [{ kind: 'attack', value: 8 }, { kind: 'block', value: 6 }] },
+  ],
+  ch17: [
+    { name: '峡谷伏击者', hp: 36, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 7 }] },
+  ],
+  ch18: [
+    { name: '黑曜守卫', hp: 50, actions: [{ kind: 'attack', value: 12 }, { kind: 'block', value: 8 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+  ],
+  ch19: [
+    { name: '教团祭司', hp: 55, actions: [{ kind: 'attack', value: 13 }, { kind: 'buff', name: 'strength', stacks: 2 }, { kind: 'block', value: 7 }] },
+    { name: '龙骨守卫', hp: 70, actions: [{ kind: 'attack', value: 15 }, { kind: 'attack', value: 10 }, { kind: 'block', value: 8 }] },
+  ],
+  // ===== 第二大章·卡斯特罗战争敌人池(ch20~ch27) =====
+  ch20: [
+    { name: '卡斯特罗守军', hp: 42, actions: [{ kind: 'attack', value: 11 }, { kind: 'attack', value: 8 }, { kind: 'block', value: 6 }] },
+    { name: '黑鹰巡逻队', hp: 50, actions: [{ kind: 'attack', value: 12 }, { kind: 'block', value: 7 }] },
+  ],
+  ch21: [
+    { name: '前哨哨兵', hp: 38, actions: [{ kind: 'attack', value: 10 }, { kind: 'attack', value: 7 }] },
+    { name: '黑甲将军', hp: 65, actions: [{ kind: 'attack', value: 14 }, { kind: 'attack', value: 10 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+  ],
+  ch22: [
+    { name: '城邦刺客', hp: 40, actions: [{ kind: 'attack', value: 12 }, { kind: 'attack', value: 9 }] },
+    { name: '黑鹰杀手', hp: 55, actions: [{ kind: 'attack', value: 13 }, { kind: 'buff', name: 'strength', stacks: 1 }, { kind: 'block', value: 6 }] },
+  ],
+  ch23: [
+    { name: '联军教官', hp: 48, actions: [{ kind: 'attack', value: 11 }, { kind: 'block', value: 8 }] },
+    { name: '训练场假人', hp: 60, actions: [{ kind: 'attack', value: 10 }, { kind: 'block', value: 10 }] },
+  ],
+  ch24: [
+    { name: '城主护卫', hp: 52, actions: [{ kind: 'attack', value: 12 }, { kind: 'attack', value: 9 }, { kind: 'block', value: 6 }] },
+    { name: '卡斯特罗城主', hp: 85, actions: [{ kind: 'attack', value: 16 }, { kind: 'attack', value: 12 }, { kind: 'buff', name: 'strength', stacks: 2 }, { kind: 'block', value: 8 }] },
+  ],
+  ch25: [
+    { name: '卡斯特罗步兵', hp: 36, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 7 }] },
+    { name: '卡斯特罗弓手', hp: 32, actions: [{ kind: 'attack', value: 11 }, { kind: 'attack', value: 8 }] },
+    { name: '弓箭队长', hp: 58, actions: [{ kind: 'attack', value: 14 }, { kind: 'buff', name: 'strength', stacks: 1 }, { kind: 'block', value: 6 }] },
+  ],
+  ch26: [
+    { name: '精锐卫兵', hp: 48, actions: [{ kind: 'attack', value: 12 }, { kind: 'block', value: 7 }] },
+    { name: '亲卫将军', hp: 72, actions: [{ kind: 'attack', value: 15 }, { kind: 'attack', value: 11 }, { kind: 'buff', name: 'strength', stacks: 2 }] },
+  ],
+  ch27: [
+    { name: '残余守军', hp: 44, actions: [{ kind: 'attack', value: 10 }, { kind: 'attack', value: 8 }] },
+  ],
+  // ===== 法师支线敌人池 =====
+  fs: [
+    { name: '魔力傀儡', hp: 50, actions: [{ kind: 'attack', value: 11 }, { kind: 'attack', value: 8 }, { kind: 'block', value: 6 }] },
+  ],
+  fsa: [
+    { name: '暗影化身', hp: 70, actions: [{ kind: 'attack', value: 14 }, { kind: 'attack', value: 10 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+  ],
+  fsb: [
+    { name: '光明化身', hp: 70, actions: [{ kind: 'attack', value: 14 }, { kind: 'block', value: 10 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
   ],
 };
 

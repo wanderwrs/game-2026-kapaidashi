@@ -57,6 +57,19 @@ export const WORLD = {
   ch13: { x: 76, y: 58, level: 13, city: false, terrain: 'land' },
   ch14: { x: 54, y: 10, level: 14, city: false, terrain: 'plateau' },
   ch15: { x: 46, y: 37, level: 15, city: true, terrain: 'land' },
+  // ===== 第二大章:北境(地图左上 / 正北方向) =====
+  ch16: { x: 22, y: 12, level: 16, city: false, terrain: 'land' },
+  ch17: { x: 10, y: 18, level: 17, city: false, terrain: 'plateau' },
+  ch18: { x: 8, y: 32, level: 18, city: false, terrain: 'land' },
+  ch19: { x: 16, y: 48, level: 19, city: false, terrain: 'plateau' },
+  ch20: { x: 30, y: 8, level: 20, city: false, terrain: 'land' },
+  ch21: { x: 40, y: 4, level: 21, city: false, terrain: 'plateau' },
+  ch22: { x: 52, y: 6, level: 22, city: true, terrain: 'land' },
+  ch23: { x: 64, y: 10, level: 23, city: false, terrain: 'land' },
+  ch24: { x: 76, y: 4, level: 24, city: true, terrain: 'land' },
+  ch25: { x: 68, y: 24, level: 25, city: false, terrain: 'land' },
+  ch26: { x: 80, y: 28, level: 26, city: false, terrain: 'land' },
+  ch27: { x: 56, y: 40, level: 27, city: true, terrain: 'land' },
 };
 
 /** 某地区的地形 */
