@@ -194,6 +194,103 @@ body {
   100% { opacity: 0; transform: translateY(-72vh) translateX(var(--drift, 20px)) scale(1.1); }
 }
 
+/* ===== 片尾字幕 ===== */
+.view-credits {
+  background: #000;
+  overflow: hidden;
+  position: relative;
+}
+.credits-embers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+.credits-embers span {
+  position: absolute;
+  bottom: -12px;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--ember-bright);
+  box-shadow: 0 0 8px 2px rgba(255, 106, 69, 0.55);
+  opacity: 0;
+  animation: creditsEmberRise linear infinite;
+}
+@keyframes creditsEmberRise {
+  0%   { opacity: 0; transform: translateY(0) translateX(0) scale(0.6); }
+  15%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-80vh) translateX(var(--drift, 20px)) scale(1.1); }
+}
+.credits-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+}
+.credits-inner {
+  position: absolute;
+  bottom: -100%;
+  width: min(720px, 86vw);
+  text-align: center;
+  color: #d8cfc0;
+  animation: creditsScroll 38s linear forwards;
+}
+@keyframes creditsScroll {
+  0%   { bottom: -100%; }
+  100% { bottom: 110%; }
+}
+.credits-inner h1 {
+  font-size: 28px;
+  color: var(--gold-bright, #e8cd6e);
+  letter-spacing: 6px;
+  margin: 0 0 28px;
+  text-shadow: 0 0 18px rgba(232, 205, 110, 0.5);
+}
+.credits-inner h2 {
+  font-size: 20px;
+  color: var(--ember-bright, #ff6a45);
+  letter-spacing: 3px;
+  margin: 36px 0 14px;
+}
+.credits-inner p {
+  font-size: 15px;
+  line-height: 2.1;
+  color: #bfb6a6;
+  margin: 0 0 12px;
+  letter-spacing: 0.5px;
+}
+.credits-inner .credits-divider {
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-line), transparent);
+  margin: 28px auto;
+}
+.credits-inner .credits-end {
+  font-size: 22px;
+  color: var(--gold-bright, #e8cd6e);
+  letter-spacing: 4px;
+  margin-top: 48px;
+  text-shadow: 0 0 16px rgba(232, 205, 110, 0.6);
+}
+.credits-skip {
+  position: absolute;
+  bottom: 20px;
+  right: 24px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  z-index: 3;
+  letter-spacing: 1px;
+  pointer-events: none;
+  animation: creditsSkipBlink 2s ease-in-out infinite;
+}
+@keyframes creditsSkipBlink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
 .menu-card {
   position: relative;
   text-align: center;

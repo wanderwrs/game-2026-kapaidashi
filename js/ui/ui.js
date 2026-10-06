@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261006f';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261006f';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261006f';
-import { gradeOf } from '../data/grade.js?v=20261006f';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261006f';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261006f';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261006f';
-import { cardMpCost } from '../data/data.js?v=20261006f';
-import { ENDINGS } from '../narrative/engine.js?v=20261006f';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261006f';
-import { SceneView, paintCharacter } from './scene.js?v=20261006f';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261006f';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261006f';
-import { Minigame } from '../minigame/minigame.js?v=20261006f';
-import { MODE_LABELS } from '../data/jobs.js?v=20261006f';
-import { TERRAIN_CN } from '../data/world.js?v=20261006f';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261006f';
+import { GameState } from '../core/game.js?v=20261006g';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261006g';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261006g';
+import { gradeOf } from '../data/grade.js?v=20261006g';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261006g';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261006g';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261006g';
+import { cardMpCost } from '../data/data.js?v=20261006g';
+import { ENDINGS } from '../narrative/engine.js?v=20261006g';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261006g';
+import { SceneView, paintCharacter } from './scene.js?v=20261006g';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261006g';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261006g';
+import { Minigame } from '../minigame/minigame.js?v=20261006g';
+import { MODE_LABELS } from '../data/jobs.js?v=20261006g';
+import { TERRAIN_CN } from '../data/world.js?v=20261006g';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261006g';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -157,6 +157,7 @@ export class UI {
         battle: $('view-battle'),
         reward: $('view-reward'),
         result: $('view-result'),
+        credits: $('view-credits'),
         restaurant: $('view-restaurant'),
         hotel: $('view-hotel'),
         market_poi: $('view-market-poi'),
@@ -682,6 +683,7 @@ export class UI {
     else if (state === GameState.BATTLE) target = this.el.views.battle;
     else if (state === GameState.REWARD) target = this.el.views.reward;
     else if (state === GameState.VICTORY || state === GameState.DEFEAT) target = this.el.views.result;
+    else if (state === GameState.CREDITS) target = this.el.views.credits;
     else if (state === GameState.RESTAURANT) target = this.el.views.restaurant;
     else if (state === GameState.HOTEL) target = this.el.views.hotel;
     else if (state === GameState.MARKET_POI) target = this.el.views.market_poi;
@@ -3576,6 +3578,57 @@ export class UI {
       .map((f) => `<span class="stat-chip">${f}</span>`)
       .join('');
     this.el.resultStats.innerHTML = stats + flags;
+  }
+
+  // ===== 片尾字幕 =====
+  showCredits(recaps, onComplete) {
+    const inner = document.getElementById('credits-inner');
+    const embers = document.getElementById('credits-embers');
+    if (!inner || !embers) { if (onComplete) onComplete(); return; }
+
+    // 生成红色余烬动画
+    embers.innerHTML = '';
+    for (let i = 0; i < 24; i++) {
+      const s = document.createElement('span');
+      s.style.left = `${Math.random() * 100}%`;
+      s.style.animationDuration = `${6 + Math.random() * 8}s`;
+      s.style.animationDelay = `${-Math.random() * 10}s`;
+      s.style.setProperty('--drift', `${(Math.random() - 0.5) * 100}px`);
+      const scale = 0.6 + Math.random() * 1.0;
+      s.style.width = `${3 * scale}px`;
+      s.style.height = `${3 * scale}px`;
+      embers.appendChild(s);
+    }
+
+    // 组装字幕内容
+    const mc1 = recaps?.mc1 || '';
+    const mc2 = recaps?.mc2 || '';
+    inner.innerHTML = `
+      <h1>龙 脊 少 年 · 守 约</h1>
+      <div class="credits-divider"></div>
+      <h2>第一大章 · 家园之殇</h2>
+      <p>${mc1}</p>
+      <div class="credits-divider"></div>
+      <h2>第二大章 · 卡斯特罗之战</h2>
+      <p>${mc2}</p>
+      <div class="credits-divider"></div>
+      <p class="credits-end">期 待 下 次 冒 险 之 旅</p>
+    `;
+
+    // 监听字幕动画结束或点击跳过
+    const finish = () => {
+      if (this._creditsFinished) return;
+      this._creditsFinished = true;
+      inner.removeEventListener('animationend', onAnimEnd);
+      document.removeEventListener('click', onSkip);
+      if (onComplete) onComplete();
+    };
+    const onAnimEnd = (e) => { if (e.target === inner) finish(); };
+    const onSkip = () => finish();
+    this._creditsFinished = false;
+    inner.addEventListener('animationend', onAnimEnd);
+    // 延迟绑定点击,避免从叙事视图点击「查看结局」的事件冒泡触发跳过
+    setTimeout(() => document.addEventListener('click', onSkip), 600);
   }
 
   // ===== 角色弹窗:形象居中 · 七格防具环绕 · 服饰 / 职业 / 形象 =====
