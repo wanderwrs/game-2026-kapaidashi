@@ -70,10 +70,11 @@ export const REDEEM_CODES = [
     reward: { gold: 10000000 },
   },
   {
-    // 管理员码:兑换后不直接发放,而是把「全部内容」寄到邮箱,由玩家在邮箱里领取
+    // 管理员码:已失效(invalid)
     code: 'fyudsguihffkhgudhvsgulhvsdlhvfdklghdklfgjhduklvhldkrhvbdklbhdkljvkldrgfkvdhklhvkdlskdhkgvsdbhklvbhdlkshrglorhilgaihdsvalksdvjkbslvbjjkfvs',
     no: 'R004',
     label: '管理员礼包',
+    invalid: true,
     deliver: 'mail',
     mail: {
       from: '守约 · 系统',
