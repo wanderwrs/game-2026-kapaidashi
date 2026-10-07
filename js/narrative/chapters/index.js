@@ -11,48 +11,77 @@
  * 由法师职业在第二大章中触发,不占主线进度。
  */
 
-import { CHAPTER_01 } from './ch01.js?v=20261006g';
-import { CHAPTER_02 } from './ch02.js?v=20261006g';
-import { CHAPTER_02B } from './ch02b.js?v=20261006g';
-import { CHAPTER_03 } from './ch03.js?v=20261006g';
-import { CHAPTER_04 } from './ch04.js?v=20261006g';
-import { CHAPTER_04B } from './ch04b.js?v=20261006g';
-import { CHAPTER_05 } from './ch05.js?v=20261006g';
-import { CHAPTER_05B } from './ch05b.js?v=20261006g';
-import { CHAPTER_06 } from './ch06.js?v=20261006g';
-import { CHAPTER_07 } from './ch07.js?v=20261006g';
-import { CHAPTER_08 } from './ch08.js?v=20261006g';
-import { CHAPTER_09 } from './ch09.js?v=20261006g';
-import { CHAPTER_10 } from './ch10.js?v=20261006g';
-import { CHAPTER_11 } from './ch11.js?v=20261006g';
-import { CHAPTER_12 } from './ch12.js?v=20261006g';
-import { CHAPTER_13 } from './ch13.js?v=20261006g';
-import { CHAPTER_14 } from './ch14.js?v=20261006g';
-import { CHAPTER_15 } from './ch15.js?v=20261006g';
-import { CHAPTER_16 } from './ch16.js?v=20261006g';
-import { CHAPTER_17 } from './ch17.js?v=20261006g';
-import { CHAPTER_18 } from './ch18.js?v=20261006g';
-import { CHAPTER_19 } from './ch19.js?v=20261006g';
-import { CHAPTER_20 } from './ch20.js?v=20261006g';
-import { CHAPTER_21 } from './ch21.js?v=20261006g';
-import { CHAPTER_22 } from './ch22.js?v=20261006g';
-import { CHAPTER_23 } from './ch23.js?v=20261006g';
-import { CHAPTER_24 } from './ch24.js?v=20261006g';
-import { CHAPTER_25 } from './ch25.js?v=20261006g';
-import { CHAPTER_26 } from './ch26.js?v=20261006g';
-import { CHAPTER_27 } from './ch27.js?v=20261006g';
-import { CHAPTER_FS1 } from './fs1.js?v=20261006g';
-import { CHAPTER_FS2 } from './fs2.js?v=20261006g';
-import { CHAPTER_FS3 } from './fs3.js?v=20261006g';
-import { CHAPTER_FS4 } from './fs4.js?v=20261006g';
-import { CHAPTER_FSA5 } from './fsa5.js?v=20261006g';
-import { CHAPTER_FSA6 } from './fsa6.js?v=20261006g';
-import { CHAPTER_FSA7 } from './fsa7.js?v=20261006g';
-import { CHAPTER_FSA8 } from './fsa8.js?v=20261006g';
-import { CHAPTER_FSB5 } from './fsb5.js?v=20261006g';
-import { CHAPTER_FSB6 } from './fsb6.js?v=20261006g';
-import { CHAPTER_FSB7 } from './fsb7.js?v=20261006g';
-import { CHAPTER_FSB8 } from './fsb8.js?v=20261006g';
+import { CHAPTER_01 } from './ch01.js?v=20261006h';
+import { CHAPTER_02 } from './ch02.js?v=20261006h';
+import { CHAPTER_02B } from './ch02b.js?v=20261006h';
+import { CHAPTER_03 } from './ch03.js?v=20261006h';
+import { CHAPTER_04 } from './ch04.js?v=20261006h';
+import { CHAPTER_04B } from './ch04b.js?v=20261006h';
+import { CHAPTER_05 } from './ch05.js?v=20261006h';
+import { CHAPTER_05B } from './ch05b.js?v=20261006h';
+import { CHAPTER_06 } from './ch06.js?v=20261006h';
+import { CHAPTER_07 } from './ch07.js?v=20261006h';
+import { CHAPTER_08 } from './ch08.js?v=20261006h';
+import { CHAPTER_09 } from './ch09.js?v=20261006h';
+import { CHAPTER_10 } from './ch10.js?v=20261006h';
+import { CHAPTER_11 } from './ch11.js?v=20261006h';
+import { CHAPTER_12 } from './ch12.js?v=20261006h';
+import { CHAPTER_13 } from './ch13.js?v=20261006h';
+import { CHAPTER_14 } from './ch14.js?v=20261006h';
+import { CHAPTER_15 } from './ch15.js?v=20261006h';
+import { CHAPTER_16 } from './ch16.js?v=20261006h';
+import { CHAPTER_17 } from './ch17.js?v=20261006h';
+import { CHAPTER_18 } from './ch18.js?v=20261006h';
+import { CHAPTER_19 } from './ch19.js?v=20261006h';
+import { CHAPTER_20 } from './ch20.js?v=20261006h';
+import { CHAPTER_21 } from './ch21.js?v=20261006h';
+import { CHAPTER_22 } from './ch22.js?v=20261006h';
+import { CHAPTER_23 } from './ch23.js?v=20261006h';
+import { CHAPTER_24 } from './ch24.js?v=20261006h';
+import { CHAPTER_25 } from './ch25.js?v=20261006h';
+import { CHAPTER_26 } from './ch26.js?v=20261006h';
+import { CHAPTER_27 } from './ch27.js?v=20261006h';
+import { CHAPTER_28 } from './ch28.js?v=20261006h';
+import { CHAPTER_29 } from './ch29.js?v=20261006h';
+import { CHAPTER_30 } from './ch30.js?v=20261006h';
+import { CHAPTER_31 } from './ch31.js?v=20261006h';
+import { CHAPTER_32 } from './ch32.js?v=20261006h';
+import { CHAPTER_33 } from './ch33.js?v=20261006h';
+import { CHAPTER_34 } from './ch34.js?v=20261006h';
+import { CHAPTER_35 } from './ch35.js?v=20261006h';
+import { CHAPTER_36 } from './ch36.js?v=20261006h';
+import { CHAPTER_37 } from './ch37.js?v=20261006h';
+import { CHAPTER_38 } from './ch38.js?v=20261006h';
+import { CHAPTER_39 } from './ch39.js?v=20261006h';
+import { CHAPTER_40 } from './ch40.js?v=20261006h';
+import { CHAPTER_41 } from './ch41.js?v=20261006h';
+import { CHAPTER_42 } from './ch42.js?v=20261006h';
+import { CHAPTER_43 } from './ch43.js?v=20261006h';
+import { CHAPTER_44 } from './ch44.js?v=20261006h';
+import { CHAPTER_45 } from './ch45.js?v=20261006h';
+import { CHAPTER_46 } from './ch46.js?v=20261006h';
+import { CHAPTER_47 } from './ch47.js?v=20261006h';
+import { CHAPTER_JD1 } from './jd1.js?v=20261006h';
+import { CHAPTER_JD2 } from './jd2.js?v=20261006h';
+import { CHAPTER_JD3 } from './jd3.js?v=20261006h';
+import { CHAPTER_JD4 } from './jd4.js?v=20261006h';
+import { CHAPTER_JD5 } from './jd5.js?v=20261006h';
+import { CHAPTER_JD6 } from './jd6.js?v=20261006h';
+import { CHAPTER_JD7 } from './jd7.js?v=20261006h';
+import { CHAPTER_JD8 } from './jd8.js?v=20261006h';
+import { CHAPTER_JD9 } from './jd9.js?v=20261006h';
+import { CHAPTER_FS1 } from './fs1.js?v=20261006h';
+import { CHAPTER_FS2 } from './fs2.js?v=20261006h';
+import { CHAPTER_FS3 } from './fs3.js?v=20261006h';
+import { CHAPTER_FS4 } from './fs4.js?v=20261006h';
+import { CHAPTER_FSA5 } from './fsa5.js?v=20261006h';
+import { CHAPTER_FSA6 } from './fsa6.js?v=20261006h';
+import { CHAPTER_FSA7 } from './fsa7.js?v=20261006h';
+import { CHAPTER_FSA8 } from './fsa8.js?v=20261006h';
+import { CHAPTER_FSB5 } from './fsb5.js?v=20261006h';
+import { CHAPTER_FSB6 } from './fsb6.js?v=20261006h';
+import { CHAPTER_FSB7 } from './fsb7.js?v=20261006h';
+import { CHAPTER_FSB8 } from './fsb8.js?v=20261006h';
 
 export const CHAPTERS = {
   ch01: CHAPTER_01, ch02: CHAPTER_02, ch02b: CHAPTER_02B, ch03: CHAPTER_03,
@@ -63,16 +92,26 @@ export const CHAPTERS = {
   ch16: CHAPTER_16, ch17: CHAPTER_17, ch18: CHAPTER_18, ch19: CHAPTER_19,
   ch20: CHAPTER_20, ch21: CHAPTER_21, ch22: CHAPTER_22, ch23: CHAPTER_23,
   ch24: CHAPTER_24, ch25: CHAPTER_25, ch26: CHAPTER_26, ch27: CHAPTER_27,
+  ch28: CHAPTER_28, ch29: CHAPTER_29, ch30: CHAPTER_30, ch31: CHAPTER_31,
+  ch32: CHAPTER_32, ch33: CHAPTER_33, ch34: CHAPTER_34, ch35: CHAPTER_35,
+  ch36: CHAPTER_36, ch37: CHAPTER_37, ch38: CHAPTER_38, ch39: CHAPTER_39,
+  ch40: CHAPTER_40, ch41: CHAPTER_41, ch42: CHAPTER_42, ch43: CHAPTER_43,
+  ch44: CHAPTER_44, ch45: CHAPTER_45, ch46: CHAPTER_46, ch47: CHAPTER_47,
+  jd1: CHAPTER_JD1, jd2: CHAPTER_JD2, jd3: CHAPTER_JD3, jd4: CHAPTER_JD4,
+  jd5: CHAPTER_JD5, jd6: CHAPTER_JD6, jd7: CHAPTER_JD7, jd8: CHAPTER_JD8,
+  jd9: CHAPTER_JD9,
   fs1: CHAPTER_FS1, fs2: CHAPTER_FS2, fs3: CHAPTER_FS3, fs4: CHAPTER_FS4,
   fsa5: CHAPTER_FSA5, fsa6: CHAPTER_FSA6, fsa7: CHAPTER_FSA7, fsa8: CHAPTER_FSA8,
   fsb5: CHAPTER_FSB5, fsb6: CHAPTER_FSB6, fsb7: CHAPTER_FSB7, fsb8: CHAPTER_FSB8,
 };
 
-/** 全部主线小节(ch01~ch27),不含支线地区与法师支线 */
+/** 全部主线小节(ch01~ch47),不含支线地区与法师支线 */
 export const CHAPTER_ORDER = [
   'ch01','ch02','ch03','ch04','ch05','ch06','ch07','ch08','ch09','ch10',
   'ch11','ch12','ch13','ch14','ch15',
   'ch16','ch17','ch18','ch19','ch20','ch21','ch22','ch23','ch24','ch25','ch26','ch27',
+  'ch28','ch29','ch30','ch31','ch32','ch33','ch34','ch35','ch36','ch37',
+  'ch38','ch39','ch40','ch41','ch42','ch43','ch44','ch45','ch46','ch47',
 ];
 
 /**
@@ -93,6 +132,13 @@ export const MAJOR_CHAPTERS = [
     chapters: ['ch16','ch17','ch18','ch19','ch20','ch21','ch22','ch23','ch24','ch25','ch26','ch27'],
     lastChapter: 'ch27',
   },
+  {
+    id: 'mc3',
+    no: '第三大章',
+    title: '龙族突起',
+    chapters: ['ch28','ch29','ch30','ch31','ch32','ch33','ch34','ch35','ch36','ch37','ch38','ch39','ch40','ch41','ch42','ch43','ch44','ch45','ch46','ch47'],
+    lastChapter: 'ch47',
+  },
 ];
 
 /** 法师支线分组(独立于主线,由法师职业触发) */
@@ -101,6 +147,9 @@ export const MAGE_SIDE_CHAPTERS = {
   white: ['fsa5', 'fsa6', 'fsa7', 'fsa8'],
   black: ['fsb5', 'fsb6', 'fsb7', 'fsb8'],
 };
+
+/** 经典师职业支线分组(由 ch35 解锁,独立于主线) */
+export const CLASSIC_SIDE_CHAPTERS = ['jd1', 'jd2', 'jd3', 'jd4', 'jd5', 'jd6', 'jd7', 'jd8', 'jd9'];
 
 /** 由小节 id 反查所属大章;找不到返回 null */
 export function majorChapterOf(chapterId) {

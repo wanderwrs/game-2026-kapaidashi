@@ -137,6 +137,24 @@ export const CAREERS = [
     starterDeck: ['strike', 'defend', 'shadow_bolt', 'shadow_bolt', 'curse', 'hellfire', 'insight', 'arcane_bolt'],
     signatureCards: ['shadow_bolt', 'void_rift'],
   },
+  // ===== 第三章新增:经典师(classic) — 纯辅助职业 =====
+  // 起源:远古洞穴中的上古典籍,龙族传授给人类的削弱之道
+  // 特点:降低敌方攻击力、魔力、减少抗伤害能力、持续扣血
+  {
+    id: 'classic',
+    name: '经典师',
+    root: '经典',
+    title: '龙纹典守',
+    color: '#d4a017',
+    icon: '📖',
+    maxHp: 65,
+    energyMax: 3,
+    mpMax: 5,
+    backstory: '在远古洞穴中,你发现了龙族留给人类的上古典籍,记录着"经典师"的修炼之道。经典师是龙族传授给人类的纯辅助职业,擅长以言灵和符文削弱敌人——降低攻击力、抑制魔力、瓦解防御、持续侵蚀。经典师不直接攻击,而是让敌人在不知不觉中衰弱。你的使命不是战斗,而是守护真相。',
+    starterDeck: ['defend', 'defend', 'insight', 'insight', 'weaken', 'disrupt', 'erode', 'recover'],
+    signatureCards: ['weaken', 'ancient_curse'],
+    passive: { id: 'word_spirit', name: '言灵之力', desc: '每回合开始时,对最弱敌人施加1层虚弱(攻击力-2)' },
+  },
 ];
 
 export const CAREER_MAP = Object.fromEntries(CAREERS.map((c) => [c.id, c]));

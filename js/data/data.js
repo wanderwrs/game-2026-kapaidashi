@@ -204,6 +204,39 @@ export const ENEMIES = {
   ch27: [
     { name: '残余守军', hp: 44, actions: [{ kind: 'attack', value: 10 }, { kind: 'attack', value: 8 }] },
   ],
+  // ===== 第三章·龙族突起敌人池 (ch28~ch47) =====
+  ch30: [
+    { name: '龙息变异兽', hp: 58, actions: [{ kind: 'attack', value: 13 }, { kind: 'attack', value: 9 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+  ],
+  ch31: [
+    { name: '龙族教徒', hp: 52, actions: [{ kind: 'attack', value: 12 }, { kind: 'block', value: 7 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+    { name: '龙骨召唤师', hp: 48, actions: [{ kind: 'attack', value: 11 }, { kind: 'attack', value: 8 }] },
+  ],
+  ch33: [
+    { name: '洞穴变异体', hp: 62, actions: [{ kind: 'attack', value: 14 }, { kind: 'attack', value: 10 }, { kind: 'block', value: 8 }] },
+  ],
+  ch37: [
+    { name: '古代守卫石像', hp: 80, actions: [{ kind: 'attack', value: 16 }, { kind: 'block', value: 12 }, { kind: 'buff', name: 'strength', stacks: 2 }] },
+  ],
+  ch39: [
+    { name: '龙魂构造体', hp: 75, actions: [{ kind: 'attack', value: 15 }, { kind: 'attack', value: 11 }, { kind: 'block', value: 10 }] },
+  ],
+  ch41: [
+    { name: '龙魂残影', hp: 90, actions: [{ kind: 'attack', value: 18 }, { kind: 'attack', value: 14 }, { kind: 'buff', name: 'strength', stacks: 2 }, { kind: 'block', value: 10 }] },
+  ],
+  ch43: [
+    { name: '龙族石像兵', hp: 85, actions: [{ kind: 'attack', value: 17 }, { kind: 'attack', value: 13 }, { kind: 'block', value: 12 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
+  ],
+  ch46: [
+    { name: '太初近卫', hp: 130, actions: [{ kind: 'attack', value: 22 }, { kind: 'attack', value: 18 }, { kind: 'buff', name: 'strength', stacks: 3 }, { kind: 'block', value: 15 }] },
+  ],
+  // ===== 经典师职业剧情敌人池 =====
+  jd: [
+    { name: '训练幻影', hp: 55, actions: [{ kind: 'attack', value: 12 }, { kind: 'attack', value: 9 }, { kind: 'block', value: 7 }] },
+  ],
+  jd_boss: [
+    { name: '古代经典师幻影', hp: 110, actions: [{ kind: 'attack', value: 18 }, { kind: 'attack', value: 14 }, { kind: 'buff', name: 'strength', stacks: 2 }, { kind: 'block', value: 10 }] },
+  ],
   // ===== 法师支线敌人池 =====
   fs: [
     { name: '魔力傀儡', hp: 50, actions: [{ kind: 'attack', value: 11 }, { kind: 'attack', value: 8 }, { kind: 'block', value: 6 }] },
