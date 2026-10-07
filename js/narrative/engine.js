@@ -15,8 +15,8 @@
  *   { id, kind:'ending', text, ending_id }            // 触发结局
  */
 
-import { CAREER_MAP } from './careers.js?v=20261007h';
-import { CHAPTER_IMAGES } from './images.js?v=20261007h';
+import { CAREER_MAP } from './careers.js?v=20261007i';
+import { CHAPTER_IMAGES } from './images.js?v=20261007i';
 
 export class NarrativeEngine {
   constructor({ rng, bus, chapters }) {
@@ -61,6 +61,9 @@ export class NarrativeEngine {
     // 门控:该节点是尚未抵达的地点锚点 → 暂停,交由地图决定何时开启
     if (this._shouldGate(chapterId, nodeId)) {
       this._gateTarget = { chapterId, nodeId };
+      // 清空 currentNode,避免 serialize 保存上一章遗留的节点 id
+      // (否则跨章存档恢复时可能定位到错误节点,引发空白剧情页或卡死)
+      this.currentNode = null;
       this.bus.emit('narrative:gate', { chapterId, nodeId });
       return;
     }
