@@ -11,13 +11,13 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261007m';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261007m';
-import { GEM_EFFECT } from '../data/gems.js?v=20261007m';
-import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261007m';
-import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261007m';
-import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261007m';
-import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261007m';
+import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261007o';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261007o';
+import { GEM_EFFECT } from '../data/gems.js?v=20261007o';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261007o';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261007o';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261007o';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261007o';
 
 /** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
 const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
@@ -29,6 +29,9 @@ export const BAG_STEP = 10;
 export const BAG_BASE_COST = 100;
 export const BAG_TIER_SLOTS = 70;
 export const BAG_TIER_MUL = 1.25;
+
+/** 行动力上限的硬上限(龙髓灵药等提升到此为止) */
+export const AP_MAX_LIMIT = 100;
 
 /** 背包扩容费用:已开格数决定档位 */
 export function bagUpgradeCost(currentCap) {
@@ -862,13 +865,31 @@ export class Economy {
   }
 
   // ===== 行动力 =====
-  apCap() { return this.apMax + this.equipStats().apMax; }
+  /** 行动力上限 = 基础上限 + 装备加成,并对总上限硬性封顶 AP_MAX_LIMIT */
+  apCap() { return Math.min(AP_MAX_LIMIT, this.apMax + this.equipStats().apMax); }
 
   addAp(n) {
     const cap = this.apCap();
     const before = this.ap;
     this.ap = Math.max(0, Math.min(cap, this.ap + n));
     return this.ap - before;
+  }
+
+  /**
+   * 永久提升行动力上限(总上限封顶 AP_MAX_LIMIT)。
+   * 返回「有效上限」的实际提升量(受装备加成影响,故可能小于 delta);
+   * 新增的行动力一并补足。已达总上限时返回 0,不做任何改动。
+   */
+  raiseApMax(delta) {
+    const d = Math.max(0, Math.floor(delta || 0));
+    if (d <= 0) return 0;
+    const capBefore = this.apCap();
+    if (capBefore >= AP_MAX_LIMIT) return 0;
+    const before = this.apMax;
+    this.apMax = Math.min(AP_MAX_LIMIT, this.apMax + d);
+    const baseGot = this.apMax - before;
+    if (baseGot > 0) this.addAp(baseGot);
+    return this.apCap() - capBefore;
   }
 
   spendAp(n) {
@@ -943,6 +964,13 @@ export class Economy {
         if (this.ap >= this.apCap()) return { ok: false, msg: '行动力已满' };
         const got = this.addAp(amount);
         msg = `恢复了 ${got} 点行动力`;
+        break;
+      }
+      case 'ap_max': {
+        // 总上限已封顶则不再消耗(避免装备加成期间白白浪费药品)
+        const got = this.raiseApMax(amount);
+        if (got <= 0) return { ok: false, msg: `行动力上限已达总上限 ${AP_MAX_LIMIT}` };
+        msg = `行动力上限 +${got}(现为 ${this.apCap()})`;
         break;
       }
       case 'power': {

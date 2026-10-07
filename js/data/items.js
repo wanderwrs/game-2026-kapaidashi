@@ -26,11 +26,11 @@
  * sell 未填时按 price 的 50% 计算。
  */
 
-import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261007m';
-import { GEM_ITEMS } from './gems.js?v=20261007m';
-import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261007m';
-import { isSellLockedLevel } from './grade.js?v=20261007m';
-import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261007m';
+import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261007o';
+import { GEM_ITEMS } from './gems.js?v=20261007o';
+import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261007o';
+import { isSellLockedLevel } from './grade.js?v=20261007o';
+import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261007o';
 
 export const ITEM_CATEGORY_CN = {
   potion: '药品',
@@ -81,6 +81,7 @@ export const ITEMS = {
   mp_large:    { id: 'mp_large',    name: '回气丹',   category: 'potion', price: 60, icon: '🔮', desc: '恢复 5 点魔力。',         effect: { kind: 'mp',    amount: 5 } },
   power_elixir:{ id: 'power_elixir',name: '战力药剂', category: 'potion', price: 70, icon: '💪', desc: '下一场战斗战力 +3。',      effect: { kind: 'power', amount: 3 } },
   phoenix_blood:{ id: 'phoenix_blood',name:'不死鸟之血', category: 'potion', price: 760, icon: '🩸', rare: true, desc: '传说一滴即续命。生命与魔力尽数回满。', effect: { kind: 'full', amount: 0 } },
+  ap_elixir:   { id: 'ap_elixir',   name: '龙髓灵药', category: 'potion', price: 5000, icon: '💠', desc: '极为昂贵。永久提升行动力上限 5 点(总上限 100),并补足相应的行动力。', effect: { kind: 'ap_max', amount: 5 } },
 
   // ===== 战斗专用药剂(仅战斗中可用) =====
   antidote:    { id: 'antidote',    name: '解毒剂',   category: 'potion', price: 35, icon: '🌿', desc: '战斗中使用,清除自身易伤 / 虚弱 / 脆弱。', effect: { kind: 'cleanse', amount: 0 } },
@@ -292,7 +293,7 @@ export const SHOP_STOCK = {
   village: ['hp_small', 'bread', 'hemp_shirt', 'patched_pants', 'cloth_shoes', 'straw_hat', 'old_horse', 'antidote'],
   forest:  ['hp_small', 'dried_meat', 'mp_small', 'leather_cap', 'leather_boots', 'iron_sword', 'swift_horse', 'antidote', 'guard_potion'],
   mountain:['hp_small', 'hp_large', 'mp_small', 'leather_armor', 'iron_helm', 'iron_greaves', 'iron_boots', 'steel_blade', 'dragon_scale_mail', 'cart', 'snow_leopard', 'rage_potion', 'guard_potion'],
-  city:    ['hp_large', 'mp_large', 'power_elixir', 'swift_incense', 'wind_tonic', 'noble_robe', 'silk_pants', 'feather_cap', 'dancer_shoes', 'crown', 'merchant_vest', 'steel_blade', 'swift_horse', 'airship', 'emperor_new_clothes', 'emperor_new_pants', 'emperor_new_hat', 'emperor_new_boots', 'antidote', 'rage_potion', 'energy_drink', 'smoke_bomb'],
+  city:    ['hp_large', 'mp_large', 'power_elixir', 'ap_elixir', 'swift_incense', 'wind_tonic', 'noble_robe', 'silk_pants', 'feather_cap', 'dancer_shoes', 'crown', 'merchant_vest', 'steel_blade', 'swift_horse', 'airship', 'emperor_new_clothes', 'emperor_new_pants', 'emperor_new_hat', 'emperor_new_boots', 'antidote', 'rage_potion', 'energy_drink', 'smoke_bomb'],
   port:    ['hp_small', 'dried_meat', 'mp_large', 'wind_tonic', 'noble_robe', 'sailor_trousers', 'swift_boots', 'wind_coat', 'cart', 'skiff', 'steamship', 'energy_drink'],
   sky:     ['mp_large', 'honey_cake', 'power_elixir', 'swift_incense', 'long_incense', 'scholar_robe', 'scholar_hood', 'feather_cap', 'swift_horse', 'wind_glider', 'airship', 'energy_drink', 'smoke_bomb'],
   ruins:   ['hp_small', 'dried_meat', 'leather_pants', 'pilgrim_mantle', 'bone_charm', 'cart', 'antidote', 'smoke_bomb'],
