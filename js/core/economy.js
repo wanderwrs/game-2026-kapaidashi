@@ -11,13 +11,13 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261007l';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261007l';
-import { GEM_EFFECT } from '../data/gems.js?v=20261007l';
-import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261007l';
-import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261007l';
-import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261007l';
-import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261007l';
+import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261007m';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261007m';
+import { GEM_EFFECT } from '../data/gems.js?v=20261007m';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261007m';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261007m';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261007m';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261007m';
 
 /** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
 const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
@@ -77,6 +77,19 @@ export class Economy {
     // ===== 酒店仓库(储存金币与道具)=====
     this.storageGold = 0;       // 仓库金币
     this.storage = new Map();   // 仓库物品:itemId -> qty
+    // ===== 主城设施:银行 / 交易所 / 仓库 / 酒店服务生 =====
+    // 银行定期存款:[{ id, principal, termId, termMs, rate, at, maturesAt }]
+    this.bankDeposits = [];
+    this._bankSeq = 0;
+    // 交易所持仓:projectId -> { units, cost }(cost 为该持仓的累计买入成本)
+    this.invest = {};
+    // 仓库:itemId -> qty(与酒店 storage 相互独立,存取各收管理费)
+    this.warehouse = new Map();
+    // 酒店服务生:代存金币与至多若干种道具,以及跑腿委托
+    this.escrowGold = 0;
+    this.escrow = new Map();    // itemId -> qty
+    this.errands = [];          // [{ id, itemId, qty, readyAt }]
+    this._errandSeq = 0;
   }
 
   // ===== 角色名 / 形象 =====
@@ -323,6 +336,158 @@ export class Economy {
 
   /** 仓库某物品数量 */
   storageCount(id) { return this.storage.get(id) || 0; }
+
+  // ===== 银行:定期存款 =====
+  /** 存入一笔定期;返回存款单或 null */
+  bankDeposit(amount, term, rate, now = Date.now()) {
+    const n = Math.floor(amount || 0);
+    if (n <= 0 || this.gold < n) return null;
+    this.gold -= n;
+    const termMs = Math.max(0, (term?.hours || 0) * 3600 * 1000);
+    const dep = {
+      id: `dep_${++this._bankSeq}`,
+      principal: n,
+      termId: term?.id || '',
+      termMs,
+      rate: Number(rate) || 0,
+      at: now,
+      maturesAt: now + termMs,
+    };
+    this.bankDeposits.push(dep);
+    return dep;
+  }
+
+  /** 取回存款:到期给本息,未到期只退本金 */
+  bankWithdraw(depositId, now = Date.now()) {
+    const i = this.bankDeposits.findIndex((d) => d.id === depositId);
+    if (i < 0) return null;
+    const d = this.bankDeposits[i];
+    const matured = now >= d.maturesAt;
+    const interest = matured ? Math.round(d.principal * d.rate) : 0;
+    this.bankDeposits.splice(i, 1);
+    this.gold += d.principal + interest;
+    return { principal: d.principal, interest, matured };
+  }
+
+  /** 存款总额 */
+  bankPrincipal() { return this.bankDeposits.reduce((s, d) => s + d.principal, 0); }
+
+  // ===== 交易所:投资标的 =====
+  /** 买入 units 份;返回实际买入份数 */
+  investBuy(projectId, units, price) {
+    const n = Math.max(1, Math.floor(units || 0));
+    const cost = n * Math.max(1, Math.round(price || 0));
+    if (this.gold < cost) return 0;
+    this.gold -= cost;
+    const cur = this.invest[projectId] || { units: 0, cost: 0 };
+    cur.units += n;
+    cur.cost += cost;
+    this.invest[projectId] = cur;
+    return n;
+  }
+
+  /** 卖出 units 份;返回 { units, gain, profit } 或 null */
+  investSell(projectId, units, price) {
+    const cur = this.invest[projectId];
+    if (!cur || cur.units <= 0) return null;
+    const n = Math.min(Math.max(1, Math.floor(units || 0)), cur.units);
+    const unit = Math.max(1, Math.round(price || 0));
+    const gain = n * unit;
+    const avg = cur.cost / cur.units;
+    const costOut = avg * n;
+    cur.units -= n;
+    cur.cost -= costOut;
+    if (cur.units <= 0) delete this.invest[projectId];
+    else this.invest[projectId] = cur;
+    this.gold += gain;
+    return { units: n, gain, profit: Math.round(gain - costOut) };
+  }
+
+  // ===== 仓库(收费寄存)=====
+  /** 存入仓库(不校验背包容量);返回实际存入数量 */
+  warehouseStore(id, qty = 1) {
+    const n = Math.max(1, Math.floor(qty || 1));
+    if (!this.has(id, n)) return 0;
+    this.removeItem(id, n);
+    this.warehouse.set(id, (this.warehouse.get(id) || 0) + n);
+    return n;
+  }
+
+  /** 从仓库取出(校验背包容量);返回实际取出数量 */
+  warehouseWithdraw(id, qty = 1) {
+    const n = Math.max(1, Math.floor(qty || 1));
+    const stored = this.warehouse.get(id) || 0;
+    if (n > stored) return 0;
+    if (!this.bag.has(id) && this.bag.size >= this.bagCap) return 0;
+    this.warehouse.set(id, stored - n);
+    if (this.warehouse.get(id) <= 0) this.warehouse.delete(id);
+    this.addItem(id, n);
+    return n;
+  }
+
+  warehouseCount(id) { return this.warehouse.get(id) || 0; }
+
+  // ===== 酒店服务生:代存(escrow)与跑腿 =====
+  /** 代存金币;返回实际存入数量 */
+  escrowStoreGold(amount) {
+    const n = Math.max(0, Math.floor(amount || 0));
+    if (n <= 0 || this.gold < n) return 0;
+    this.gold -= n;
+    this.escrowGold += n;
+    return n;
+  }
+
+  escrowWithdrawGold(amount) {
+    const n = Math.max(0, Math.floor(amount || 0));
+    if (n <= 0 || this.escrowGold < n) return 0;
+    this.escrowGold -= n;
+    this.gold += n;
+    return n;
+  }
+
+  /** 代存道具(至多 maxKinds 种);返回实际存入数量 */
+  escrowStoreItem(id, qty = 1, maxKinds = 3) {
+    const n = Math.max(1, Math.floor(qty || 1));
+    if (!this.has(id, n)) return 0;
+    if (!this.escrow.has(id) && this.escrow.size >= maxKinds) return 0;
+    this.removeItem(id, n);
+    this.escrow.set(id, (this.escrow.get(id) || 0) + n);
+    return n;
+  }
+
+  escrowWithdrawItem(id, qty = 1) {
+    const n = Math.max(1, Math.floor(qty || 1));
+    const held = this.escrow.get(id) || 0;
+    if (n > held) return 0;
+    if (!this.bag.has(id) && this.bag.size >= this.bagCap) return 0;
+    this.escrow.set(id, held - n);
+    if (this.escrow.get(id) <= 0) this.escrow.delete(id);
+    this.addItem(id, n);
+    return n;
+  }
+
+  escrowCount(id) { return this.escrow.get(id) || 0; }
+
+  /** 下跑腿委托 */
+  errandAdd(itemId, qty, readyAt) {
+    const e = { id: `er_${++this._errandSeq}`, itemId, qty: Math.max(1, Math.floor(qty || 1)), readyAt };
+    this.errands.push(e);
+    return e;
+  }
+
+  /** 已可领取的跑腿委托 */
+  errandsReady(now = Date.now()) { return this.errands.filter((e) => now >= e.readyAt); }
+
+  /** 领取跑腿成果(货品入背包);返回委托或 null */
+  errandClaim(errandId, now = Date.now()) {
+    const i = this.errands.findIndex((e) => e.id === errandId);
+    if (i < 0) return null;
+    const e = this.errands[i];
+    if (now < e.readyAt) return null;
+    this.errands.splice(i, 1);
+    this.addItem(e.itemId, e.qty);
+    return e;
+  }
 
   // ===== 市场 / 专属交易场所(买卖均额外收管理费) =====
   /** 市场买入价:原价 + 管理费 */
@@ -953,6 +1118,15 @@ export class Economy {
       // 酒店仓库
       storageGold: this.storageGold,
       storage: Object.fromEntries(this.storage),
+      // 主城设施:银行 / 交易所 / 仓库 / 服务生
+      bankDeposits: this.bankDeposits.map((d) => ({ ...d })),
+      bankSeq: this._bankSeq,
+      invest: Object.fromEntries(Object.entries(this.invest).map(([k, v]) => [k, { ...v }])),
+      warehouse: Object.fromEntries(this.warehouse),
+      escrowGold: this.escrowGold,
+      escrow: Object.fromEntries(this.escrow),
+      errands: this.errands.map((e) => ({ ...e })),
+      errandSeq: this._errandSeq,
     };
   }
 
@@ -1051,6 +1225,47 @@ export class Economy {
         if (ITEMS[id] && Number(qty) > 0) eco.storage.set(id, Math.floor(Number(qty)));
       }
     }
+    // 主城设施:银行 / 交易所 / 仓库 / 服务生
+    eco._bankSeq = Number(data.bankSeq ?? 0);
+    eco.bankDeposits = Array.isArray(data.bankDeposits)
+      ? data.bankDeposits
+        .filter((d) => d && Number(d.principal) > 0)
+        .map((d) => ({
+          id: String(d.id || ''),
+          principal: Math.floor(Number(d.principal) || 0),
+          termId: String(d.termId || ''),
+          termMs: Number(d.termMs) || 0,
+          rate: Number(d.rate) || 0,
+          at: Number(d.at) || 0,
+          maturesAt: Number(d.maturesAt) || 0,
+        }))
+      : [];
+    eco.invest = {};
+    if (data.invest && typeof data.invest === 'object') {
+      for (const [pid, v] of Object.entries(data.invest)) {
+        const units = Math.floor(Number(v?.units) || 0);
+        if (units > 0) eco.invest[pid] = { units, cost: Number(v?.cost) || 0 };
+      }
+    }
+    eco.warehouse = new Map();
+    if (data.warehouse && typeof data.warehouse === 'object') {
+      for (const [id, qty] of Object.entries(data.warehouse)) {
+        if (ITEMS[id] && Number(qty) > 0) eco.warehouse.set(id, Math.floor(Number(qty)));
+      }
+    }
+    eco.escrowGold = Math.max(0, Number(data.escrowGold ?? 0));
+    eco.escrow = new Map();
+    if (data.escrow && typeof data.escrow === 'object') {
+      for (const [id, qty] of Object.entries(data.escrow)) {
+        if (ITEMS[id] && Number(qty) > 0) eco.escrow.set(id, Math.floor(Number(qty)));
+      }
+    }
+    eco._errandSeq = Number(data.errandSeq ?? 0);
+    eco.errands = Array.isArray(data.errands)
+      ? data.errands
+        .filter((e) => e && e.itemId && ITEMS[e.itemId])
+        .map((e) => ({ id: String(e.id || ''), itemId: e.itemId, qty: Math.max(1, Math.floor(Number(e.qty) || 1)), readyAt: Number(e.readyAt) || 0 }))
+      : [];
     return eco;
   }
 }

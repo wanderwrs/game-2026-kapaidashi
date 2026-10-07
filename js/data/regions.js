@@ -11,6 +11,9 @@
  * 旅行:任意两地点之间可通行,消耗行动力 = 距离 × TRAVEL_BASE_COST − 载具折扣(至少 1)。
  */
 
+import { CITY_FACILITY_STOPS } from './facilities.js?v=20261007m';
+import { WORLD } from './world.js?v=20261007m';
+
 export const TRAVEL_BASE_COST = 2;
 
 export const REGIONS = {
@@ -430,6 +433,19 @@ export const REGIONS = {
     ],
   },
 };
+
+// ===== 主城设施地点卡 =====
+// 为 11 座主城在剧情地点之后追加 6 个设施地点(酒店/酒馆/神秘商店/银行/交易所/仓库)。
+// 这些地点 node 为 null,不参与剧情门控,仅作为地图上的可前往地点。
+for (const _id of Object.keys(REGIONS)) {
+  if (!WORLD[_id]?.city) continue;
+  const _stops = REGIONS[_id].stops;
+  const _keys = new Set(_stops.map((s) => s.key));
+  for (const _f of CITY_FACILITY_STOPS) {
+    if (_keys.has(_f.key)) continue;
+    _stops.push({ ..._f, node: null, npc: null, theme: _f.theme || 'city', services: { ..._f.services } });
+  }
+}
 
 /** 打工配置(含小游戏与难度档)见 data/jobs.js */
 

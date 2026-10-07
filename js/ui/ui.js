@@ -10,23 +10,24 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261007l';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007l';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007l';
-import { gradeOf } from '../data/grade.js?v=20261007l';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261007l';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007l';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007l';
-import { cardMpCost } from '../data/data.js?v=20261007l';
-import { ENDINGS } from '../narrative/engine.js?v=20261007l';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007l';
-import { SceneView, paintCharacter } from './scene.js?v=20261007l';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007l';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007l';
-import { Minigame } from '../minigame/minigame.js?v=20261007l';
-import { MODE_LABELS } from '../data/jobs.js?v=20261007l';
-import { TERRAIN_CN } from '../data/world.js?v=20261007l';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007l';
+import { GameState } from '../core/game.js?v=20261007m';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007m';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007m';
+import { gradeOf } from '../data/grade.js?v=20261007m';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261007m';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007m';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007m';
+import { cardMpCost } from '../data/data.js?v=20261007m';
+import { ENDINGS } from '../narrative/engine.js?v=20261007m';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007m';
+import { SceneView, paintCharacter } from './scene.js?v=20261007m';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007m';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007m';
+import { Minigame } from '../minigame/minigame.js?v=20261007m';
+import { MODE_LABELS } from '../data/jobs.js?v=20261007m';
+import { TERRAIN_CN } from '../data/world.js?v=20261007m';
+import { FACILITY_CN, FACILITY_ICON, FACILITY_KEYS } from '../data/facilities.js?v=20261007m';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007m';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -165,6 +166,7 @@ export class UI {
         blacksmith: $('view-blacksmith'),
         gemshop: $('view-gemshop'),
         jeweler: $('view-jeweler'),
+        facility: $('view-facility'),
       },
       careerGrid: $('career-grid'),
       chapterSelect: $('chapter-select'),
@@ -316,7 +318,14 @@ export class UI {
       hotelOutfits: $('hotel-outfits'),
       hotelRecaps: $('hotel-recaps'),
       hotelStorage: $('hotel-storage'),
+      hotelBellhop: $('hotel-bellhop'),
       btnHotelBack: $('btn-hotel-back'),
+      // 主城设施(酒馆 / 神秘商店 / 银行 / 交易所 / 仓库)
+      facilityTitle: $('facility-title'),
+      facilityRes: $('facility-res'),
+      facilityNote: $('facility-note'),
+      facilityBody: $('facility-body'),
+      btnFacilityBack: $('btn-facility-back'),
       marketpoiTitle: $('marketpoi-title'),
       marketpoiRes: $('marketpoi-res'),
       marketpoiNote: $('marketpoi-note'),
@@ -715,6 +724,7 @@ export class UI {
     else if (state === GameState.BLACKSMITH) target = this.el.views.blacksmith;
     else if (state === GameState.GEMSHOP) target = this.el.views.gemshop;
     else if (state === GameState.JEWELER) target = this.el.views.jeweler;
+    else if (state === GameState.FACILITY) target = this.el.views.facility;
     if (target) target.classList.add('is-active');
 
     if (state === GameState.VICTORY) this._renderResult(true);
@@ -740,7 +750,7 @@ export class UI {
       }
     }
     for (const el of [this.el.mapRes, this.el.shopRes, this.el.marketRes, this.el.bagRes, this.el.jobRes,
-      this.el.restaurantRes, this.el.hotelRes, this.el.marketpoiRes, this.el.merchantRes]) {
+      this.el.restaurantRes, this.el.hotelRes, this.el.marketpoiRes, this.el.merchantRes, this.el.facilityRes]) {
       if (el) el.innerHTML = chips;
     }
   }
@@ -1592,6 +1602,15 @@ export class UI {
       // 市场:全品类的玩家集市,处处可去(另收管理费)
       this.el.mapServices.appendChild(mk('市 场', 'ui:map-market', true));
       this.el.mapServices.appendChild(mk('打 工', 'ui:map-job', !!svc.job));
+      // 主城设施入口(酒店 / 酒馆 / 神秘商店 / 银行 / 交易所 / 仓库)
+      for (const k of FACILITY_KEYS) {
+        if (!svc[k]) continue;
+        const b = document.createElement('button');
+        b.className = 'btn btn-primary';
+        b.textContent = `${FACILITY_ICON[k]} ${FACILITY_CN[k]}`;
+        b.addEventListener('click', () => this.bus.emit('ui:map-facility', k));
+        this.el.mapServices.appendChild(b);
+      }
       // 「休息」操作已下线:行动力由 剧情推进 / NPC赠予 / 食品 / 酒店休整 恢复
       // 铁匠铺 / 宝石商 / 精益师(主城全有;其他地区固定 + 流动摊位)
       (stalls || []).forEach((type) => {
@@ -1714,6 +1733,9 @@ export class UI {
     const tags = [];
     if (services.shop) tags.push('<span class="svc">商店</span>');
     if (services.job) tags.push('<span class="svc">打工</span>');
+    for (const k of FACILITY_KEYS) {
+      if (services[k]) tags.push(`<span class="svc">${FACILITY_CN[k]}</span>`);
+    }
     return tags.join('') || '<span class="svc is-off">无</span>';
   }
 
@@ -2745,6 +2767,208 @@ export class UI {
     this.renderResources(economy);
   }
 
+  // ===== 主城设施(酒馆 / 神秘商店 / 银行 / 交易所 / 仓库) =====
+  /** 毫秒 → 可读时长 */
+  _fmtMs(ms) {
+    const s = Math.max(0, Math.round((Number(ms) || 0) / 1000));
+    if (s < 60) return `${s} 秒`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m} 分 ${s % 60} 秒`;
+    const h = Math.floor(m / 60);
+    const rm = m % 60;
+    return rm ? `${h} 小时 ${rm} 分` : `${h} 小时`;
+  }
+
+  /** 设施面板(按类型渲染不同内容) */
+  renderFacility(kind, data = {}) {
+    const eco = data.economy || {};
+    if (this.el.facilityTitle) {
+      this.el.facilityTitle.textContent = `${FACILITY_ICON[kind] || '🏛️'} ${FACILITY_CN[kind] || '设 施'}`;
+    }
+    if (this.el.btnFacilityBack) this.el.btnFacilityBack.onclick = () => this.bus.emit('ui:back-map');
+    const box = this.el.facilityBody;
+    if (box) box.innerHTML = '';
+    if (!box) return;
+    const note = this.el.facilityNote;
+
+    const section = (t) => {
+      const d = document.createElement('div');
+      d.className = 'shop-section-title';
+      d.textContent = t;
+      return d;
+    };
+    const empty = (t) => box.insertAdjacentHTML('beforeend', `<p class="bag-empty">${t}</p>`);
+    const mkBtn = (label, ev, payload, cls, disabled) => {
+      const b = document.createElement('button');
+      b.className = cls || 'btn btn-ghost btn-sm';
+      b.textContent = label;
+      b.disabled = !!disabled;
+      if (!disabled) b.addEventListener('click', () => this.bus.emit(ev, payload));
+      return b;
+    };
+    const row = (icon, titleHtml, descHtml, actions) => {
+      const d = document.createElement('div');
+      d.className = 'item-row';
+      d.innerHTML = `
+        <div class="item-icon">${icon}</div>
+        <div class="item-body">
+          <div class="item-name">${titleHtml}</div>
+          <div class="item-desc">${descHtml}</div>
+        </div>
+        <div class="item-actions"></div>
+      `;
+      const act = d.querySelector('.item-actions');
+      (actions || []).forEach((a) => act.appendChild(a));
+      return d;
+    };
+
+    if (kind === 'tavern') {
+      if (note) note.textContent = `买货(手续费 ${Math.round((data.fee || 0) * 100)}%)、请客回行动力、下角斗场赢金币`;
+      box.appendChild(section('请 客'));
+      box.appendChild(row('🍺', '酒馆套餐', `花 ${data.mealGold} 金币恢复 ${data.mealAp} 点行动力`,
+        [mkBtn(`请 客 🪙${data.mealGold}`, 'ui:tavern-meal', null, 'btn btn-ghost btn-sm', eco.gold < data.mealGold)]));
+      box.appendChild(section('打 工'));
+      box.appendChild(row('🧰', '酒馆杂工', '找点零活,挣些金币与经验',
+        [mkBtn('去 打 工', 'ui:map-job', null, 'btn btn-primary btn-sm')]));
+      box.appendChild(section('角 斗 场'));
+      (data.arena || []).forEach((t) => {
+        const prize = Math.round(t.entry * t.mul);
+        box.appendChild(row('⚔️', t.name,
+          `报名费 ${t.entry} 金币 · 胜者得 ${prize}${t.enemyLv ? `(敌人强度 +${t.enemyLv} 级)` : '(标准强度)'}`,
+          [mkBtn(`报 名 🪙${t.entry}`, 'ui:arena-fight', t.id, 'btn btn-primary btn-sm', eco.gold < t.entry)]));
+      });
+      box.appendChild(section('货 架'));
+      (data.stock || []).forEach((id) => {
+        const it = ITEMS[id];
+        if (!it) return;
+        const base = eco.itemPrice ? eco.itemPrice(id) : it.price;
+        const price = Math.max(1, Math.round(base * (1 + (data.fee || 0))));
+        box.appendChild(this._shopRow(it, eco.gold >= price, `🪙 ${price}`, '买入', 'data-buy',
+          () => this.bus.emit('ui:tavern-buy', id)));
+      });
+      this.renderResources(eco);
+      return;
+    }
+
+    if (kind === 'mystery') {
+      if (note) note.textContent = `本轮珍品(${this._fmtMs(data.nextMs)}后换一批)—— 高价限定,过时不候`;
+      box.appendChild(section('本 轮 珍 品'));
+      const stock = data.stock || [];
+      if (!stock.length) empty('本轮珍品已售罄。');
+      stock.forEach(({ id, price }) => {
+        const it = ITEMS[id];
+        if (!it) return;
+        box.appendChild(this._shopRow(it, eco.gold >= price, `🪙 ${price}`, '买入', 'data-buy',
+          () => this.bus.emit('ui:mystery-buy', id), 0, '<span class="item-rare">限定珍品</span>'));
+      });
+      this.renderResources(eco);
+      return;
+    }
+
+    if (kind === 'bank') {
+      if (note) {
+        note.textContent = `存款总额 ${eco.bankPrincipal ? eco.bankPrincipal() : 0} 金币 · 利率与汇率每轮换一次(${this._fmtMs(data.nextMs)}后)`;
+      }
+      box.appendChild(section('定 期 存 款'));
+      (data.terms || []).forEach((t) => {
+        const rateTxt = `${(t.rate * 100).toFixed(2)}%`;
+        box.appendChild(row('📄', `${t.name}定期 · 利率 ${rateTxt}`,
+          '到期一次性计息;未到期取回只退本金,无利息',
+          [
+            mkBtn('存 1000', 'ui:bank-deposit', { termId: t.id, amount: 1000 }, 'btn btn-ghost btn-sm', eco.gold < 1000),
+            mkBtn('存 全 部', 'ui:bank-deposit', { termId: t.id, amount: eco.gold }, 'btn btn-primary btn-sm', eco.gold <= 0),
+          ]));
+      });
+      const deps = data.deposits || [];
+      box.appendChild(section(`我 的 存 单(${deps.length})`));
+      if (!deps.length) empty('暂无存款。');
+      deps.forEach((d) => {
+        const term = (data.terms || []).find((t) => t.id === d.termId);
+        box.appendChild(row('🧾', `${d.principal} 金币 · ${term ? term.name : '定期'}`,
+          d.matured
+            ? `已到期,可取本息 ${d.principal + d.interest}(利息 ${d.interest})`
+            : `未到期 · 约 ${this._fmtMs(d.remainMs)} 后到期(预计利息 ${d.interest})`,
+          [mkBtn('取 回', 'ui:bank-withdraw', d.id, d.matured ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm')]));
+      });
+      box.appendChild(section('兑 换 特 殊 交 易 币'));
+      (data.tokens || []).forEach((tk) => {
+        const buy1 = Math.round(tk.rate * (1 + (data.fee || 0)));
+        const buy10 = Math.round(tk.rate * 10 * (1 + (data.fee || 0)));
+        box.appendChild(row(tk.icon, `${tk.name} · 现价 🪙${tk.rate}/枚`,
+          `持有 ${tk.owned} 枚 · 手续费 ${Math.round((data.fee || 0) * 100)}%`,
+          [
+            mkBtn('买 1', 'ui:bank-exchange', { dir: 'buy', tokenId: tk.id, qty: 1 }, 'btn btn-ghost btn-sm', eco.gold < buy1),
+            mkBtn('买 10', 'ui:bank-exchange', { dir: 'buy', tokenId: tk.id, qty: 10 }, 'btn btn-ghost btn-sm', eco.gold < buy10),
+            mkBtn('卖 1', 'ui:bank-exchange', { dir: 'sell', tokenId: tk.id, qty: 1 }, 'btn btn-ghost btn-sm', tk.owned < 1),
+          ]));
+      });
+      this.renderResources(eco);
+      return;
+    }
+
+    if (kind === 'exchange') {
+      if (note) note.textContent = `行情每轮换一次(${this._fmtMs(data.nextMs)}后)—— 低买高卖,涨跌自负`;
+      box.appendChild(section('投 资 标 的'));
+      (data.projects || []).forEach((p) => {
+        const trend = p.price > p.prev
+          ? '<span class="trend is-up">▲涨</span>'
+          : (p.price < p.prev ? '<span class="trend is-down">▼跌</span>' : '<span class="trend is-flat">—平</span>');
+        const profit = p.units > 0 ? Math.round(p.units * p.price - p.cost) : 0;
+        const holdTxt = p.units > 0
+          ? `持有 ${p.units} 份 · 成本 ${Math.round(p.cost)} · 浮盈 ${profit}`
+          : '尚未持有';
+        box.appendChild(row('📈', `${p.name} · 🪙${p.price}/份 ${trend}`,
+          `${p.desc} —— ${holdTxt}`,
+          [
+            mkBtn('买 1', 'ui:invest-buy', { projectId: p.id, units: 1 }, 'btn btn-ghost btn-sm', eco.gold < p.price),
+            mkBtn('买 10', 'ui:invest-buy', { projectId: p.id, units: 10 }, 'btn btn-ghost btn-sm', eco.gold < p.price * 10),
+            mkBtn('卖 全 部', 'ui:invest-sell', { projectId: p.id, units: p.units }, 'btn btn-primary btn-sm', p.units <= 0),
+          ]));
+      });
+      this.renderResources(eco);
+      return;
+    }
+
+    if (kind === 'warehouse') {
+      if (note) {
+        note.textContent = `寄存按物品价值收取 ${Math.round((data.feeRate || 0) * 100)}% 管理费(存入 / 取出各一次,单次最低 ${data.minFee})`;
+      }
+      box.appendChild(section('背 包 物 品 → 存 入'));
+      const items = data.items || [];
+      if (!items.length) empty('背包是空的。');
+      items.forEach(({ id, qty, fee, feeAll }) => {
+        const it = ITEMS[id];
+        if (!it) return;
+        box.appendChild(row(it.icon || '📦',
+          `${this._escapeHtml(it.name)}<span class="item-qty">×${qty}</span>`,
+          `管理费 ${fee}/件 · 全存 ${feeAll}`,
+          [
+            mkBtn('存 1', 'ui:warehouse-store', { id, qty: 1 }, 'btn btn-ghost btn-sm', eco.gold < fee),
+            mkBtn('全 存', 'ui:warehouse-store', { id, qty }, 'btn btn-ghost btn-sm', eco.gold < feeAll),
+          ]));
+      });
+      box.appendChild(section('仓 库 物 品 → 取 出'));
+      const stored = data.stored || [];
+      if (!stored.length) empty('仓库是空的。');
+      stored.forEach(({ id, qty, fee, feeAll }) => {
+        const it = ITEMS[id];
+        if (!it) return;
+        box.appendChild(row(it.icon || '📦',
+          `${this._escapeHtml(it.name)}<span class="item-qty">仓×${qty}</span>`,
+          `管理费 ${fee}/件 · 全取 ${feeAll}`,
+          [
+            mkBtn('取 1', 'ui:warehouse-withdraw', { id, qty: 1 }, 'btn btn-ghost btn-sm', eco.gold < fee),
+            mkBtn('全 取', 'ui:warehouse-withdraw', { id, qty }, 'btn btn-ghost btn-sm', eco.gold < feeAll),
+          ]));
+      });
+      this.renderResources(eco);
+      return;
+    }
+
+    if (note) note.textContent = '—';
+    this.renderResources(eco);
+  }
+
   // ===== POI:餐厅 =====
   renderRestaurant({ name, foods, economy }) {
     if (this.el.restaurantTitle) this.el.restaurantTitle.textContent = `🍲 ${name || '餐厅'}`;
@@ -2765,7 +2989,7 @@ export class UI {
   }
 
   // ===== POI:酒店 =====
-  renderHotel({ name, rooms, outfits, equipped, economy, recaps: recapsParam }) {
+  renderHotel({ name, rooms, outfits, equipped, economy, recaps: recapsParam, bellhop: bellhopData = null }) {
     if (this.el.hotelTitle) this.el.hotelTitle.textContent = `🏨 ${name || '酒店'}`;
     if (this.el.hotelNote) this.el.hotelNote.textContent = '选择房型休息恢复行动力,亦可在此更换服饰、回忆剧情、存放金币与道具';
     // 房型列表
@@ -2933,6 +3157,83 @@ export class UI {
         row.querySelector('[data-withdraw-all]')?.addEventListener('click', () => this.bus.emit('ui:hotel-withdraw-item', id, qty));
         sbox.appendChild(row);
       });
+    }
+    // ===== 服务生(代存金钱与道具 · 跑腿代购)=====
+    const hb = this.el.hotelBellhop;
+    if (hb) {
+      hb.innerHTML = '';
+      if (!bellhopData) {
+        hb.innerHTML = '<p class="bag-empty">本店暂无服务生。</p>';
+      } else {
+        const mkRow = (icon, nameHtml, desc, actions) => {
+          const r = document.createElement('div');
+          r.className = 'item-row';
+          r.innerHTML = `
+            <div class="item-icon">${icon}</div>
+            <div class="item-body">
+              <div class="item-name">${nameHtml}</div>
+              <div class="item-desc">${desc}</div>
+            </div>
+            <div class="item-actions"></div>
+          `;
+          const act = r.querySelector('.item-actions');
+          (actions || []).forEach((a) => act.appendChild(a));
+          return r;
+        };
+        const mkBtn = (label, ev, payload, cls, disabled) => {
+          const b = document.createElement('button');
+          b.className = cls || 'btn btn-ghost btn-sm';
+          b.textContent = label;
+          b.disabled = !!disabled;
+          if (!disabled) b.addEventListener('click', () => this.bus.emit(ev, payload));
+          return b;
+        };
+        // 代管金币
+        hb.appendChild(mkRow('🛎️',
+          `代管金币 <span class="item-cat">托 ${economy.escrowGold || 0}</span>`,
+          `持有 ${economy.gold} · 托 ${economy.escrowGold || 0}(保管费 ${Math.round((bellhopData.goldFeeRate || 0) * 100)}%)`,
+          [
+            mkBtn('存 全 部', 'ui:escrow-store-gold', economy.gold, 'btn btn-ghost btn-sm', economy.gold <= 0),
+            mkBtn('取 全 部', 'ui:escrow-withdraw-gold', economy.escrowGold || 0, 'btn btn-ghost btn-sm', (economy.escrowGold || 0) <= 0),
+          ]));
+        // 背包物品 → 代存
+        [...economy.bag.entries()].filter(([id]) => ITEMS[id]).forEach(([id, qty]) => {
+          const it = ITEMS[id];
+          hb.appendChild(mkRow(it.icon || '📦',
+            `${this._escapeHtml(it.name)}<span class="item-cat">×${qty}</span>`,
+            `可托服务生代存(至多 ${bellhopData.kinds} 种)`,
+            [mkBtn('托 1', 'ui:escrow-store-item', id)]));
+        });
+        // 已代存物品 → 取回
+        [...economy.escrow.entries()].filter(([id]) => ITEMS[id]).forEach(([id, qty]) => {
+          const it = ITEMS[id];
+          hb.appendChild(mkRow(it.icon || '📦',
+            `${this._escapeHtml(it.name)}<span class="item-cat">托×${qty}</span>`,
+            '服务生代管中',
+            [mkBtn('取 1', 'ui:escrow-withdraw-item', id)]));
+        });
+        // 跑腿:在途 / 可领取
+        (bellhopData.errands || []).forEach((e) => {
+          const it = ITEMS[e.itemId] || {};
+          hb.appendChild(mkRow('🏃',
+            `跑腿 · 代购「${this._escapeHtml(it.name || e.itemId)}」<span class="item-cat">×${e.qty}</span>`,
+            e.ready ? '已送回,可领取' : `路上,约 ${this._fmtMs(e.remainMs)} 后送达`,
+            [mkBtn(e.ready ? '领 取' : '路 上', 'ui:errand-claim', e.id, e.ready ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm', !e.ready)]));
+        });
+        // 跑腿:可代购货品
+        const catTitle = document.createElement('div');
+        catTitle.className = 'shop-section-title';
+        catTitle.textContent = `跑腿代购(约 ${bellhopData.errandSeconds} 秒送达)`;
+        hb.appendChild(catTitle);
+        (bellhopData.catalog || []).forEach((c) => {
+          const it = ITEMS[c.id];
+          if (!it) return;
+          hb.appendChild(mkRow(it.icon || '📦',
+            `${this._escapeHtml(it.name)}<span class="item-cat">跑腿</span>`,
+            `货价 ${c.price} + 跑腿费 ${c.fee} = ${c.total} 金币`,
+            [mkBtn('托 他 买', 'ui:errand-place', c.id, 'btn btn-ghost btn-sm', economy.gold < c.total)]));
+        });
+      }
     }
     this.renderResources(economy);
   }

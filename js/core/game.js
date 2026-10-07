@@ -11,42 +11,48 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261007l';
-import { EventBus } from './eventbus.js?v=20261007l';
-import { AudioEngine } from './audio.js?v=20261007l';
-import { Player } from '../combat/entity.js?v=20261007l';
-import { Deck } from '../card/deck.js?v=20261007l';
-import { Battle } from '../combat/battle.js?v=20261007l';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007l';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261007l';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007l';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007l';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261007l';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007l';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007l';
-import { majorSetIds } from '../data/extras.js?v=20261007l';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007l';
-import { lookLabel } from '../data/looks.js?v=20261007l';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007l';
-import { TradeEngine } from './trade.js?v=20261007l';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007l';
-import { REGIONS } from '../data/regions.js?v=20261007l';
-import { jobsFor } from '../data/jobs.js?v=20261007l';
+import { RNG, seedFromString } from './rng.js?v=20261007m';
+import { EventBus } from './eventbus.js?v=20261007m';
+import { AudioEngine } from './audio.js?v=20261007m';
+import { Player } from '../combat/entity.js?v=20261007m';
+import { Deck } from '../card/deck.js?v=20261007m';
+import { Battle } from '../combat/battle.js?v=20261007m';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007m';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261007m';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007m';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007m';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261007m';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007m';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007m';
+import { majorSetIds } from '../data/extras.js?v=20261007m';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007m';
+import { lookLabel } from '../data/looks.js?v=20261007m';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007m';
+import {
+  FACILITY_CN, FACILITY_ICON, BANK_TERMS, bankRate, exchangeTick, msToNextExchange,
+  TOKEN_LIST, TOKEN_EX_FEE, tokenRate, INVEST_PROJECTS, investPrice, investPrevPrice,
+  WAREHOUSE, warehouseFee, mysteryStock, mysteryPrice, ARENA_TIERS,
+  TAVERN_STOCK, TAVERN_FEE, TAVERN_MEAL_GOLD, TAVERN_MEAL_AP, BELLHOP, errandCatalog,
+} from '../data/facilities.js?v=20261007m';
+import { TradeEngine } from './trade.js?v=20261007m';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007m';
+import { REGIONS } from '../data/regions.js?v=20261007m';
+import { jobsFor } from '../data/jobs.js?v=20261007m';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261007l';
-import { NPCS } from '../data/npcs.js?v=20261007l';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007l';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007l';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007l';
-import { Economy } from './economy.js?v=20261007l';
-import { Travel } from './travel.js?v=20261007l';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007l';
-import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007l';
-import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007l';
-import { CAREERS } from '../narrative/careers.js?v=20261007l';
-import { UI } from '../ui/ui.js?v=20261007l';
+} from '../data/world.js?v=20261007m';
+import { NPCS } from '../data/npcs.js?v=20261007m';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007m';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007m';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007m';
+import { Economy } from './economy.js?v=20261007m';
+import { Travel } from './travel.js?v=20261007m';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007m';
+import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007m';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007m';
+import { CAREERS } from '../narrative/careers.js?v=20261007m';
+import { UI } from '../ui/ui.js?v=20261007m';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -184,6 +190,7 @@ export const GameState = Object.freeze({
   BLACKSMITH: 'blacksmith',
   GEMSHOP: 'gemshop',
   JEWELER: 'jeweler',
+  FACILITY: 'facility',
 });
 
 export class Game {
@@ -988,7 +995,8 @@ export class Game {
       this._syncPlayerStats();
       this._syncUi();
       this.transition(GameState.HOTEL);
-      this._openHotel(this._atPoi);
+      if (this._atPoi) this._openHotel(this._atPoi);
+      else this._openFacility('hotel');
       this.ui.showToast(`「${room.name}」休整完毕,恢复 ${apGot} 点行动力${healTxt}${bonus > 0 && apGot > 0 ? `(服饰加成 +${bonus})` : ''}`);
       this._autosave();
       return;
@@ -2601,6 +2609,8 @@ export class Game {
   }
 
   onBattleEnd(result) {
+    // 角斗场:不入战利品流程,结算奖金后退回酒馆
+    if (this._arenaBattle) { this._onArenaEnd(result); return; }
     // 途中遭遇战:不入战利品流程,胜利后继续赶路
     if (this._wildBattle) { this._onWildBattleEnd(result); return; }
     // 逃跑:直接回到地图
@@ -3004,6 +3014,8 @@ export class Game {
 
   // ===== 酒店 =====
   _openHotel(poi) {
+    // POI 酒店传入 poi;主城设施酒店(旅店)传入 null,名字取自当前地点
+    const hotelName = poi?.name || REGIONS[this.regionId]?.stops[this.stopIndex]?.name || '旅店';
     const outfits = Object.values(ITEMS).filter((it) => it.category === 'outfit');
     // 回忆剧情:已通关的大章回顾
     const cleared = this.progress?.cleared || {};
@@ -3013,14 +3025,35 @@ export class Game {
       cleared: !!cleared[mc.id],
     }));
     this.ui.renderHotel({
-      name: poi.name,
+      name: hotelName,
       rooms: HOTEL_ROOMS,
       outfits,
       equipped: this.economy.equipped,
       economy: this.economy,
       recaps,
+      bellhop: this._bellhopData(),
     });
     this.transition(GameState.HOTEL);
+  }
+
+  /** 酒店服务生数据:代存与跑腿委托 */
+  _bellhopData() {
+    const now = Date.now();
+    const priceOf = (id) => (this.economy.itemPrice ? this.economy.itemPrice(id) : (ITEMS[id]?.price || 0));
+    return {
+      kinds: BELLHOP.escrowKinds,
+      goldFeeRate: BELLHOP.goldFeeRate,
+      errandFee: BELLHOP.errandFee,
+      errandSeconds: BELLHOP.errandSeconds,
+      catalog: errandCatalog().map((id) => {
+        const base = priceOf(id);
+        const fee = Math.max(1, Math.round(base * BELLHOP.errandFee));
+        return { id, price: base, fee, total: base + fee };
+      }),
+      errands: this.economy.errands.map((e) => ({
+        ...e, ready: now >= e.readyAt, remainMs: Math.max(0, e.readyAt - now),
+      })),
+    };
   }
 
   /** 酒店仓库:存入金币 */
@@ -3116,6 +3149,325 @@ export class Game {
     this._syncUi();
     this._openHotel(this._atPoi);
     this._autosave();
+  }
+
+  // ===== 主城设施(酒店 / 酒馆 / 神秘商店 / 银行 / 交易所 / 仓库) =====
+  /** 当前所在地点的设施类型(非设施地点返回 null) */
+  _facilityAt(index = this.stopIndex) {
+    const s = REGIONS[this.regionId]?.stops[index];
+    if (!s?.services) return null;
+    for (const k of ['hotel', 'tavern', 'mystery', 'bank', 'exchange', 'warehouse']) {
+      if (s.services[k]) return k;
+    }
+    return null;
+  }
+
+  /** 打开某设施(酒店复用既有酒店界面,其余走通用设施面板) */
+  _openFacility(kind) {
+    this._facilityKind = kind;
+    if (kind === 'hotel') {
+      const name = REGIONS[this.regionId]?.stops[this.stopIndex]?.name || '旅店';
+      this._openHotel({ name, fromFacility: true });
+      return;
+    }
+    this.ui.renderFacility(kind, this._facilityData(kind));
+    this._syncUi();
+    this.transition(GameState.FACILITY);
+  }
+
+  /** 设施面板数据(汇率 / 利率 / 行情按真实时间 1 小时轮换) */
+  _facilityData(kind) {
+    const now = Date.now();
+    const seed = this.rng?.seed ?? 1;
+    const tick = exchangeTick(now);
+    const eco = this.economy;
+    if (kind === 'tavern') {
+      return {
+        economy: eco, stock: TAVERN_STOCK, fee: TAVERN_FEE, level: this._chapterNum(),
+        arena: ARENA_TIERS, mealGold: TAVERN_MEAL_GOLD, mealAp: TAVERN_MEAL_AP,
+      };
+    }
+    if (kind === 'mystery') {
+      const stock = mysteryStock(seed, tick).map((id) => ({ id, price: mysteryPrice(id, seed, tick) }));
+      return { economy: eco, stock, nextMs: msToNextExchange(now) };
+    }
+    if (kind === 'bank') {
+      return {
+        economy: eco,
+        terms: BANK_TERMS.map((t) => ({ ...t, rate: bankRate(t.id, seed, tick) })),
+        deposits: eco.bankDeposits.map((d) => ({
+          ...d,
+          matured: now >= d.maturesAt,
+          interest: Math.round(d.principal * d.rate),
+          remainMs: Math.max(0, d.maturesAt - now),
+        })),
+        tokens: TOKEN_LIST.filter((id) => ITEMS[id]).map((id) => ({
+          id, name: ITEMS[id].name, icon: ITEMS[id].icon,
+          rate: tokenRate(id, seed, tick), owned: eco.count(id),
+        })),
+        fee: TOKEN_EX_FEE, nextMs: msToNextExchange(now),
+      };
+    }
+    if (kind === 'exchange') {
+      return {
+        economy: eco,
+        projects: INVEST_PROJECTS.map((p) => {
+          const hold = eco.invest[p.id] || { units: 0, cost: 0 };
+          return {
+            ...p,
+            price: investPrice(p.id, seed, tick),
+            prev: investPrevPrice(p.id, seed, tick),
+            units: hold.units,
+            cost: hold.cost,
+          };
+        }),
+        nextMs: msToNextExchange(now),
+      };
+    }
+    if (kind === 'warehouse') {
+      return {
+        economy: eco, feeRate: WAREHOUSE.feeRate, minFee: WAREHOUSE.minFee,
+        items: [...eco.bag.entries()].filter(([id]) => ITEMS[id]).map(([id, qty]) => ({
+          id, qty, fee: warehouseFee(id, 1), feeAll: warehouseFee(id, qty),
+        })),
+        stored: [...eco.warehouse.entries()].filter(([id]) => ITEMS[id]).map(([id, qty]) => ({
+          id, qty, fee: warehouseFee(id, 1), feeAll: warehouseFee(id, qty),
+        })),
+      };
+    }
+    return { economy: eco };
+  }
+
+  /** 重绘当前设施并自动存档 */
+  _facilityRefresh() {
+    this._openFacility(this._facilityKind || 'tavern');
+    this._autosave();
+  }
+
+  // ----- 酒馆:购物 / 请客 / 角斗 -----
+  _tavernBuy(id) {
+    const it = ITEMS[id];
+    if (!it) return;
+    const base = this.economy.itemPrice ? this.economy.itemPrice(id) : it.price;
+    const price = Math.max(1, Math.round(base * (1 + TAVERN_FEE)));
+    if (this.economy.gold < price) { this.ui.showToast('金币不足'); return; }
+    if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+    this.economy.gold -= price;
+    this.economy.addItem(id, 1);
+    this.ui.showToast(`在酒馆购入「${it.name}」(${price} 金币)`);
+    this._facilityRefresh();
+  }
+
+  _tavernMeal() {
+    if (this.economy.gold < TAVERN_MEAL_GOLD) { this.ui.showToast(`金币不足(需 ${TAVERN_MEAL_GOLD})`); return; }
+    this.economy.gold -= TAVERN_MEAL_GOLD;
+    const got = this.economy.addAp(TAVERN_MEAL_AP);
+    this.ui.showToast(got > 0 ? `酒足饭饱,恢复 ${got} 点行动力` : '行动力已满,这顿算是白请了');
+    this._facilityRefresh();
+  }
+
+  _arenaFight(tierId) {
+    const tier = ARENA_TIERS.find((t) => t.id === tierId);
+    if (!tier) return;
+    if (!this.deck) { this.ui.showToast('尚无卡组,先推进剧情'); return; }
+    if (this.economy.gold < tier.entry) { this.ui.showToast(`报名费不足(需 ${tier.entry})`); return; }
+    this.economy.gold -= tier.entry;
+    this._syncUi();
+    this._startArenaBattle(Math.max(1, this._chapterNum() + tier.enemyLv), tier);
+  }
+
+  _startArenaBattle(level, tier) {
+    const pool = ENEMIES[this.regionId] || ENEMIES.normal;
+    const raw = pool[Math.floor(this.rng.next() * pool.length)] || pool[0];
+    const def = scaleEnemy(raw, level);
+    this.player.power = this.economy.equipStats().atkPower;
+    const bonusStrength = this.player.power + this.economy.consumePendingPower();
+    this._arenaBattle = tier;
+    this.currentBattle = new Battle({
+      player: this.player, deck: this.deck, enemyDef: def, rng: this.rng, bus: this.bus,
+      bonusStrength, pet: this._activePet(),
+    });
+    this.ui.bindBattle(this.currentBattle);
+    this.transition(GameState.BATTLE);
+    this.currentBattle.start();
+    this._applyBattleStartBlock();
+  }
+
+  _onArenaEnd(result) {
+    const tier = this._arenaBattle;
+    this._arenaBattle = null;
+    this.currentBattle = null;
+    if (result === 'victory' && tier) {
+      const prize = Math.round(tier.entry * tier.mul);
+      this.economy.gold += prize;
+      this.ui.showToast(`角斗获胜!赢得 ${prize} 金币(净赚 ${prize - tier.entry})`);
+    } else {
+      this.ui.showToast(tier ? '角斗落败,报名费打了水漂' : '角斗中止');
+    }
+    this._openFacility('tavern');
+    this._autosave();
+  }
+
+  // ----- 神秘商店 -----
+  _mysteryBuy(id) {
+    const it = ITEMS[id];
+    if (!it) return;
+    const seed = this.rng?.seed ?? 1;
+    const price = mysteryPrice(id, seed, exchangeTick(Date.now()));
+    if (this.economy.gold < price) { this.ui.showToast(`金币不足(需 ${price})`); return; }
+    if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+    this.economy.gold -= price;
+    this.economy.addItem(id, 1);
+    this.ui.showToast(`购得珍品「${it.name}」(${price} 金币)`);
+    this._facilityRefresh();
+  }
+
+  // ----- 银行:定期存款 / 兑换交易币 -----
+  _bankDeposit(termId, amount) {
+    const seed = this.rng?.seed ?? 1;
+    const term = BANK_TERMS.find((t) => t.id === termId);
+    if (!term) return;
+    const rate = bankRate(termId, seed, exchangeTick(Date.now()));
+    const n = Math.floor(Number(amount) || 0);
+    const dep = this.economy.bankDeposit(n, term, rate);
+    if (!dep) { this.ui.showToast('金额无效或金币不足'); return; }
+    this.ui.showToast(`存入 ${n} 金币,${term.name}后可得利息 ${Math.round(n * rate)}`);
+    this._facilityRefresh();
+  }
+
+  _bankWithdraw(depositId) {
+    const r = this.economy.bankWithdraw(depositId);
+    if (!r) { this.ui.showToast('没有这笔存款'); return; }
+    this.ui.showToast(r.matured
+      ? `取回本息 ${r.principal + r.interest} 金币(利息 ${r.interest})`
+      : `未到期,仅取回本金 ${r.principal} 金币(无利息)`);
+    this._facilityRefresh();
+  }
+
+  _bankExchange(dir, tokenId, qty) {
+    const it = ITEMS[tokenId];
+    if (!it) return;
+    const seed = this.rng?.seed ?? 1;
+    const rate = tokenRate(tokenId, seed, exchangeTick(Date.now()));
+    const n = Math.max(1, Math.floor(Number(qty) || 0));
+    if (dir === 'buy') {
+      const cost = Math.round(rate * n * (1 + TOKEN_EX_FEE));
+      if (this.economy.gold < cost) { this.ui.showToast(`金币不足(需 ${cost})`); return; }
+      if (!this.economy.canHold(tokenId)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+      this.economy.gold -= cost;
+      this.economy.addItem(tokenId, n);
+      this.ui.showToast(`以 ${cost} 金币兑得 ${n} 枚${it.name}(现价 ${rate}/枚)`);
+    } else {
+      if (this.economy.count(tokenId) < n) { this.ui.showToast(`${it.name}不足`); return; }
+      this.economy.removeItem(tokenId, n);
+      const gain = Math.round(rate * n * (1 - TOKEN_EX_FEE));
+      this.economy.gold += gain;
+      this.ui.showToast(`${n} 枚${it.name}兑得 ${gain} 金币(现价 ${rate}/枚)`);
+    }
+    this._facilityRefresh();
+  }
+
+  // ----- 交易所:投资标的 -----
+  _investBuy(projectId, units) {
+    const seed = this.rng?.seed ?? 1;
+    const price = investPrice(projectId, seed, exchangeTick(Date.now()));
+    const n = Math.max(1, Math.floor(Number(units) || 0));
+    const got = this.economy.investBuy(projectId, n, price);
+    if (!got) { this.ui.showToast(`金币不足(需 ${n * price})`); return; }
+    this.ui.showToast(`买入 ${got} 份,成本 ${got * price} 金币(单价 ${price})`);
+    this._facilityRefresh();
+  }
+
+  _investSell(projectId, units) {
+    const seed = this.rng?.seed ?? 1;
+    const price = investPrice(projectId, seed, exchangeTick(Date.now()));
+    const r = this.economy.investSell(projectId, units, price);
+    if (!r) { this.ui.showToast('没有可卖出的份额'); return; }
+    this.ui.showToast(`卖出 ${r.units} 份,得 ${r.gain} 金币(${r.profit >= 0 ? '盈利' : '亏损'} ${Math.abs(r.profit)})`);
+    this._facilityRefresh();
+  }
+
+  // ----- 仓库:收费寄存 -----
+  _warehouseStore(id, qty) {
+    const it = ITEMS[id];
+    if (!it) return;
+    const n = Math.max(1, Math.floor(Number(qty) || 1));
+    const fee = warehouseFee(id, n);
+    if (this.economy.gold < fee) { this.ui.showToast(`管理费不足(需 ${fee})`); return; }
+    const got = this.economy.warehouseStore(id, n);
+    if (!got) { this.ui.showToast('背包中没有该物品'); return; }
+    this.economy.gold -= fee;
+    this.ui.showToast(`存入「${it.name}」×${got}(管理费 ${fee})`);
+    this._facilityRefresh();
+  }
+
+  _warehouseWithdraw(id, qty) {
+    const it = ITEMS[id];
+    if (!it) return;
+    const n = Math.max(1, Math.floor(Number(qty) || 1));
+    const fee = warehouseFee(id, n);
+    if (this.economy.gold < fee) { this.ui.showToast(`管理费不足(需 ${fee})`); return; }
+    const got = this.economy.warehouseWithdraw(id, n);
+    if (!got) { this.ui.showToast('仓库中没有该物品或背包已满'); return; }
+    this.economy.gold -= fee;
+    this.ui.showToast(`取出「${it.name}」×${got}(管理费 ${fee})`);
+    this._facilityRefresh();
+  }
+
+  // ----- 酒店服务生:代存与跑腿 -----
+  _escrowStoreGold(amount) {
+    const n = Math.floor(Number(amount) || 0);
+    const fee = Math.max(1, Math.round(n * BELLHOP.goldFeeRate));
+    if (n <= 0 || this.economy.gold < n + fee) { this.ui.showToast(`金币不足(含保管费 ${fee})`); return; }
+    const got = this.economy.escrowStoreGold(n);
+    if (!got) { this.ui.showToast('金额无效'); return; }
+    this.economy.gold -= fee;
+    this.ui.showToast(`服务生代管 ${got} 金币(保管费 ${fee})`);
+    this._facilityRefresh();
+  }
+
+  _escrowWithdrawGold(amount) {
+    const got = this.economy.escrowWithdrawGold(Math.floor(Number(amount) || 0));
+    this.ui.showToast(got > 0 ? `取回代管金币 ${got}` : '代管金币不足或金额无效');
+    this._facilityRefresh();
+  }
+
+  _escrowStoreItem(id) {
+    if (!ITEMS[id]) return;
+    const got = this.economy.escrowStoreItem(id, 1, BELLHOP.escrowKinds);
+    this.ui.showToast(got > 0
+      ? `服务生代管一「${ITEMS[id].name}」`
+      : `背包没有该物品,或代管已达 ${BELLHOP.escrowKinds} 种上限`);
+    this._facilityRefresh();
+  }
+
+  _escrowWithdrawItem(id) {
+    if (!ITEMS[id]) return;
+    const got = this.economy.escrowWithdrawItem(id, 1);
+    this.ui.showToast(got > 0 ? `取回「${ITEMS[id].name}」` : '代管中没有该物品或背包已满');
+    this._facilityRefresh();
+  }
+
+  /** 跑腿代购:付费后按真实时间送达(与玩家自己跑一趟相当) */
+  _errandPlace(itemId) {
+    const it = ITEMS[itemId];
+    if (!it) return;
+    const base = this.economy.itemPrice ? this.economy.itemPrice(itemId) : it.price;
+    const fee = Math.max(1, Math.round(base * BELLHOP.errandFee));
+    const cost = base + fee;
+    if (this.economy.gold < cost) { this.ui.showToast(`金币不足(需 ${cost})`); return; }
+    if (!this.economy.canHold(itemId)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
+    this.economy.gold -= cost;
+    this.economy.errandAdd(itemId, 1, Date.now() + BELLHOP.errandSeconds * 1000);
+    this.ui.showToast(`已托服务生代购「${it.name}」,约 ${BELLHOP.errandSeconds} 秒后送达`);
+    this._facilityRefresh();
+  }
+
+  _errandClaim(errandId) {
+    const e = this.economy.errandClaim(errandId);
+    if (!e) { this.ui.showToast('还没送到,再等等'); return; }
+    this.ui.showToast(`服务生送回「${ITEMS[e.itemId]?.name || e.itemId}」×${e.qty}`);
+    this._facilityRefresh();
   }
 
   // ===== 商市 =====
@@ -3417,6 +3769,8 @@ export class Game {
     // 「休息」操作已下线:行动力改由 剧情推进 / NPC赠予 / 食品 / 酒店休整 恢复
     this.bus.on('ui:map-shop', () => this._openShop());
     this.bus.on('ui:map-job', () => this._openJobs());
+    // 主城设施(酒店 / 酒馆 / 神秘商店 / 银行 / 交易所 / 仓库)
+    this.bus.on('ui:map-facility', (kind) => this._openFacility(kind));
     this.bus.on('ui:map-bag', () => this._openBag());
     this.bus.on('ui:map-world', () => this._openWorld());
     this.bus.on('ui:back-map', () => this._backToMap());
@@ -3435,6 +3789,25 @@ export class Game {
     this.bus.on('ui:hotel-withdraw-gold', (amount) => this._hotelWithdrawGold(amount));
     this.bus.on('ui:hotel-store-item', (id, qty) => this._hotelStoreItem(id, qty));
     this.bus.on('ui:hotel-withdraw-item', (id, qty) => this._hotelWithdrawItem(id, qty));
+    // 酒店服务生:代存与跑腿
+    this.bus.on('ui:escrow-store-gold', (amount) => this._escrowStoreGold(amount));
+    this.bus.on('ui:escrow-withdraw-gold', (amount) => this._escrowWithdrawGold(amount));
+    this.bus.on('ui:escrow-store-item', (id) => this._escrowStoreItem(id));
+    this.bus.on('ui:escrow-withdraw-item', (id) => this._escrowWithdrawItem(id));
+    this.bus.on('ui:errand-place', (id) => this._errandPlace(id));
+    this.bus.on('ui:errand-claim', (id) => this._errandClaim(id));
+    // 酒馆 / 神秘商店 / 银行 / 交易所 / 仓库
+    this.bus.on('ui:tavern-buy', (id) => this._tavernBuy(id));
+    this.bus.on('ui:tavern-meal', () => this._tavernMeal());
+    this.bus.on('ui:arena-fight', (tierId) => this._arenaFight(tierId));
+    this.bus.on('ui:mystery-buy', (id) => this._mysteryBuy(id));
+    this.bus.on('ui:bank-deposit', (p) => this._bankDeposit(p.termId, p.amount));
+    this.bus.on('ui:bank-withdraw', (id) => this._bankWithdraw(id));
+    this.bus.on('ui:bank-exchange', (p) => this._bankExchange(p.dir, p.tokenId, p.qty));
+    this.bus.on('ui:invest-buy', (p) => this._investBuy(p.projectId, p.units));
+    this.bus.on('ui:invest-sell', (p) => this._investSell(p.projectId, p.units));
+    this.bus.on('ui:warehouse-store', (p) => this._warehouseStore(p.id, p.qty));
+    this.bus.on('ui:warehouse-withdraw', (p) => this._warehouseWithdraw(p.id, p.qty));
     this.bus.on('ui:market-poi-merchant', (merchantId) => this._marketPoiSelectMerchant(merchantId));
     this.bus.on('ui:merchant-buy', (id) => this._merchantBuy(id));
     this.bus.on('ui:npc-talk', (id) => this._talkNpc(id));
