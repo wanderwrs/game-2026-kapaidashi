@@ -291,7 +291,7 @@ export const NPCS_2 = [
   {
     id: 'npc32',
     name: '少年飞手',
-    tag: '飞行学徒',
+    tag: '飞行师',
     where: ['sky'],
     replies: {
       greet: [
