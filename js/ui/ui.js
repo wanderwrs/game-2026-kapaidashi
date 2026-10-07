@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261007e';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007e';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007e';
-import { gradeOf } from '../data/grade.js?v=20261007e';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261007e';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007e';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007e';
-import { cardMpCost } from '../data/data.js?v=20261007e';
-import { ENDINGS } from '../narrative/engine.js?v=20261007e';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007e';
-import { SceneView, paintCharacter } from './scene.js?v=20261007e';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007e';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007e';
-import { Minigame } from '../minigame/minigame.js?v=20261007e';
-import { MODE_LABELS } from '../data/jobs.js?v=20261007e';
-import { TERRAIN_CN } from '../data/world.js?v=20261007e';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007e';
+import { GameState } from '../core/game.js?v=20261007f';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007f';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007f';
+import { gradeOf } from '../data/grade.js?v=20261007f';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261007f';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007f';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007f';
+import { cardMpCost } from '../data/data.js?v=20261007f';
+import { ENDINGS } from '../narrative/engine.js?v=20261007f';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007f';
+import { SceneView, paintCharacter } from './scene.js?v=20261007f';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007f';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007f';
+import { Minigame } from '../minigame/minigame.js?v=20261007f';
+import { MODE_LABELS } from '../data/jobs.js?v=20261007f';
+import { TERRAIN_CN } from '../data/world.js?v=20261007f';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007f';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
