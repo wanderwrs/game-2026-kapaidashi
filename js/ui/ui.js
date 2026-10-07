@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261007f';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007f';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007f';
-import { gradeOf } from '../data/grade.js?v=20261007f';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261007f';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007f';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007f';
-import { cardMpCost } from '../data/data.js?v=20261007f';
-import { ENDINGS } from '../narrative/engine.js?v=20261007f';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007f';
-import { SceneView, paintCharacter } from './scene.js?v=20261007f';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007f';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007f';
-import { Minigame } from '../minigame/minigame.js?v=20261007f';
-import { MODE_LABELS } from '../data/jobs.js?v=20261007f';
-import { TERRAIN_CN } from '../data/world.js?v=20261007f';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007f';
+import { GameState } from '../core/game.js?v=20261007g';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007g';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007g';
+import { gradeOf } from '../data/grade.js?v=20261007g';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261007g';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007g';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007g';
+import { cardMpCost } from '../data/data.js?v=20261007g';
+import { ENDINGS } from '../narrative/engine.js?v=20261007g';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007g';
+import { SceneView, paintCharacter } from './scene.js?v=20261007g';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007g';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007g';
+import { Minigame } from '../minigame/minigame.js?v=20261007g';
+import { MODE_LABELS } from '../data/jobs.js?v=20261007g';
+import { TERRAIN_CN } from '../data/world.js?v=20261007g';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007g';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -3668,7 +3668,8 @@ export class UI {
   // ===== 片尾字幕 =====
   // mode: 'full' = 大章末完整回顾(多段); 'short' = 小节末本章回顾(单段)
   // recapKey: full 时为大章 id(mc1/mc2/mc3); short 时为小节 id(ch28...)
-  showCredits(recaps, mode = 'full', recapKey = 'mc1', onComplete) {
+  // cleared: full 模式下已通关的大章 id 集合({mc1:true,...});未传则默认全部显示(向后兼容)
+  showCredits(recaps, mode = 'full', recapKey = 'mc1', onComplete, cleared = null) {
     const inner = document.getElementById('credits-inner');
     const embers = document.getElementById('credits-embers');
     if (!inner || !embers) { if (onComplete) onComplete(); return; }
@@ -3702,21 +3703,35 @@ export class UI {
         <p class="credits-end">— 下 一 章 · 续 —</p>
       `;
     } else {
-      // 完整字幕:大章回顾(已通关的所有大章)
-      const mc1 = recaps?.mc1 || '';
-      const mc2 = recaps?.mc2 || '';
-      const mc3 = recaps?.mc3 || '';
+      // 完整字幕:大章回顾(仅展示已通关的大章,避免剧透后续未通关章节)
+      // 当前刚通关的大章(recapKey)必然在 cleared 集合中(ui:show-ending 已先行 markChapterCleared)
+      const mc1Txt = recaps?.mc1 || '';
+      const mc2Txt = recaps?.mc2 || '';
+      const mc3Txt = recaps?.mc3 || '';
+      // 兼容旧调用:无 cleared 视为全部已通关(只在最终大章末 mc3 通关时才会出现)
+      const isCleared = (id) => !cleared || !!cleared[id] || id === recapKey;
+      const sections = [];
+      if (isCleared('mc1') && mc1Txt) {
+        sections.push(`<h2>第一大章 · 家园之殇</h2><p>${mc1Txt}</p>`);
+      }
+      if (isCleared('mc2') && mc2Txt) {
+        sections.push(`<h2>第二大章 · 卡斯特罗之战</h2><p>${mc2Txt}</p>`);
+      }
+      if (isCleared('mc3') && mc3Txt) {
+        sections.push(`<h2>第三大章 · 龙族突起</h2><p>${mc3Txt}</p>`);
+      }
+      // 末尾提示:刚通关的是最后一个大章 → 全剧终;否则提示继续下一大章
+      const mcList = ['mc1', 'mc2', 'mc3'];
+      const isLastCleared = recapKey === mcList[mcList.length - 1];
+      const endLine = isLastCleared
+        ? `<p class="credits-end">— 全 剧 终 —</p>`
+        : `<p class="credits-end">期 待 下 次 冒 险 之 旅</p>`;
       html = `
         <h1>龙 脊 少 年 · 守 约</h1>
         <div class="credits-divider"></div>
-        <h2>第一大章 · 家园之殇</h2>
-        <p>${mc1}</p>
+        ${sections.map((s) => `<div class="credits-divider"></div>${s}`).join('')}
         <div class="credits-divider"></div>
-        <h2>第二大章 · 卡斯特罗之战</h2>
-        <p>${mc2}</p>
-        ${mc3 ? `<div class="credits-divider"></div><h2>第三大章 · 龙族突起</h2><p>${mc3}</p>` : ''}
-        <div class="credits-divider"></div>
-        <p class="credits-end">期 待 下 次 冒 险 之 旅</p>
+        ${endLine}
       `;
     }
     inner.innerHTML = html;

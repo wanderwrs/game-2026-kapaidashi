@@ -4,8 +4,8 @@
  * 暴露到 window.__game 便于控制台调试与种子复现。
  */
 
-import { Game } from './core/game.js?v=20261007f';
-import { AgeGate } from './ui/agegate.js?v=20261007f';
+import { Game } from './core/game.js?v=20261007g';
+import { AgeGate } from './ui/agegate.js?v=20261007g';
 
 // 先挂载年龄 / 内容警告门:遮住页面,直到真人验证通过
 new AgeGate();
