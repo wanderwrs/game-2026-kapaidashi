@@ -11,8 +11,8 @@
  *   · 敌人会随机攻击玩家或队友
  */
 
-import { Enemy } from './entity.js?v=20261007o';
-import { cardMpCost } from '../data/data.js?v=20261007o';
+import { Enemy } from './entity.js?v=20261007p';
+import { cardMpCost } from '../data/data.js?v=20261007p';
 
 const STATUS_CN = {
   vulnerable: '易伤',

@@ -11,48 +11,48 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261007o';
-import { EventBus } from './eventbus.js?v=20261007o';
-import { AudioEngine } from './audio.js?v=20261007o';
-import { Player } from '../combat/entity.js?v=20261007o';
-import { Deck } from '../card/deck.js?v=20261007o';
-import { Battle } from '../combat/battle.js?v=20261007o';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007o';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261007o';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007o';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007o';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261007o';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007o';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007o';
-import { majorSetIds } from '../data/extras.js?v=20261007o';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007o';
-import { lookLabel } from '../data/looks.js?v=20261007o';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007o';
+import { RNG, seedFromString } from './rng.js?v=20261007p';
+import { EventBus } from './eventbus.js?v=20261007p';
+import { AudioEngine } from './audio.js?v=20261007p';
+import { Player } from '../combat/entity.js?v=20261007p';
+import { Deck } from '../card/deck.js?v=20261007p';
+import { Battle } from '../combat/battle.js?v=20261007p';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007p';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf, resetPriceGrowth } from '../data/items.js?v=20261007p';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007p';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007p';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261007p';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007p';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007p';
+import { majorSetIds } from '../data/extras.js?v=20261007p';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007p';
+import { lookLabel } from '../data/looks.js?v=20261007p';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007p';
 import {
   FACILITY_CN, FACILITY_ICON, BANK_TERMS, bankRate, exchangeTick, msToNextExchange,
   TOKEN_LIST, TOKEN_EX_FEE, tokenRate, INVEST_PROJECTS, investPrice, investPrevPrice,
   WAREHOUSE, warehouseFee, mysteryStock, mysteryPrice, ARENA_TIERS,
   TAVERN_STOCK, TAVERN_FEE, TAVERN_MEAL_GOLD, TAVERN_MEAL_AP, BELLHOP, errandCatalog,
-} from '../data/facilities.js?v=20261007o';
-import { TradeEngine } from './trade.js?v=20261007o';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007o';
-import { REGIONS } from '../data/regions.js?v=20261007o';
-import { jobsFor } from '../data/jobs.js?v=20261007o';
+} from '../data/facilities.js?v=20261007p';
+import { TradeEngine } from './trade.js?v=20261007p';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007p';
+import { REGIONS } from '../data/regions.js?v=20261007p';
+import { jobsFor } from '../data/jobs.js?v=20261007p';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261007o';
-import { NPCS } from '../data/npcs.js?v=20261007o';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007o';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007o';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007o';
-import { Economy } from './economy.js?v=20261007o';
-import { Travel } from './travel.js?v=20261007o';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007o';
-import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007o';
-import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007o';
-import { CAREERS } from '../narrative/careers.js?v=20261007o';
-import { UI } from '../ui/ui.js?v=20261007o';
+} from '../data/world.js?v=20261007p';
+import { NPCS } from '../data/npcs.js?v=20261007p';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007p';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007p';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007p';
+import { Economy } from './economy.js?v=20261007p';
+import { Travel } from './travel.js?v=20261007p';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007p';
+import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007p';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007p';
+import { CAREERS } from '../narrative/careers.js?v=20261007p';
+import { UI } from '../ui/ui.js?v=20261007p';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -280,6 +280,8 @@ export class Game {
   startNewRun(seedInput, startChapter = 'ch01') {
     // 开启新一局:清除上一局的运行时存档(避免旧存档残留)
     clearSavedGame();
+    // 「越买越贵」物品(龙髓灵药)复位基准价
+    resetPriceGrowth();
 
     const seed = seedInput
       ? (typeof seedInput === 'number' ? seedInput >>> 0 : seedFromString(String(seedInput)))
@@ -1558,6 +1560,7 @@ export class Game {
     if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
     this.economy.gold -= price;
     this.economy.addItem(id, 1);
+    this.economy.notePurchase(id);
     this.ui.showToast(`购入「${it.name}」(含 ${pct(FEES.shop)} 手续费,共 ${price} 金币)`);
     this._openShopRefresh();
     this._autosave();
@@ -1754,6 +1757,7 @@ export class Game {
     if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
     this.economy.gold -= price;
     this.economy.addItem(id, 1);
+    this.economy.notePurchase(id);
     this.ui.showToast(`购入「${it.name}」,含管理费共 ${price} 金币`);
     this._marketRefresh();
     this._autosave();
@@ -3254,6 +3258,7 @@ export class Game {
     if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
     this.economy.gold -= price;
     this.economy.addItem(id, 1);
+    this.economy.notePurchase(id);
     this.ui.showToast(`在酒馆购入「${it.name}」(${price} 金币)`);
     this._facilityRefresh();
   }
@@ -3318,6 +3323,7 @@ export class Game {
     if (!this.economy.canHold(id)) { this.ui.showToast('背包已满,请先扩容或清理'); return; }
     this.economy.gold -= price;
     this.economy.addItem(id, 1);
+    this.economy.notePurchase(id);
     this.ui.showToast(`购得珍品「${it.name}」(${price} 金币)`);
     this._facilityRefresh();
   }

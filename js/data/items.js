@@ -26,11 +26,11 @@
  * sell 未填时按 price 的 50% 计算。
  */
 
-import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261007o';
-import { GEM_ITEMS } from './gems.js?v=20261007o';
-import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261007o';
-import { isSellLockedLevel } from './grade.js?v=20261007o';
-import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261007o';
+import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261007p';
+import { GEM_ITEMS } from './gems.js?v=20261007p';
+import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261007p';
+import { isSellLockedLevel } from './grade.js?v=20261007p';
+import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261007p';
 
 export const ITEM_CATEGORY_CN = {
   potion: '药品',
@@ -73,6 +73,27 @@ export function tokenForTheme(theme) {
   return THEME_TOKEN[theme] || THEME_TOKEN.village;
 }
 
+/**
+ * 重算「越买越贵」物品的当前售价:以 basePrice 为基准,每购买一次 ×(1+priceGrowth)。
+ * 价格直接写回 ITEMS[id].price,使商店 / 市场 / 密市 / 回收价保持一致。
+ * @returns {number} 重算后的售价
+ */
+export function syncPriceGrowth(id, times) {
+  const it = ITEMS[id];
+  if (!it || !it.priceGrowth) return 0;
+  const base = it.basePrice ?? it.price;
+  const n = Math.max(0, Math.floor(times || 0));
+  it.price = Math.round(base * Math.pow(1 + it.priceGrowth, n));
+  return it.price;
+}
+
+/** 把所有「越买越贵」物品的价格复位到基准价(开新档时调用) */
+export function resetPriceGrowth() {
+  for (const it of Object.values(ITEMS)) {
+    if (it.priceGrowth && it.basePrice != null) it.price = it.basePrice;
+  }
+}
+
 export const ITEMS = {
   // ===== 药品 =====
   hp_small:    { id: 'hp_small',    name: '金创药',   category: 'potion', price: 20, icon: '🧪', desc: '恢复 15 点生命。',        effect: { kind: 'heal',  amount: 15 } },
@@ -81,7 +102,7 @@ export const ITEMS = {
   mp_large:    { id: 'mp_large',    name: '回气丹',   category: 'potion', price: 60, icon: '🔮', desc: '恢复 5 点魔力。',         effect: { kind: 'mp',    amount: 5 } },
   power_elixir:{ id: 'power_elixir',name: '战力药剂', category: 'potion', price: 70, icon: '💪', desc: '下一场战斗战力 +3。',      effect: { kind: 'power', amount: 3 } },
   phoenix_blood:{ id: 'phoenix_blood',name:'不死鸟之血', category: 'potion', price: 760, icon: '🩸', rare: true, desc: '传说一滴即续命。生命与魔力尽数回满。', effect: { kind: 'full', amount: 0 } },
-  ap_elixir:   { id: 'ap_elixir',   name: '龙髓灵药', category: 'potion', price: 5000, icon: '💠', desc: '极为昂贵。永久提升行动力上限 5 点(总上限 100),并补足相应的行动力。', effect: { kind: 'ap_max', amount: 5 } },
+  ap_elixir:   { id: 'ap_elixir',   name: '龙髓灵药', category: 'potion', price: 5000, basePrice: 5000, priceGrowth: 0.15, icon: '💠', desc: '极为昂贵。永久提升行动力上限 5 点(总上限 100),并补足相应的行动力;每购买一次,售价再涨 15%。', effect: { kind: 'ap_max', amount: 5 } },
 
   // ===== 战斗专用药剂(仅战斗中可用) =====
   antidote:    { id: 'antidote',    name: '解毒剂',   category: 'potion', price: 35, icon: '🌿', desc: '战斗中使用,清除自身易伤 / 虚弱 / 脆弱。', effect: { kind: 'cleanse', amount: 0 } },

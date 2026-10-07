@@ -11,13 +11,13 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice, socketsOf } from '../data/items.js?v=20261007o';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261007o';
-import { GEM_EFFECT } from '../data/gems.js?v=20261007o';
-import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261007o';
-import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261007o';
-import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261007o';
-import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261007o';
+import { ITEMS, sellPrice, tokenPrice, socketsOf, syncPriceGrowth } from '../data/items.js?v=20261007p';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261007p';
+import { GEM_EFFECT } from '../data/gems.js?v=20261007p';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261007p';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261007p';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261007p';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261007p';
 
 /** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
 const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
@@ -93,6 +93,8 @@ export class Economy {
     this.escrow = new Map();    // itemId -> qty
     this.errands = [];          // [{ id, itemId, qty, readyAt }]
     this._errandSeq = 0;
+    // 购买次数:itemId -> times(用于「越买越贵」的物品,如龙髓灵药)
+    this.purchases = {};
   }
 
   // ===== 角色名 / 形象 =====
@@ -293,6 +295,7 @@ export class Economy {
     if (this.gold < price) return false;
     this.gold -= price;
     this.addItem(id, 1);
+    this.notePurchase(id);
     return true;
   }
 
@@ -793,6 +796,21 @@ export class Economy {
     return Math.max(1, Math.round((it.price || 0) * (1 - this.shopDiscount())));
   }
 
+  /** 某物品的累计购买次数 */
+  purchaseCount(id) { return this.purchases[id] || 0; }
+
+  /**
+   * 记录一次购买。对声明了 priceGrowth 的物品(如龙髓灵药),
+   * 每买一次售价 ×(1+priceGrowth),并写回 ITEMS,使各渠道价格一致。
+   */
+  notePurchase(id) {
+    const it = ITEMS[id];
+    if (!it?.priceGrowth) return 0;
+    const n = this.purchaseCount(id) + 1;
+    this.purchases[id] = n;
+    return syncPriceGrowth(id, n);
+  }
+
   /**
    * 当前人物外观(供 ui/scene.js 绘制像素小人)。
    * 返回的字段优先于职业默认配色;hide* 为 true 表示该部位被「皇帝的新衣」隐藏。
@@ -1155,6 +1173,8 @@ export class Economy {
       escrow: Object.fromEntries(this.escrow),
       errands: this.errands.map((e) => ({ ...e })),
       errandSeq: this._errandSeq,
+      // 「越买越贵」物品的累计购买次数(龙髓灵药等)
+      purchases: { ...this.purchases },
     };
   }
 
@@ -1294,6 +1314,16 @@ export class Economy {
         .filter((e) => e && e.itemId && ITEMS[e.itemId])
         .map((e) => ({ id: String(e.id || ''), itemId: e.itemId, qty: Math.max(1, Math.floor(Number(e.qty) || 1)), readyAt: Number(e.readyAt) || 0 }))
       : [];
+    // 「越买越贵」物品:恢复累计购买次数,并按次数重算 ITEMS 中的当前售价
+    eco.purchases = {};
+    if (data.purchases && typeof data.purchases === 'object') {
+      for (const [id, n] of Object.entries(data.purchases)) {
+        const times = Math.max(0, Math.floor(Number(n) || 0));
+        if (times <= 0 || !ITEMS[id]?.priceGrowth) continue;
+        eco.purchases[id] = times;
+        syncPriceGrowth(id, times);
+      }
+    }
     return eco;
   }
 }

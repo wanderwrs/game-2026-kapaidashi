@@ -11,8 +11,8 @@
  * 旅行:任意两地点之间可通行,消耗行动力 = 距离 × TRAVEL_BASE_COST − 载具折扣(至少 1)。
  */
 
-import { CITY_FACILITY_STOPS } from './facilities.js?v=20261007o';
-import { WORLD } from './world.js?v=20261007o';
+import { CITY_FACILITY_STOPS } from './facilities.js?v=20261007p';
+import { WORLD } from './world.js?v=20261007p';
 
 export const TRAVEL_BASE_COST = 2;
 
