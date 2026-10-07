@@ -10,11 +10,11 @@
  * 所有随机均以本局种子为基准,保证同一轮次内价格稳定、可复现。
  */
 
-import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20261007k';
+import { ITEMS, sellPrice, tokenPrice } from '../data/items.js?v=20261007l';
 import {
   FEES, FESTIVAL, SELL_FLOOR, SELL_FLOOR_FLOAT,
   hash01, priceTick, priceMul, msToNextTick, festivalState, cityFee, tokenFee,
-} from '../data/trade.js?v=20261007k';
+} from '../data/trade.js?v=20261007l';
 
 /** 市场总体景气度加成(整体买价的一个偏置) */
 export class TradeEngine {

@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261007k';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007k';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007k';
-import { gradeOf } from '../data/grade.js?v=20261007k';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261007k';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007k';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007k';
-import { cardMpCost } from '../data/data.js?v=20261007k';
-import { ENDINGS } from '../narrative/engine.js?v=20261007k';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007k';
-import { SceneView, paintCharacter } from './scene.js?v=20261007k';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007k';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007k';
-import { Minigame } from '../minigame/minigame.js?v=20261007k';
-import { MODE_LABELS } from '../data/jobs.js?v=20261007k';
-import { TERRAIN_CN } from '../data/world.js?v=20261007k';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007k';
+import { GameState } from '../core/game.js?v=20261007l';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007l';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007l';
+import { gradeOf } from '../data/grade.js?v=20261007l';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261007l';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007l';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007l';
+import { cardMpCost } from '../data/data.js?v=20261007l';
+import { ENDINGS } from '../narrative/engine.js?v=20261007l';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007l';
+import { SceneView, paintCharacter } from './scene.js?v=20261007l';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007l';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007l';
+import { Minigame } from '../minigame/minigame.js?v=20261007l';
+import { MODE_LABELS } from '../data/jobs.js?v=20261007l';
+import { TERRAIN_CN } from '../data/world.js?v=20261007l';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007l';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -1273,12 +1273,18 @@ export class UI {
 
     const fullText = node.text || '';
     this._fullText = fullText;
+
+    // 先标记「等待」,再启动逐段渐显 —— 顺序不可颠倒。
+    // 单段落节点的渐显链会在 _startParagraphReveal 内同步收尾并调用 _finishTyping
+    // 移除 is-waiting;若之后再补加 is-waiting,就再无定时器来移除它,
+    // 选项会被永久锁死(opacity:0 且 pointer-events:none,既看不见也点不到)。
+    this._choicesReady = false;
+    this.el.narrativeChoices.classList.add('is-waiting');
+
     this._startParagraphReveal(body, fullText);
 
-    // 选项(先构建,打字完成后再浮现)
+    // 选项(逐段渐显收尾后浮现)
     this._buildChoices(node, snap);
-    this.el.narrativeChoices.classList.add('is-waiting');
-    this._choicesReady = false;
 
     // 底部提示
     this.el.narrativeHint.innerHTML = `<kbd>空格</kbd> 推进 · <kbd>1</kbd>~<kbd>9</kbd> 选择 · 点击文本可跳过`;

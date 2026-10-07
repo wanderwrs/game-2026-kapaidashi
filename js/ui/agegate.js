@@ -15,7 +15,7 @@
  * 并让 ui.js 的键盘监听短路(见 _bindKeyboard)。
  */
 
-import { ABOUT_DOCS } from '../data/about.js?v=20261007k';
+import { ABOUT_DOCS } from '../data/about.js?v=20261007l';
 
 /** 长按判定时长(毫秒) */
 const HOLD_MS = 3000;
