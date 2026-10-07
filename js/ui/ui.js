@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261007c';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007c';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007c';
-import { gradeOf } from '../data/grade.js?v=20261007c';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261007c';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007c';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007c';
-import { cardMpCost } from '../data/data.js?v=20261007c';
-import { ENDINGS } from '../narrative/engine.js?v=20261007c';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007c';
-import { SceneView, paintCharacter } from './scene.js?v=20261007c';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007c';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007c';
-import { Minigame } from '../minigame/minigame.js?v=20261007c';
-import { MODE_LABELS } from '../data/jobs.js?v=20261007c';
-import { TERRAIN_CN } from '../data/world.js?v=20261007c';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007c';
+import { GameState } from '../core/game.js?v=20261007d';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007d';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007d';
+import { gradeOf } from '../data/grade.js?v=20261007d';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261007d';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007d';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007d';
+import { cardMpCost } from '../data/data.js?v=20261007d';
+import { ENDINGS } from '../narrative/engine.js?v=20261007d';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007d';
+import { SceneView, paintCharacter } from './scene.js?v=20261007d';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007d';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007d';
+import { Minigame } from '../minigame/minigame.js?v=20261007d';
+import { MODE_LABELS } from '../data/jobs.js?v=20261007d';
+import { TERRAIN_CN } from '../data/world.js?v=20261007d';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007d';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -245,7 +245,7 @@ export class UI {
       mailbox: $('mailbox'),
       mailNote: $('mail-note'),
       mailList: $('mail-list'),
-      // 左下角功能坞:回忆(剧情回顾) / 衣橱(更换时装)
+      // 左下角功能坞:回忆(剧情回顾) / 衣橱(更换时装) / 设置(音量与注销)
       memorial: $('memorial'),
       memorialNote: $('memorial-note'),
       memorialList: $('memorial-list'),
@@ -253,6 +253,11 @@ export class UI {
       wardrobeCanvas: $('wardrobe-canvas'),
       wardrobeLook: $('wardrobe-look'),
       wardrobeSlots: $('wardrobe-slots'),
+      settings: $('settings'),
+      settingsVolume: $('settings-volume'),
+      settingsVolumeVal: $('settings-volume-val'),
+      settingsConfirm: $('settings-confirm'),
+      settingsLogoutActions: $('settings-logout-actions'),
       redeem: $('redeem'),
       redeemInput: $('redeem-input'),
       redeemMsg: $('redeem-msg'),
@@ -417,15 +422,30 @@ export class UI {
     on('btn-mailbox', 'click', () => this.bus.emit('ui:open-mailbox'));
     on('btn-redeem', 'click', () => this.bus.emit('ui:open-redeem'));
     on('btn-about', 'click', () => this.openAbout());
-    // 左下角功能坞:回忆(剧情回顾) / 衣橱(更换时装)
+    // 左下角功能坞:回忆(剧情回顾) / 衣橱(更换时装) / 设置(音量与注销)
     on('btn-memorial', 'click', () => this.bus.emit('ui:open-memorial'));
     on('btn-wardrobe', 'click', () => this.bus.emit('ui:open-wardrobe'));
+    on('btn-settings', 'click', () => this.bus.emit('ui:open-settings'));
     document.querySelectorAll('[data-memorial-close]').forEach((b) => {
       b.addEventListener('click', () => this.closeMemorial());
     });
     document.querySelectorAll('[data-wardrobe-close]').forEach((b) => {
       b.addEventListener('click', () => this.closeWardrobe());
     });
+    // 设置:音量滑块 / 注销二次确认
+    document.querySelectorAll('[data-settings-close]').forEach((b) => {
+      b.addEventListener('click', () => this.closeSettings());
+    });
+    if (this.el.settingsVolume) {
+      this.el.settingsVolume.addEventListener('input', () => {
+        const pct = Number(this.el.settingsVolume.value) || 0;
+        this._setVolumeLabel(pct);
+        this.bus.emit('ui:set-volume', pct / 100);
+      });
+    }
+    on('btn-logout', 'click', () => this._showLogoutConfirm(true));
+    on('btn-logout-cancel', 'click', () => this._showLogoutConfirm(false));
+    on('btn-logout-confirm', 'click', () => this.bus.emit('ui:logout-confirm'));
     on('btn-redeem-confirm', 'click', () => this._submitRedeem());
     // 允许外部(如年龄门)请求打开指定文档
     document.addEventListener('about:open', (e) => this.openAbout(e.detail && e.detail.id));
@@ -589,6 +609,10 @@ export class UI {
       }
       if (this._wardrobeOpen) {
         if (e.key === 'Escape') { e.preventDefault(); this.closeWardrobe(); }
+        return;
+      }
+      if (this._settingsOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.closeSettings(); }
         return;
       }
       // 小游戏自行处理方向键 / 跳跃键,这里仅响应 Esc 退出
@@ -1039,6 +1063,40 @@ export class UI {
     if (!box) return;
     box.classList.remove('is-open');
     setTimeout(() => { if (!this._wardrobeOpen) box.hidden = true; }, 200);
+  }
+
+  // ===== 左下角:设置(音量 / 注销) =====
+  /** 打开「设置」弹窗;volume 为当前音量(0~1) */
+  openSettings(volume = 1) {
+    const box = this.el.settings;
+    if (!box) return;
+    if (this.el.settingsVolume) {
+      const pct = Math.round(Math.max(0, Math.min(1, Number(volume) || 0)) * 100);
+      this.el.settingsVolume.value = String(pct);
+      this._setVolumeLabel(pct);
+    }
+    this._showLogoutConfirm(false);
+    box.hidden = false;
+    requestAnimationFrame(() => box.classList.add('is-open'));
+    this._settingsOpen = true;
+  }
+
+  closeSettings() {
+    const box = this.el.settings;
+    this._settingsOpen = false;
+    if (!box) return;
+    box.classList.remove('is-open');
+    setTimeout(() => { if (!this._settingsOpen) box.hidden = true; }, 200);
+  }
+
+  _setVolumeLabel(pct) {
+    if (this.el.settingsVolumeVal) this.el.settingsVolumeVal.textContent = `${pct}%`;
+  }
+
+  /** 显示 / 隐藏注销的二次确认 */
+  _showLogoutConfirm(show) {
+    if (this.el.settingsConfirm) this.el.settingsConfirm.hidden = !show;
+    if (this.el.settingsLogoutActions) this.el.settingsLogoutActions.hidden = !!show;
   }
 
   /** 渲染并打开兑换码面板。msg 为提示文案,kind ∈ '' | 'ok' | 'bad' */

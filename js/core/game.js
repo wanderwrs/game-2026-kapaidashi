@@ -11,42 +11,42 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261007c';
-import { EventBus } from './eventbus.js?v=20261007c';
-import { AudioEngine } from './audio.js?v=20261007c';
-import { Player } from '../combat/entity.js?v=20261007c';
-import { Deck } from '../card/deck.js?v=20261007c';
-import { Battle } from '../combat/battle.js?v=20261007c';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007c';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261007c';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007c';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007c';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261007c';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007c';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007c';
-import { majorSetIds } from '../data/extras.js?v=20261007c';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007c';
-import { lookLabel } from '../data/looks.js?v=20261007c';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007c';
-import { TradeEngine } from './trade.js?v=20261007c';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007c';
-import { REGIONS } from '../data/regions.js?v=20261007c';
-import { jobsFor } from '../data/jobs.js?v=20261007c';
+import { RNG, seedFromString } from './rng.js?v=20261007d';
+import { EventBus } from './eventbus.js?v=20261007d';
+import { AudioEngine } from './audio.js?v=20261007d';
+import { Player } from '../combat/entity.js?v=20261007d';
+import { Deck } from '../card/deck.js?v=20261007d';
+import { Battle } from '../combat/battle.js?v=20261007d';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007d';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261007d';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007d';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007d';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261007d';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007d';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007d';
+import { majorSetIds } from '../data/extras.js?v=20261007d';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007d';
+import { lookLabel } from '../data/looks.js?v=20261007d';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007d';
+import { TradeEngine } from './trade.js?v=20261007d';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007d';
+import { REGIONS } from '../data/regions.js?v=20261007d';
+import { jobsFor } from '../data/jobs.js?v=20261007d';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261007c';
-import { NPCS } from '../data/npcs.js?v=20261007c';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007c';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007c';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007c';
-import { Economy } from './economy.js?v=20261007c';
-import { Travel } from './travel.js?v=20261007c';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007c';
-import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007c';
-import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007c';
-import { CAREERS } from '../narrative/careers.js?v=20261007c';
-import { UI } from '../ui/ui.js?v=20261007c';
+} from '../data/world.js?v=20261007d';
+import { NPCS } from '../data/npcs.js?v=20261007d';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007d';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007d';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007d';
+import { Economy } from './economy.js?v=20261007d';
+import { Travel } from './travel.js?v=20261007d';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007d';
+import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007d';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007d';
+import { CAREERS } from '../narrative/careers.js?v=20261007d';
+import { UI } from '../ui/ui.js?v=20261007d';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -218,6 +218,7 @@ export class Game {
     this._pois = [];                // 通关第一章后在世界地图随机出现的兴趣点
     this._atPoi = null;             // 当前所在 POI(或 null)
     this._hotelRoom = null;         // 酒店入住中正在休息的房型
+    this._loggedOut = false;        // 已注销:阻止卸载时把已清除的进度重新写回存档
     this._currentMerchant = null;   // 当前打开的商人类型(weapon/armor/medicine)
     this.trade = null;              // 交易引擎(浮动定价 / 手续费 / 节日)
     this._roaming = null;           // 流动摊位缓存(每次世界地图刷新重抽)
@@ -340,6 +341,7 @@ export class Game {
    * 仅在非战斗态调用(战斗中不存档,避免半局状态不一致)。
    */
   saveGameState() {
+    if (this._loggedOut) return false; // 已注销:不再写回任何进度
     if (!this.rng || !this.player || !this.economy || !this.engine) return false;
     // 战斗中跳过存档(战斗是可重试的短流程)
     if (this.state === GameState.BATTLE || this.currentBattle) return false;
@@ -2115,6 +2117,24 @@ export class Game {
     if (this.state === GameState.MAP) this._renderMap();
   }
 
+  /**
+   * 注销:清除本机上的全部游戏进度与资料(运行时存档 / 章节进度 / 邮箱与兑换记录 / 新手引导),
+   * 随后刷新页面回到初始界面。音量等设备偏好保留。
+   */
+  _logout() {
+    // 阻止 pagehide / beforeunload 时的自动存档把刚清除的数据又写回来
+    this._loggedOut = true;
+    clearSavedGame();
+    try {
+      localStorage.removeItem(PROGRESS_KEY);
+      localStorage.removeItem(MAIL_KEY);
+      localStorage.removeItem(TUTORIAL_KEY);
+    } catch { /* 忽略存储异常 */ }
+    this.ui.closeSettings();
+    this.ui.showToast('已注销 · 正在返回初始界面……');
+    window.setTimeout(() => window.location.reload(), 700);
+  }
+
   // ===== 背包 =====
   _openBag() {
     this._syncUi();
@@ -3422,6 +3442,13 @@ export class Game {
     this.bus.on('ui:open-memorial', () => this._openMemorial());
     this.bus.on('ui:open-wardrobe', () => this._openWardrobe());
     this.bus.on('ui:cosmetic-set', ({ slot, id }) => this._setCosmetic(slot, id));
+    // 设置(音量 / 注销)(左下角圆形按钮入口)
+    this.bus.on('ui:open-settings', () => this.ui.openSettings(this.audio.volume));
+    this.bus.on('ui:set-volume', (v) => {
+      this.audio.setVolume(v);
+      this.ui.setMusicState(this.audio.playing);
+    });
+    this.bus.on('ui:logout-confirm', () => this._logout());
     this.bus.on('travel:progress', (snap) => this.ui.renderTravel(snap));
     this.bus.on('travel:start', (snap) => { this.ui.resetTravelTips(); this.ui.renderTravel(snap); });
     this.bus.on('travel:event', (payload) => this._onTravelEvent(payload));

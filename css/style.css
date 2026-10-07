@@ -1244,6 +1244,14 @@ body {
 .btn-primary:hover { box-shadow: 0 6px 22px rgba(232, 205, 110, 0.5); transform: translateY(-1px); }
 .btn-ghost { background: transparent; color: var(--text-soft); border-color: var(--gold-line); }
 .btn-ghost:hover { border-color: var(--gold); color: var(--gold-bright); }
+.btn-danger {
+  background: linear-gradient(180deg, var(--ember-bright), var(--ember));
+  color: #2a0d07;
+  border-color: var(--ember-bright);
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(208, 64, 43, 0.32);
+}
+.btn-danger:hover { box-shadow: 0 6px 22px rgba(255, 106, 69, 0.5); transform: translateY(-1px); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* 触屏优化:移除点击延迟,扩大可点区域的即时响应 */
@@ -2279,6 +2287,84 @@ body {
   .wardrobe-slots { max-height: 44vh; }
   .wardrobe-opt-text { max-width: 110px; }
 }
+
+/* ============================================================
+   设置 · 音量 / 注销
+   ============================================================ */
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-12) var(--sp-16);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, var(--surface-2), var(--bg-soft));
+}
+.settings-group.is-danger { border-color: rgba(208, 64, 43, 0.5); }
+.settings-group-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: var(--gold);
+  padding-bottom: var(--sp-8);
+  border-bottom: 1px solid var(--border-soft);
+}
+.settings-group.is-danger .settings-group-title { color: var(--ember-bright); border-bottom-color: rgba(208, 64, 43, 0.35); }
+.settings-row { display: flex; align-items: center; gap: var(--sp-12); }
+.settings-icon { font-size: 18px; color: var(--gold-bright); line-height: 1; }
+.settings-volume {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--surface-muted);
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+}
+.settings-volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px; height: 18px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border: 1px solid var(--bg-deep);
+  box-shadow: 0 0 10px rgba(201, 162, 39, 0.5);
+  cursor: pointer;
+}
+.settings-volume::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border: 1px solid var(--bg-deep);
+  box-shadow: 0 0 10px rgba(201, 162, 39, 0.5);
+  cursor: pointer;
+}
+.settings-volume:focus-visible { box-shadow: 0 0 0 2px var(--gold-soft); }
+.settings-volume-val {
+  flex: none;
+  min-width: 46px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--gold-bright);
+}
+.settings-hint { font-size: 12px; line-height: 1.7; color: var(--text-muted); }
+.settings-danger-text { font-size: 12.5px; line-height: 1.85; color: var(--text-soft); }
+.settings-danger-text b { color: var(--ember-bright); }
+.settings-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-12);
+  border: 1px dashed rgba(208, 64, 43, 0.5);
+  border-radius: var(--radius);
+  background: var(--ember-soft);
+}
+.settings-confirm[hidden] { display: none; }
+.settings-confirm-text { font-size: 12.5px; line-height: 1.7; color: var(--ember-bright); text-align: center; }
 
 /* ============================================================
    邮箱

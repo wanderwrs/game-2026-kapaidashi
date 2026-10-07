@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261007c" />
+  <link rel="stylesheet" href="css/style.css?v=20261007d" />
 </head>
 <body>
   <!-- 游戏前 · 年龄限制与内容警告门(每次打开页面都需通过;需真人验证) -->
@@ -902,13 +902,16 @@
     </button>
   </div>
 
-  <!-- 左下角功能坞:回忆(剧情回顾) / 衣橱(更换时装) -->
-  <div id="dock-left" class="dock dock-left" aria-label="回忆与衣橱">
+  <!-- 左下角功能坞:回忆(剧情回顾) / 衣橱(更换时装) / 设置(音量与注销) -->
+  <div id="dock-left" class="dock dock-left" aria-label="回忆、衣橱与设置">
     <button id="btn-memorial" class="dock-btn" type="button" title="回忆 · 剧情回顾" aria-label="回忆 · 剧情回顾">
       <span class="dock-icon" aria-hidden="true">📖</span>
     </button>
     <button id="btn-wardrobe" class="dock-btn" type="button" title="衣橱 · 更换时装" aria-label="衣橱 · 更换时装">
       <span class="dock-icon" aria-hidden="true">🧥</span>
+    </button>
+    <button id="btn-settings" class="dock-btn" type="button" title="设置 · 音量与注销" aria-label="设置 · 音量与注销">
+      <span class="dock-icon" aria-hidden="true">⚙️</span>
     </button>
   </div>
 
@@ -950,6 +953,49 @@
       </div>
       <div class="panel-actions">
         <button class="btn btn-ghost" type="button" data-wardrobe-close>关 闭</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 设置:调整音量 / 注销(清除本机全部进度与资料) -->
+  <div id="settings" class="modal" hidden>
+    <div class="modal-backdrop" data-settings-close></div>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <header class="modal-head">
+        <h2 id="settings-title" class="modal-title">设 置</h2>
+        <button class="modal-close" type="button" data-settings-close aria-label="关闭">✕</button>
+      </header>
+      <div class="modal-body">
+        <div class="settings-group">
+          <h3 class="settings-group-title">音 量</h3>
+          <div class="settings-row">
+            <span class="settings-icon" aria-hidden="true">♪</span>
+            <input id="settings-volume" class="settings-volume" type="range" min="0" max="100" step="1" value="100" aria-label="背景音乐音量" />
+            <span id="settings-volume-val" class="settings-volume-val">100%</span>
+          </div>
+          <p class="settings-hint">拖动滑块调整背景音乐音量;拉到最左为静音。音乐开关亦可在顶栏 ♪ 切换。</p>
+        </div>
+
+        <div class="settings-group is-danger">
+          <h3 class="settings-group-title">注 销</h3>
+          <p class="settings-danger-text">
+            注销将<b>永久删除本机上的全部游戏进度与资料</b>:章节进度、运行存档、邮箱与兑换记录、新手引导等。
+            此操作<b>不可撤销,也无法恢复</b>。
+          </p>
+          <div class="settings-confirm" id="settings-confirm" hidden>
+            <p class="settings-confirm-text">确定要注销吗?所有进度与资料将立即清除。</p>
+            <div class="panel-actions">
+              <button id="btn-logout-confirm" class="btn btn-danger" type="button">确 认 注 销</button>
+              <button id="btn-logout-cancel" class="btn btn-ghost" type="button">取 消</button>
+            </div>
+          </div>
+          <div class="panel-actions" id="settings-logout-actions">
+            <button id="btn-logout" class="btn btn-danger" type="button">注 销 进 度 与 资 料</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-ghost" type="button" data-settings-close>关 闭</button>
       </div>
     </section>
   </div>
@@ -1016,6 +1062,6 @@
     </section>
   </div>
 
-  <script type="module" src="js/main.js?v=20261007c"></script>
+  <script type="module" src="js/main.js?v=20261007d"></script>
 </body>
 </html>

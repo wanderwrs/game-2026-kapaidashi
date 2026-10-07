@@ -12,6 +12,10 @@
  */
 
 const PREFS_KEY = 'longji.music.v1';
+/** 音量偏好(0~1) */
+const VOLUME_KEY = 'longji.volume.v1';
+/** 播放时的总线目标增益(再乘以玩家音量) */
+const MASTER_ON = 0.5;
 
 /**
  * 地区主题音乐配置:
@@ -89,6 +93,7 @@ export class AudioEngine {
     this.ctx = null;
     this.master = null;
     this.enabled = this._readPref(); // 玩家是否希望播放音乐
+    this._volume = this._readVolume(); // 背景音乐音量(0~1)
     this._playing = false;
     this._timer = null;
     this._nextNote = 0;
@@ -104,6 +109,9 @@ export class AudioEngine {
 
   /** 当前主题名 */
   get theme() { return this._theme; }
+
+  /** 当前音量(0~1) */
+  get volume() { return this._volume; }
 
   /**
    * 切换到指定地区主题的音乐。
@@ -128,6 +136,31 @@ export class AudioEngine {
     try { localStorage.setItem(PREFS_KEY, on ? 'on' : 'off'); } catch { /* 忽略存储异常 */ }
   }
 
+  _readVolume() {
+    try {
+      const raw = localStorage.getItem(VOLUME_KEY);
+      if (raw === null) return 1;
+      const v = parseFloat(raw);
+      return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+    } catch { return 1; }
+  }
+
+  _writeVolume(v) {
+    try { localStorage.setItem(VOLUME_KEY, String(v)); } catch { /* 忽略存储异常 */ }
+  }
+
+  /**
+   * 设置背景音乐音量(0~1)。
+   * 若此前音乐处于关闭状态且新音量大于 0,顺带开启播放(拖动滑块本身即用户手势)。
+   */
+  setVolume(v) {
+    const vol = Math.max(0, Math.min(1, Number(v) || 0));
+    this._volume = vol;
+    this._writeVolume(vol);
+    if (vol > 0 && !this._playing) { this.start(); return; }
+    if (this._playing) this._fadeMaster(MASTER_ON * vol, 0.2);
+  }
+
   /** 在首次用户交互时自动开启(若玩家未主动关闭) */
   arm() {
     if (this._armed) return;
@@ -150,7 +183,7 @@ export class AudioEngine {
       if (!this.ctx) this._build();
       if (this.ctx.state === 'suspended') this.ctx.resume();
       this._playing = true;
-      this._fadeMaster(0.5, 2.5);
+      this._fadeMaster(MASTER_ON * this._volume, 2.5);
       this._nextNote = this.ctx.currentTime + 0.6;
       this._schedule();
     } catch {
