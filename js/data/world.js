@@ -70,6 +70,33 @@ export const WORLD = {
   ch25: { x: 68, y: 24, level: 25, city: false, terrain: 'land' },
   ch26: { x: 80, y: 28, level: 26, city: false, terrain: 'land' },
   ch27: { x: 56, y: 40, level: 27, city: true, terrain: 'land' },
+  // ===== 第三章·龙族突起 (6个地图点,20节) =====
+  // 地图点1: 世界之缘 (ch28-ch29)
+  ch28: { x: 5, y: 50, level: 28, city: false, terrain: 'land' },
+  ch29: { x: 10, y: 45, level: 29, city: false, terrain: 'land' },
+  // 地图点2: 灰烬村/龙迹山谷 (ch30-ch31)
+  ch30: { x: 12, y: 42, level: 30, city: false, terrain: 'land' },
+  ch31: { x: 16, y: 38, level: 31, city: false, terrain: 'mountain' },
+  // 地图点3: 耶鲁贺图尔领地 (ch32-ch33)
+  ch32: { x: 8, y: 56, level: 32, city: true, terrain: 'land' },
+  ch33: { x: 14, y: 60, level: 33, city: false, terrain: 'land' },
+  // 地图点4: 远古洞穴 (ch34-ch41)
+  ch34: { x: 4, y: 64, level: 34, city: false, terrain: 'land' },
+  ch35: { x: 3, y: 66, level: 35, city: false, terrain: 'land' },
+  ch36: { x: 5, y: 68, level: 36, city: false, terrain: 'land' },
+  ch37: { x: 2, y: 70, level: 37, city: false, terrain: 'land' },
+  ch38: { x: 4, y: 72, level: 38, city: false, terrain: 'land' },
+  ch39: { x: 6, y: 70, level: 39, city: false, terrain: 'land' },
+  ch40: { x: 3, y: 74, level: 40, city: false, terrain: 'land' },
+  ch41: { x: 5, y: 72, level: 41, city: false, terrain: 'land' },
+  // 地图点5: 龙脊古道 (ch42-ch43)
+  ch42: { x: 88, y: 50, level: 42, city: false, terrain: 'plateau' },
+  ch43: { x: 92, y: 52, level: 43, city: false, terrain: 'plateau' },
+  // 地图点6: 龙堡遗迹 (ch44-ch47) — 上古龙族先祖首领居所
+  ch44: { x: 94, y: 32, level: 44, city: false, terrain: 'land' },
+  ch45: { x: 96, y: 30, level: 45, city: false, terrain: 'land' },
+  ch46: { x: 98, y: 28, level: 46, city: false, terrain: 'land' },
+  ch47: { x: 96, y: 26, level: 47, city: true, terrain: 'sky' },
 };
 
 /** 某地区的地形 */

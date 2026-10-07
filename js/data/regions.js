@@ -281,6 +281,154 @@ export const REGIONS = {
       { key: 'monument', name: '英雄纪念碑', theme: 'village', npc: null, node: 'n05', hint: '英雄纪念碑下,人们为逝者默哀,也为新生祈福。', services: { job: true } },
     ],
   },
+  // ===== 第三章·龙族突起 (ch28~ch47) =====
+  // 地图点1: 世界之缘 (ch28-ch29)
+  ch28: {
+    name: '世界之缘', theme: 'sky',
+    stops: [
+      { key: 'observatory', name: '北境观星台', theme: 'sky', npc: null, node: 'n01', hint: '北境的观星台上,天空出现了异色极光。', services: { shop: true, job: true } },
+      { key: 'refugees', name: '难民营地', theme: 'village', npc: '北境难民', node: 'n03', hint: '从北境逃来的难民聚集在此,他们眼中满是恐惧。', services: { } },
+    ],
+  },
+  ch29: {
+    name: '北境边境', theme: 'mountain',
+    stops: [
+      { key: 'wilderness', name: '边境荒道', theme: 'mountain', npc: null, node: 'n01', hint: '荒芜的边境地带,大地越来越荒凉。', services: { } },
+      { key: 'hunter_camp', name: '猎人营地', theme: 'forest', npc: '游牧猎人', node: 'n03', hint: '游牧猎人在此扎营,他说看到了"会飞的影子"。', services: { shop: true } },
+    ],
+  },
+  // 地图点2: 灰烬村/龙迹山谷 (ch30-ch31)
+  ch30: {
+    name: '灰烬村', theme: 'ruins',
+    stops: [
+      { key: 'gate', name: '灰烬村口', theme: 'ruins', npc: null, node: 'n01', hint: '村口的木牌已被烧得只剩半截,硫磺味弥漫。', services: { } },
+      { key: 'elder', name: '长老居所', theme: 'ruins', npc: '灰烬村长老', node: 'n02', hint: '幸存的长老躲在地窖中,他说"龙回来了"。', services: { job: true } },
+    ],
+  },
+  ch31: {
+    name: '龙迹山谷', theme: 'mountain',
+    stops: [
+      { key: 'entrance', name: '山谷入口', theme: 'mountain', npc: null, node: 'n01', hint: '山谷两壁有焦黑的灼烧痕迹,巨大的爪痕深入石面。', services: { } },
+      { key: 'altar', name: '教徒祭坛', theme: 'ruins', npc: null, node: 'n02', hint: '远处有龙族教徒围着火柱吟唱,在召唤什么。', services: { job: true } },
+    ],
+  },
+  // 地图点3: 耶鲁贺图尔领地 (ch32-ch33)
+  ch32: {
+    name: '耶鲁贺图尔领地', theme: 'city',
+    stops: [
+      { key: 'manor', name: '伯爵庄园', theme: 'city', npc: '耶鲁贺图尔伯爵', node: 'n01', hint: '伯爵的庄园隐在林中,他暗中支持调查。', services: { shop: true, job: true } },
+      { key: 'archive', name: '家族档案室', theme: 'city', npc: null, node: 'n03', hint: '伯爵家族的档案室,记载着龙族的秘密。', services: { } },
+    ],
+  },
+  ch33: {
+    name: '暗河通道', theme: 'ruins',
+    stops: [
+      { key: 'dock', name: '暗河码头', theme: 'port', npc: null, node: 'n01', hint: '地下暗河的入口,水流湍急,空气潮湿。', services: { } },
+      { key: 'fall', name: '地下瀑布', theme: 'ruins', npc: null, node: 'n02', hint: '暗河尽头是一处地下瀑布,壁上有古老刻画。', services: { job: true } },
+    ],
+  },
+  // 地图点4: 远古洞穴 (ch34-ch41)
+  ch34: {
+    name: '古洞入口', theme: 'ruins',
+    stops: [
+      { key: 'gate', name: '石门', theme: 'ruins', npc: null, node: 'n01', hint: '巨大的石门上有龙纹,伯爵的钥匙可以打开它。', services: { } },
+      { key: 'entry', name: '古洞入口大厅', theme: 'ruins', npc: null, node: 'n03', hint: '龙晶石散发着幽蓝光芒,洞穴深处有壁画。', services: { } },
+    ],
+  },
+  ch35: {
+    name: '壁画大厅', theme: 'ruins',
+    stops: [
+      { key: 'murals', name: '共存壁画', theme: 'ruins', npc: null, node: 'n01', hint: '壁画栩栩如生——人类与龙族曾和平共处。', services: { } },
+      { key: 'archive', name: '典籍藏室', theme: 'ruins', npc: null, node: 'n03', hint: '角落有上古典籍,记录着"经典师"的修炼之道。', services: { } },
+    ],
+  },
+  ch36: {
+    name: '龙爪残痕', theme: 'ruins',
+    stops: [
+      { key: 'damaged', name: '残壁画廊', theme: 'ruins', npc: null, node: 'n01', hint: '壁画被龙爪故意破坏,关键部分被毁。', services: { } },
+      { key: 'fragments', name: '碎片密室', theme: 'ruins', npc: null, node: 'n03', hint: '碎片指向一个关键人物——一条"叛龙"。', services: { } },
+    ],
+  },
+  ch37: {
+    name: '远古战场', theme: 'ruins',
+    stops: [
+      { key: 'battlefield', name: '地下战场', theme: 'ruins', npc: null, node: 'n01', hint: '地面散落龙骨和人骨,这里曾是战场。', services: { job: true } },
+      { key: 'passage', name: '隐藏通道', theme: 'ruins', npc: null, node: 'n04', hint: '石像碎裂后露出的通道,深处有更强的龙晶光芒。', services: { } },
+    ],
+  },
+  ch38: {
+    name: '龙骨殿堂', theme: 'ruins',
+    stops: [
+      { key: 'hall', name: '龙骨殿堂', theme: 'ruins', npc: null, node: 'n01', hint: '巨大的龙骨架横亘在洞穴中央。', services: { } },
+      { key: 'stele', name: '龙族石碑', theme: 'ruins', npc: null, node: 'n02', hint: '石碑刻着龙族文字,弟弟能部分解读。', services: { } },
+    ],
+  },
+  ch39: {
+    name: '石碑密室', theme: 'ruins',
+    stops: [
+      { key: 'entry', name: '密室入口', theme: 'ruins', npc: null, node: 'n01', hint: '密室内排列着石碑,记录着千年前的盟约。', services: { } },
+      { key: 'array', name: '石碑阵', theme: 'ruins', npc: null, node: 'n04', hint: '战斗后石碑发光,显示出被隐藏的信息。', services: { } },
+    ],
+  },
+  ch40: {
+    name: '双族盟约', theme: 'ruins',
+    stops: [
+      { key: 'pact', name: '盟约石碑', theme: 'ruins', npc: null, node: 'n01', hint: '石碑揭示:千年前人类与龙族签订了盟约。', services: { } },
+      { key: 'truth', name: '真相之壁', theme: 'ruins', npc: null, node: 'n04', hint: '最后一面石壁:"寻找龙脊古道,找到先祖之眠。"', services: { } },
+    ],
+  },
+  ch41: {
+    name: '破碎真相', theme: 'ruins',
+    stops: [
+      { key: 'broken', name: '破碎真相', theme: 'ruins', npc: null, node: 'n01', hint: '破坏壁画的不是龙族,而是人类叛军的后裔。', services: { } },
+      { key: 'soul', name: '龙魂之渊', theme: 'ruins', npc: null, node: 'n04', hint: '龙魂消散前指引:"去龙堡...找到真龙..."', services: { job: true } },
+    ],
+  },
+  // 地图点5: 龙脊古道 (ch42-ch43)
+  ch42: {
+    name: '寻龙启程', theme: 'mountain',
+    stops: [
+      { key: 'start', name: '古道碑亭', theme: 'mountain', npc: null, node: 'n01', hint: '龙脊古道的起点,碑亭已风化千年。', services: { shop: true, job: true } },
+      { key: 'pass', name: '断龙关', theme: 'mountain', npc: null, node: 'n04', hint: '古道上的险关,两侧是万丈深渊和云海。', services: { } },
+    ],
+  },
+  ch43: {
+    name: '龙脊古道', theme: 'mountain',
+    stops: [
+      { key: 'start', name: '古道起点', theme: 'mountain', npc: null, node: 'n01', hint: '沿着龙脊山脉向东延伸,越走越高。', services: { } },
+      { key: 'guardians', name: '石像兵阵', theme: 'mountain', npc: null, node: 'n03', hint: '古道两旁有龙族先祖石雕,石像兵守护着通道。', services: { job: true } },
+    ],
+  },
+  // 地图点6: 龙堡遗迹 (ch44-ch47) — 上古龙族先祖首领居住地
+  ch44: {
+    name: '龙堡遗迹外围', theme: 'ruins',
+    stops: [
+      { key: 'outer', name: '遗迹外门', theme: 'ruins', npc: null, node: 'n01', hint: '龙堡的巨大石墙已坍塌,但规模惊人。门上刻着"归者可入"。', services: { shop: true } },
+      { key: 'ruins', name: '外围废墟', theme: 'ruins', npc: null, node: 'n02', hint: '散落着龙族和人类的遗物,证明这里是两族共存的城市。', services: { job: true } },
+    ],
+  },
+  ch45: {
+    name: '龙堡遗迹内殿', theme: 'ruins',
+    stops: [
+      { key: 'hall', name: '内殿大门', theme: 'ruins', npc: null, node: 'n01', hint: '穹顶上有龙浮雕,中央巨龙的眼中嵌着龙晶石。', services: { } },
+      { key: 'murals', name: '太初壁画', theme: 'ruins', npc: null, node: 'n02', hint: '完整壁画记录太初的故事——第一条龙,创造了龙族。', services: { } },
+    ],
+  },
+  ch46: {
+    name: '先祖之眠', theme: 'ruins',
+    stops: [
+      { key: 'door', name: '先祖之门前', theme: 'ruins', npc: null, node: 'n01', hint: '巨大的门上刻着"先祖之眠",弟弟的手让龙纹亮起。', services: { } },
+      { key: 'guardian', name: '近卫战场', theme: 'ruins', npc: '太初近卫', node: 'n02', hint: '半人半龙的守护者,不信任人类。决战即将开始。', services: { } },
+      { key: 'ancestor', name: '太初龙骨', theme: 'ruins', npc: null, node: 'n04', hint: '太初的龙骨横卧于此,比任何龙都大。近卫已安息。', services: { job: true } },
+    ],
+  },
+  ch47: {
+    name: '真龙之约', theme: 'sky',
+    stops: [
+      { key: 'covenant', name: '真龙之约', theme: 'sky', npc: '太初魂灵', node: 'n01', hint: '太初的魂灵出现,讲述完整真相,传递力量。', services: { } },
+      { key: 'journey', name: '新旅程', theme: 'sky', npc: null, node: 'n05', hint: '龙堡苏醒,新的盟约由你们书写。新的冒险开始了。', services: { } },
+    ],
+  },
 };
 
 /** 打工配置(含小游戏与难度档)见 data/jobs.js */
