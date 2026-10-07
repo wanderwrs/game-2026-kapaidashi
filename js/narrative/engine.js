@@ -15,8 +15,8 @@
  *   { id, kind:'ending', text, ending_id }            // 触发结局
  */
 
-import { CAREER_MAP } from './careers.js?v=20261007i';
-import { CHAPTER_IMAGES } from './images.js?v=20261007i';
+import { CAREER_MAP } from './careers.js?v=20261007j';
+import { CHAPTER_IMAGES } from './images.js?v=20261007j';
 
 export class NarrativeEngine {
   constructor({ rng, bus, chapters }) {
