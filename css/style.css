@@ -275,6 +275,19 @@ body {
   margin-top: 48px;
   text-shadow: 0 0 16px rgba(232, 205, 110, 0.6);
 }
+/* 小节末短字幕(第三章每章一个结果) */
+.credits-inner .credits-short-title {
+  font-size: 26px;
+  letter-spacing: 6px;
+  margin: 0 0 6px;
+  color: var(--gold-bright, #e8cd6e);
+}
+.credits-inner .credits-short-recap {
+  font-size: 15px;
+  line-height: 2.1;
+  max-width: 640px;
+  margin: 0 auto;
+}
 .credits-skip {
   position: absolute;
   bottom: 20px;
@@ -1636,6 +1649,11 @@ body {
 }
 .npc-topic:hover { color: var(--gold-bright); border-color: var(--gold-line); background: var(--gold-soft); }
 .npc-topics:empty { display: none; }
+/* 支线任务按钮(NPC 对话触发) */
+.npc-quest-text { flex-basis: 100%; margin: 0; font-size: 12.5px; color: var(--gold-bright); letter-spacing: 0.5px; }
+.npc-quest-btn { color: var(--gold-bright); border-color: var(--gold-line); background: var(--gold-soft); font-weight: 600; }
+.npc-quest-btn:hover { color: #fff; background: var(--gold-line); border-color: var(--gold-line); }
+.npc-quest-done { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--text-faint); letter-spacing: 0.5px; }
 .stop-chest { margin-left: 6px; font-size: 11px; opacity: 0.9; }
 .stop-chest.is-opened { opacity: 0.5; }
 

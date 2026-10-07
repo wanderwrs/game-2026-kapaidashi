@@ -247,6 +247,39 @@ export const ENEMIES = {
   fsb: [
     { name: '光明化身', hp: 70, actions: [{ kind: 'attack', value: 14 }, { kind: 'block', value: 10 }, { kind: 'buff', name: 'strength', stacks: 1 }] },
   ],
+  // ===== 第三章支线任务敌人池 =====
+  sq1: [
+    { name: '龙族教徒', hp: 50, actions: [{ kind: 'attack', value: 9 }, { kind: 'block', value: 6 }, { kind: 'attack', value: 7 }] },
+    { name: '山谷石蜥', hp: 64, actions: [{ kind: 'attack', value: 11 }, { kind: 'block', value: 8 }, { kind: 'attack', value: 9 }] },
+    { name: '巢穴守卫', hp: 78, actions: [{ kind: 'attack', value: 13 }, { kind: 'block', value: 11 }, { kind: 'attack', value: 10 }, { kind: 'block', value: 9 }] },
+  ],
+  sq2: [
+    { name: '教团抢谱者', hp: 50, actions: [{ kind: 'attack', value: 9 }, { kind: 'block', value: 6 }] },
+    { name: '遗迹石像', hp: 60, actions: [{ kind: 'attack', value: 11 }, { kind: 'block', value: 8 }] },
+    { name: '血脉试炼幻影', hp: 70, actions: [{ kind: 'attack', value: 12 }, { kind: 'block', value: 7 }, { kind: 'attack', value: 10 }] },
+  ],
+  sq3: [
+    { name: '石化兽', hp: 55, actions: [{ kind: 'attack', value: 10 }, { kind: 'block', value: 7 }] },
+    { name: '失控石像兵', hp: 40, actions: [{ kind: 'attack', value: 8 }, { kind: 'block', value: 5 }] },
+    { name: '守卫核心幻影', hp: 80, actions: [{ kind: 'attack', value: 14 }, { kind: 'block', value: 10 }] },
+  ],
+  sq4: [
+    { name: '洞穴蝙蝠群', hp: 40, actions: [{ kind: 'attack', value: 7 }, { kind: 'attack', value: 5 }] },
+    { name: '鳞衣守灵', hp: 70, actions: [{ kind: 'attack', value: 10 }, { kind: 'attack', value: 8 }] },
+    { name: '法器残灵', hp: 90, actions: [{ kind: 'attack', value: 12 }, { kind: 'attack', value: 9 }] },
+  ],
+  sq5: [
+    { name: '鹰身兽', hp: 48, actions: [{ kind: 'attack', value: 9 }, { kind: 'attack', value: 7 }, { kind: 'attack', value: 11 }] },
+    { name: '风鸥首领', hp: 60, actions: [{ kind: 'attack', value: 8 }, { kind: 'attack', value: 10 }, { kind: 'attack', value: 6 }] },
+    { name: '巢穴窥探者', hp: 55, actions: [{ kind: 'attack', value: 8 }, { kind: 'attack', value: 9 }, { kind: 'attack', value: 6 }] },
+  ],
+  sq6: [
+    { name: '游荡石像', hp: 60, actions: [{ kind: 'attack', value: 12 }, { kind: 'block', value: 8 }] },
+    { name: '遗迹守卫残影', hp: 78, actions: [{ kind: 'attack', value: 15 }, { kind: 'attack', value: 11 }, { kind: 'block', value: 10 }] },
+  ],
+  sq6_boss: [
+    { name: '残片守护灵', hp: 95, actions: [{ kind: 'attack', value: 17 }, { kind: 'attack', value: 13 }, { kind: 'buff', name: 'strength', stacks: 2 }, { kind: 'block', value: 12 }] },
+  ],
 };
 
 // ===== 遗物(框架占位,待接入效果系统) =====

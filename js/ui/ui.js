@@ -10,23 +10,23 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261007b';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007b';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007b';
-import { gradeOf } from '../data/grade.js?v=20261007b';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261007b';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007b';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007b';
-import { cardMpCost } from '../data/data.js?v=20261007b';
-import { ENDINGS } from '../narrative/engine.js?v=20261007b';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007b';
-import { SceneView, paintCharacter } from './scene.js?v=20261007b';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007b';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007b';
-import { Minigame } from '../minigame/minigame.js?v=20261007b';
-import { MODE_LABELS } from '../data/jobs.js?v=20261007b';
-import { TERRAIN_CN } from '../data/world.js?v=20261007b';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007b';
+import { GameState } from '../core/game.js?v=20261007c';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007c';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007c';
+import { gradeOf } from '../data/grade.js?v=20261007c';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261007c';
+import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007c';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007c';
+import { cardMpCost } from '../data/data.js?v=20261007c';
+import { ENDINGS } from '../narrative/engine.js?v=20261007c';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007c';
+import { SceneView, paintCharacter } from './scene.js?v=20261007c';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007c';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007c';
+import { Minigame } from '../minigame/minigame.js?v=20261007c';
+import { MODE_LABELS } from '../data/jobs.js?v=20261007c';
+import { TERRAIN_CN } from '../data/world.js?v=20261007c';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007c';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -1984,6 +1984,33 @@ export class UI {
         b.addEventListener('click', () => this.bus.emit('ui:npc-topic', t.id));
         this.el.npcTopics.appendChild(b);
       });
+      // NPC 任务按钮(支线触发):有 quest 且未完成时显示接受按钮;
+      // 已完成(doneFlag)则显示「任务已完成」灰字,不可点击。
+      const q = opts.quest;
+      if (q) {
+        if (q.done) {
+          const span = document.createElement('p');
+          span.className = 'npc-quest-done';
+          span.textContent = '任务已完成';
+          this.el.npcTopics.appendChild(span);
+        } else {
+          if (q.text) {
+            const lead = document.createElement('p');
+            lead.className = 'npc-quest-text';
+            lead.textContent = q.text;
+            this.el.npcTopics.appendChild(lead);
+          }
+          const qb = document.createElement('button');
+          qb.type = 'button';
+          qb.className = 'npc-topic npc-quest-btn';
+          qb.textContent = q.accept || '接受任务';
+          qb.addEventListener('click', () => this.bus.emit('ui:npc-quest', {
+            sideChapter: q.sideChapter,
+            doneFlag: q.doneFlag,
+          }));
+          this.el.npcTopics.appendChild(qb);
+        }
+      }
     }
     if (this.el.npcHint) this.el.npcHint.textContent = opts.hint || '';
     box.hidden = false;
@@ -3581,14 +3608,17 @@ export class UI {
   }
 
   // ===== 片尾字幕 =====
-  showCredits(recaps, onComplete) {
+  // mode: 'full' = 大章末完整回顾(多段); 'short' = 小节末本章回顾(单段)
+  // recapKey: full 时为大章 id(mc1/mc2/mc3); short 时为小节 id(ch28...)
+  showCredits(recaps, mode = 'full', recapKey = 'mc1', onComplete) {
     const inner = document.getElementById('credits-inner');
     const embers = document.getElementById('credits-embers');
     if (!inner || !embers) { if (onComplete) onComplete(); return; }
 
-    // 生成红色余烬动画
+    // 生成红色余烬动画(短字幕余烬减半)
     embers.innerHTML = '';
-    for (let i = 0; i < 24; i++) {
+    const emberCount = mode === 'short' ? 12 : 24;
+    for (let i = 0; i < emberCount; i++) {
       const s = document.createElement('span');
       s.style.left = `${Math.random() * 100}%`;
       s.style.animationDuration = `${6 + Math.random() * 8}s`;
@@ -3601,19 +3631,37 @@ export class UI {
     }
 
     // 组装字幕内容
-    const mc1 = recaps?.mc1 || '';
-    const mc2 = recaps?.mc2 || '';
-    inner.innerHTML = `
-      <h1>龙 脊 少 年 · 守 约</h1>
-      <div class="credits-divider"></div>
-      <h2>第一大章 · 家园之殇</h2>
-      <p>${mc1}</p>
-      <div class="credits-divider"></div>
-      <h2>第二大章 · 卡斯特罗之战</h2>
-      <p>${mc2}</p>
-      <div class="credits-divider"></div>
-      <p class="credits-end">期 待 下 次 冒 险 之 旅</p>
-    `;
+    let html = '';
+    if (mode === 'short') {
+      // 短字幕:仅本章标题 + 本章 recap + 转场提示
+      const chTitle = this._chapterTitleForRecap(recapKey);
+      const chRecap = recaps?.[recapKey] || '';
+      html = `
+        <h2 class="credits-short-title">${chTitle}</h2>
+        <div class="credits-divider"></div>
+        <p class="credits-short-recap">${chRecap}</p>
+        <div class="credits-divider"></div>
+        <p class="credits-end">— 下 一 章 · 续 —</p>
+      `;
+    } else {
+      // 完整字幕:大章回顾(已通关的所有大章)
+      const mc1 = recaps?.mc1 || '';
+      const mc2 = recaps?.mc2 || '';
+      const mc3 = recaps?.mc3 || '';
+      html = `
+        <h1>龙 脊 少 年 · 守 约</h1>
+        <div class="credits-divider"></div>
+        <h2>第一大章 · 家园之殇</h2>
+        <p>${mc1}</p>
+        <div class="credits-divider"></div>
+        <h2>第二大章 · 卡斯特罗之战</h2>
+        <p>${mc2}</p>
+        ${mc3 ? `<div class="credits-divider"></div><h2>第三大章 · 龙族突起</h2><p>${mc3}</p>` : ''}
+        <div class="credits-divider"></div>
+        <p class="credits-end">期 待 下 次 冒 险 之 旅</p>
+      `;
+    }
+    inner.innerHTML = html;
 
     // 监听字幕动画结束或点击跳过
     const finish = () => {
@@ -3629,6 +3677,15 @@ export class UI {
     inner.addEventListener('animationend', onAnimEnd);
     // 延迟绑定点击,避免从叙事视图点击「查看结局」的事件冒泡触发跳过
     setTimeout(() => document.addEventListener('click', onSkip), 600);
+  }
+
+  /** 由小节 id(如 ch28)反查小节标题,用于短字幕头部 */
+  _chapterTitleForRecap(chId) {
+    const map = this._chapterTitleMap || (this._chapterTitleMap = {});
+    if (map[chId]) return map[chId];
+    const ch = (this.engine?.chapters || {})[chId];
+    if (ch?.title) { map[chId] = ch.title; return ch.title; }
+    return chId;
   }
 
   // ===== 角色弹窗:形象居中 · 七格防具环绕 · 服饰 / 职业 / 形象 =====

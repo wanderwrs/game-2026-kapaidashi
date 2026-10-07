@@ -15,8 +15,8 @@
  *   { id, kind:'ending', text, ending_id }            // 触发结局
  */
 
-import { CAREER_MAP } from './careers.js?v=20261007b';
-import { CHAPTER_IMAGES } from './images.js?v=20261007b';
+import { CAREER_MAP } from './careers.js?v=20261007c';
+import { CHAPTER_IMAGES } from './images.js?v=20261007c';
 
 export class NarrativeEngine {
   constructor({ rng, bus, chapters }) {
@@ -324,4 +324,23 @@ export const ENDINGS = {
     id: 'odyssey', title: '未尽征程', color: '#6fc0e8',
     desc: '你做了你的决定。山海未尽,守约未竟。现在,轮到下一位少年,做他的决定。',
   },
+  ch28_end: { id: 'ch28_end', title: '异象初现·章末', color: '#6fc0e8', desc: '停战三月,异色极光与龙影惊破北境,你启程追查异象之源。' },
+  ch29_end: { id: 'ch29_end', title: '北境边境·章末', color: '#6fc0e8', desc: '焦痕爪印与游牧猎人的口述,把你们引向已成废墟的灰烬村。' },
+  ch30_end: { id: 'ch30_end', title: '灰烬村·章末', color: '#6fc0e8', desc: '救下灰烬村长老,击退龙息变异野兽,循指引前往龙迹山谷。' },
+  ch31_end: { id: 'ch31_end', title: '龙迹山谷·章末', color: '#6fc0e8', desc: '击溃龙族教徒的召唤仪式,从半张地图上寻得伯爵线索。' },
+  ch32_end: { id: 'ch32_end', title: '耶鲁贺图尔伯爵·章末', color: '#6fc0e8', desc: '伯爵托付家族世代守护的龙族遗物与铜钥匙,指向暗河石门。' },
+  ch33_end: { id: 'ch33_end', title: '暗河通道·章末', color: '#6fc0e8', desc: '穿暗河、破变异体,以铜钥匙开启千年封印的石门。' },
+  ch34_end: { id: 'ch34_end', title: '古洞入口·章末', color: '#6fc0e8', desc: '千年不熄的龙晶照亮共存壁画,你们踏上通往真相的深阶。' },
+  ch35_end: { id: 'ch35_end', title: '洞穴壁画·章末', color: '#6fc0e8', desc: '壁画揭示龙族乃人类之师,画风骤转,记录下那场毁灭之战。' },
+  ch36_end: { id: 'ch36_end', title: '龙爪残痕·章末', color: '#6fc0e8', desc: '壁画关键处被刻意抹去,残片与弟弟的感知指向叛龙与悲伤。' },
+  ch37_end: { id: 'ch37_end', title: '远古战场·章末', color: '#6fc0e8', desc: '地下战场见证两族并肩抗敌,守卫碎裂后露出通往深处的窄缝。' },
+  ch38_end: { id: 'ch38_end', title: '龙骨殿堂·章末', color: '#6fc0e8', desc: '先祖巨龙被人类剑矛钉死,你们决心挖出千年真相。' },
+  ch39_end: { id: 'ch39_end', title: '石碑密室·章末', color: '#6fc0e8', desc: '破除龙魂构造体,石碑发光,显出盟约破裂的隐藏记载。' },
+  ch40_end: { id: 'ch40_end', title: '双族盟约·章末', color: '#6fc0e8', desc: '石碑揭尽千年真相,野心家弑先祖,龙脊古道自此显现。' },
+  ch41_end: { id: 'ch41_end', title: '破碎真相·章末', color: '#6fc0e8', desc: '破坏者乃人类叛军后裔,龙魂残影指路龙堡后化光消散。' },
+  ch42_end: { id: 'ch42_end', title: '寻龙启程·章末', color: '#6fc0e8', desc: '决意东行寻龙堡,循千年龙脊古道踏上未知征程。' },
+  ch43_end: { id: 'ch43_end', title: '龙脊古道·章末', color: '#6fc0e8', desc: '破龙族石像兵守关,攀古道尽头,望见龙堡轮廓。' },
+  ch44_end: { id: 'ch44_end', title: '龙堡遗迹外围·章末', color: '#6fc0e8', desc: '踏足龙堡废墟,弟弟以血脉开启归者可入的石门。' },
+  ch45_end: { id: 'ch45_end', title: '龙堡遗迹内殿·章末', color: '#6fc0e8', desc: '内殿壁画尽述太初与盟约,弟弟开启先祖之眠的大门。' },
+  ch46_end: { id: 'ch46_end', title: '先祖之眠·章末', color: '#6fc0e8', desc: '团队苦战通过太初近卫,近卫释然化光,融入先祖龙骨。' },
 };

@@ -11,42 +11,42 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261007b';
-import { EventBus } from './eventbus.js?v=20261007b';
-import { AudioEngine } from './audio.js?v=20261007b';
-import { Player } from '../combat/entity.js?v=20261007b';
-import { Deck } from '../card/deck.js?v=20261007b';
-import { Battle } from '../combat/battle.js?v=20261007b';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007b';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261007b';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007b';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007b';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261007b';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007b';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007b';
-import { majorSetIds } from '../data/extras.js?v=20261007b';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007b';
-import { lookLabel } from '../data/looks.js?v=20261007b';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007b';
-import { TradeEngine } from './trade.js?v=20261007b';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007b';
-import { REGIONS } from '../data/regions.js?v=20261007b';
-import { jobsFor } from '../data/jobs.js?v=20261007b';
+import { RNG, seedFromString } from './rng.js?v=20261007c';
+import { EventBus } from './eventbus.js?v=20261007c';
+import { AudioEngine } from './audio.js?v=20261007c';
+import { Player } from '../combat/entity.js?v=20261007c';
+import { Deck } from '../card/deck.js?v=20261007c';
+import { Battle } from '../combat/battle.js?v=20261007c';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007c';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf } from '../data/items.js?v=20261007c';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007c';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007c';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261007c';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007c';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007c';
+import { majorSetIds } from '../data/extras.js?v=20261007c';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007c';
+import { lookLabel } from '../data/looks.js?v=20261007c';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007c';
+import { TradeEngine } from './trade.js?v=20261007c';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007c';
+import { REGIONS } from '../data/regions.js?v=20261007c';
+import { jobsFor } from '../data/jobs.js?v=20261007c';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261007b';
-import { NPCS } from '../data/npcs.js?v=20261007b';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007b';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007b';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007b';
-import { Economy } from './economy.js?v=20261007b';
-import { Travel } from './travel.js?v=20261007b';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007b';
-import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007b';
-import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007b';
-import { CAREERS } from '../narrative/careers.js?v=20261007b';
-import { UI } from '../ui/ui.js?v=20261007b';
+} from '../data/world.js?v=20261007c';
+import { NPCS } from '../data/npcs.js?v=20261007c';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007c';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007c';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007c';
+import { Economy } from './economy.js?v=20261007c';
+import { Travel } from './travel.js?v=20261007c';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007c';
+import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007c';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007c';
+import { CAREERS } from '../narrative/careers.js?v=20261007c';
+import { UI } from '../ui/ui.js?v=20261007c';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -1064,6 +1064,14 @@ export class Game {
     const want = Math.min(pool.length, lo + Math.floor(this.rng.next() * (hi - lo + 1)));
     const picked = [];
     const used = new Set();
+    // 支线触发 NPC:绑定到指定地区(region),未完成时在该地区各地点必定出现,
+    // 供玩家跑图时通过对话领取支线任务(不影响主线进度)
+    for (const n of NPCS) {
+      if (n.quest && Array.isArray(n.region) && n.region.includes(regionId)
+        && (!n.quest.doneFlag || !this.engine?.flags?.has(n.quest.doneFlag))) {
+        if (!used.has(n.id)) { used.add(n.id); picked.push(n); }
+      }
+    }
     let guard = 0;
     while (picked.length < want && used.size < pool.length && guard++ < 600) {
       const n = pool[Math.floor(this.rng.next() * pool.length)];
@@ -1078,7 +1086,8 @@ export class Game {
   /** 按地区主题筛选 NPC 池 */
   _npcsForTheme(theme) {
     if (this._themeNpcCache.has(theme)) return this._themeNpcCache.get(theme);
-    const pool = NPCS.filter((n) => Array.isArray(n.where) && n.where.includes(theme));
+    // 支线触发 NPC(带 quest)不进入随机主题池,改由 _npcsAt 按地区强制投放
+    const pool = NPCS.filter((n) => Array.isArray(n.where) && n.where.includes(theme) && !n.quest);
     this._themeNpcCache.set(theme, pool);
     return pool;
   }
@@ -1184,11 +1193,24 @@ export class Game {
     const topics = this._npcTopics(st.npc)
       .filter((t) => !st.usedTopics.has(t.id) && st.npcLineCount < TALK_MAX_LINES)
       .map((t) => ({ id: t.id, label: t.label }));
+    // NPC 任务(支线触发):有 quest 字段且满足前置 reqFlag 时显示任务按钮;
+    // 持有 doneFlag 时标记为已完成(按钮变灰),禁止重复触发。
+    const qd = st.npc.quest;
+    const reqMet = !qd || qd.reqFlag == null || this.engine.flags.has(qd.reqFlag);
+    const quest = qd && reqMet ? {
+      text: qd.text,
+      accept: qd.accept,
+      decline: qd.decline,
+      sideChapter: qd.sideChapter,
+      doneFlag: qd.doneFlag,
+      done: qd.doneFlag ? this.engine.flags.has(qd.doneFlag) : false,
+    } : null;
     this.ui.showNpcDialog(st.npc, {
       title: st.source === 'road' ? '路上遇见' : '交谈',
       transcript: st.transcript,
       topics,
       hint: st.npcLineCount >= TALK_MAX_LINES ? '他看上去有些倦了,不便再多问。' : '',
+      quest,
     });
   }
 
@@ -3292,28 +3314,54 @@ export class Game {
     this.bus.on('ui:end-turn', () => this.currentBattle?.endPlayerTurn());
     this.bus.on('ui:auto-battle', () => this._toggleAutoBattle());
     this.bus.on('ui:restart', () => this.startNewRun());
-    // 结局节点:玩家阅读完结局散文后,点击「查看结局」播放片尾字幕,结束后返回地图(不删档)
+    // 结局节点:玩家阅读完结局散文后,点击「查看结局」播放片尾字幕,结束后自动衔接下一章(不删档)
     this.bus.on('ui:show-ending', () => {
-      // 若当前结局节点是某大章最后一节,标记该大章通关并发放谢仪
       const node = this.engine?.currentNode;
       const chId = this.engine?.currentChapterId;
-      if (node?.kind === 'ending' && chId) {
-        const mc = majorChapterOf(chId);
-        if (mc && mc.lastChapter === chId && !this.progress?.cleared?.[mc.id]) {
-          this.progress = markChapterCleared(mc.id);
-          this.ui.renderChapterSelect(this._chapterEntries(), this._saveInfo());
-          const apGot = this.economy ? this.economy.addAp(this.economy.apCap()) : 0;
-          this._sendChapterMail(mc.id);
-          this.ui.showToast(`✦ ${mc.no} · ${mc.title} 已通关${apGot ? ' · 行动力已回满' : ''} · 驿站寄来通关谢仪`);
-          if (mc.id === 'mc1') this._generatePois();
-        }
-      }
-      this.transition(GameState.CREDITS);
-      this.ui.showCredits(CHAPTER_RECAPS, () => {
-        // 字幕结束:回到当前地区地图,保留本地存档
+      if (node?.kind !== 'ending' || !chId) {
         this.transition(GameState.MAP);
         this._renderMap();
+        return;
+      }
+      // 支线任务结束:不结算大章、不衔接下一章,直接回地图(不影响主线进度)
+      // 主线返回点由 engine 的 _gateTarget 保留,玩家回地图后点「剧情」即可继续主线
+      if (SIDE_QUEST_CHAPTERS.includes(chId)) {
+        this.transition(GameState.MAP);
+        this._renderMap();
+        this.ui.showToast('✦ 支线任务完成 · 奖励已到手');
         this._autosave();
+        return;
+      }
+      const mc = majorChapterOf(chId);
+      const isMajorEnd = !!(mc && mc.lastChapter === chId);
+      // 大章末:标记通关 + 发谢仪
+      if (isMajorEnd && mc && !this.progress?.cleared?.[mc.id]) {
+        this.progress = markChapterCleared(mc.id);
+        this.ui.renderChapterSelect(this._chapterEntries(), this._saveInfo());
+        const apGot = this.economy ? this.economy.addAp(this.economy.apCap()) : 0;
+        this._sendChapterMail(mc.id);
+        this.ui.showToast(`✦ ${mc.no} · ${mc.title} 已通关${apGot ? ' · 行动力已回满' : ''} · 驿站寄来通关谢仪`);
+        if (mc.id === 'mc1') this._generatePois();
+      }
+      // 计算下一章 id(CHAPTER_ORDER 中的下一项)
+      const idx = CHAPTER_ORDER.indexOf(chId);
+      const nextChId = idx >= 0 && idx < CHAPTER_ORDER.length - 1 ? CHAPTER_ORDER[idx + 1] : null;
+      // 字幕模式:大章末用 full(完整回顾),小节末用 short(本章回顾)
+      const mode = isMajorEnd ? 'full' : 'short';
+      const recapKey = isMajorEnd && mc ? mc.id : chId;
+      this.transition(GameState.CREDITS);
+      this.ui.showCredits(CHAPTER_RECAPS, mode, recapKey, () => {
+        if (nextChId) {
+          // 自动衔接下一章
+          this.engine.enterChapter(nextChId);
+          this.transition(GameState.NARRATIVE);
+          this._autosave();
+        } else {
+          // 已是最后一章:回地图
+          this.transition(GameState.MAP);
+          this._renderMap();
+          this._autosave();
+        }
       });
     });
 
@@ -3345,6 +3393,17 @@ export class Game {
     this.bus.on('ui:merchant-buy', (id) => this._merchantBuy(id));
     this.bus.on('ui:npc-talk', (id) => this._talkNpc(id));
     this.bus.on('ui:npc-topic', (id) => this._npcChooseTopic(id));
+    this.bus.on('ui:npc-quest', ({ sideChapter, doneFlag }) => {
+      if (!sideChapter) return;
+      // 关闭 NPC 对话,进入支线章节;支线不影响主线进度
+      // (不调 markChapterCleared、不发谢仪),完成后由支线 effects.flags
+      // 设置 doneFlag,使下次再与该 NPC 对话时任务按钮变灰。
+      this._npcTalk = null;
+      this.ui.closeNpcDialog();
+      this.engine.enterChapter(sideChapter);
+      this.transition(GameState.NARRATIVE);
+      this._autosave();
+    });
     this.bus.on('ui:npc-close', () => this._closeNpcDialog());
     this.bus.on('ui:map-chest', () => this._openChest());
     this.bus.on('ui:chest-submit', ({ id, code }) => this._submitChestCode(id, code));
