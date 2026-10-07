@@ -9,7 +9,7 @@
  *   单次获得数量的平均值 = 平均货物售出价格的七分之一(TOKEN_AVG_YIELD)。
  */
 
-import { ITEMS, sellPrice, TOKEN_PER_GOLD } from './items.js?v=20261007j';
+import { ITEMS, sellPrice, TOKEN_PER_GOLD } from './items.js?v=20261007k';
 
 /** 市场每笔交易的额外管理费比例 */
 export const MARKET_FEE = 0.1;

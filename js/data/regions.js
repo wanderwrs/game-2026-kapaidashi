@@ -198,7 +198,7 @@ export const REGIONS = {
     name: '风蚀峡谷', theme: 'cliff',
     stops: [
       { key: 'mouth', name: '峡谷口', theme: 'cliff', npc: null, node: 'n01', hint: '风从峡谷深处灌出,卷起漫天黄沙。', services: { shop: true } },
-      { key: 'ledge', name: '崖壁栈道', theme: 'cliff', npc: '峡谷向导', node: 'n03', hint: '栈道窄得仅容一人,那位向导说他能带你走过去。', services: { job: true } },
+      { key: 'ledge', name: '崖壁栈道', theme: 'cliff', npc: '峡谷向导', node: 'n02', hint: '栈道窄得仅容一人,那位向导说他能带你走过去。', services: { job: true } },
     ],
   },
   ch18: {
@@ -221,7 +221,7 @@ export const REGIONS = {
     name: '边境要塞', theme: 'city',
     stops: [
       { key: 'gate', name: '要塞城门', theme: 'city', npc: null, node: 'n01', hint: '边境要塞的城门紧闭,城头的旗帜换了新的——卡斯特罗的黑鹰旗。', services: { shop: true, job: true } },
-      { key: 'wall', name: '北城墙', theme: 'city', npc: '守将', node: 'n03', hint: '北城墙的守将似乎有话要说,但他身边全是卡斯特罗的耳目。', services: { } },
+      { key: 'wall', name: '北城墙', theme: 'city', npc: '守将', node: 'n02', hint: '北城墙的守将似乎有话要说,但他身边全是卡斯特罗的耳目。', services: { } },
       { key: 'dungeon', name: '要塞地牢', theme: 'ruins', npc: null, node: 'n05', hint: '地牢深处传来熟悉的声音——那是被关押的友军。', services: { job: true } },
     ],
   },
@@ -229,16 +229,16 @@ export const REGIONS = {
     name: '卡斯特罗前哨', theme: 'mountain',
     stops: [
       { key: 'camp', name: '敌军前营', theme: 'mountain', npc: null, node: 'n01', hint: '卡斯特罗的前营扎在山口,篝火连成一片。', services: { shop: true } },
-      { key: 'ridge', name: '山脊观察哨', theme: 'cliff', npc: null, node: 'n03', hint: '攀上山脊,可以俯瞰敌军的全部部署。', services: { } },
-      { key: 'cave', name: '山间暗道', theme: 'ruins', npc: '向导', node: 'n05', hint: '山间暗道直通敌后,但只有本地向导认得路。', services: { job: true } },
+      { key: 'ridge', name: '山脊观察哨', theme: 'cliff', npc: null, node: 'n02', hint: '攀上山脊,可以俯瞰敌军的全部部署。', services: { } },
+      { key: 'cave', name: '山间暗道', theme: 'ruins', npc: '向导', node: 'n03', hint: '山间暗道直通敌后,但只有本地向导认得路。', services: { job: true } },
     ],
   },
   ch22: {
     name: '中立城邦', theme: 'city',
     stops: [
       { key: 'gate', name: '城邦大门', theme: 'city', npc: null, node: 'n01', hint: '中立城邦的大门向所有旅人敞开,但里面暗流涌动。', services: { shop: true, job: true } },
-      { key: 'council', name: '议政厅', theme: 'city', npc: '执政官', node: 'n03', hint: '议政厅里,执政官正在权衡战与和。', services: { } },
-      { key: 'market', name: '黑市巷', theme: 'city', npc: null, node: 'n05', hint: '黑市巷里什么都能买到——包括敌军的布防图。', services: { shop: true, job: true } },
+      { key: 'council', name: '议政厅', theme: 'city', npc: '执政官', node: 'n02', hint: '议政厅里,执政官正在权衡战与和。', services: { } },
+      { key: 'market', name: '黑市巷', theme: 'city', npc: null, node: 'n03_market', hint: '黑市巷里什么都能买到——包括敌军的布防图。', services: { shop: true, job: true } },
     ],
   },
   ch23: {
@@ -269,16 +269,16 @@ export const REGIONS = {
     name: '卡斯特罗内城', theme: 'ruins',
     stops: [
       { key: 'breach', name: '城墙缺口', theme: 'ruins', npc: null, node: 'n01', hint: '城墙被轰开了一道缺口,联军正从这里涌入。', services: { shop: true } },
-      { key: 'plaza', name: '中心广场', theme: 'ruins', npc: null, node: 'n03', hint: '中心广场上,敌军的精锐部队负隅顽抗。', services: { } },
-      { key: 'tower', name: '黑鹰塔', theme: 'city', npc: null, node: 'n05', hint: '黑鹰塔是卡斯特罗最后的据点,塔顶飘扬着那面不祥的旗帜。', services: { job: true } },
+      { key: 'plaza', name: '中心广场', theme: 'ruins', npc: null, node: 'n02', hint: '中心广场上,敌军的精锐部队负隅顽抗。', services: { } },
+      { key: 'tower', name: '黑鹰塔', theme: 'city', npc: null, node: 'n04', hint: '黑鹰塔是卡斯特罗最后的据点,塔顶飘扬着那面不祥的旗帜。', services: { job: true } },
     ],
   },
   ch27: {
     name: '和平之野', theme: 'village',
     stops: [
       { key: 'meadow', name: '停战草原', theme: 'village', npc: null, node: 'n01', hint: '战火熄灭后的草原,野花重新开了起来。', services: { shop: true } },
-      { key: 'altar', name: '和平祭坛', theme: 'village', npc: '两国使者', node: 'n03', hint: '和平祭坛前,两国使者正在签署停战协议。', services: { } },
-      { key: 'monument', name: '英雄纪念碑', theme: 'village', npc: null, node: 'n05', hint: '英雄纪念碑下,人们为逝者默哀,也为新生祈福。', services: { job: true } },
+      { key: 'altar', name: '和平祭坛', theme: 'village', npc: '两国使者', node: 'n02', hint: '和平祭坛前,两国使者正在签署停战协议。', services: { } },
+      { key: 'monument', name: '英雄纪念碑', theme: 'village', npc: null, node: 'n03', hint: '英雄纪念碑下,人们为逝者默哀,也为新生祈福。', services: { job: true } },
     ],
   },
   // ===== 第三章·龙族突起 (ch28~ch47) =====
@@ -396,7 +396,7 @@ export const REGIONS = {
     name: '龙脊古道', theme: 'mountain',
     stops: [
       { key: 'start', name: '古道起点', theme: 'mountain', npc: null, node: 'n01', hint: '沿着龙脊山脉向东延伸,越走越高。', services: { } },
-      { key: 'guardians', name: '石像兵阵', theme: 'mountain', npc: null, node: 'n03', hint: '古道两旁有龙族先祖石雕,石像兵守护着通道。', services: { job: true } },
+      { key: 'guardians', name: '石像兵阵', theme: 'mountain', npc: null, node: 'n02', hint: '古道两旁有龙族先祖石雕,石像兵守护着通道。', services: { job: true } },
     ],
   },
   // 地图点6: 龙堡遗迹 (ch44-ch47) — 上古龙族先祖首领居住地
