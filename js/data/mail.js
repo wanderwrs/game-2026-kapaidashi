@@ -8,7 +8,10 @@
  * 编号(no)会显示在界面右上角,方便你按编号管理内容。
  * 奖励(reward)结构:{ gold?: 金币数, items?: { 物品id: 数量 } }
  *   物品 id 见 data/items.js;交易币(id 以 token_ 开头)也属于物品,可照常发放。
- *   整包写法:allItems?: 数量(发放 ITEMS 里的每一件)、allCareers?: true(解锁全部可切换职业)。
+ *   整包写法:allItems?: 数量(发放 ITEMS 里每一件「道具」,不含交易币)、
+ *            allTokens?: 数量(发放每一种交易币,即 category: 'token')、
+ *            allPets?: true(发放 PETS 里的每一只宠物)、
+ *            allCareers?: true(解锁全部可切换职业)。
  *
  * 投递方式:deliver: 'mail' 时,兑换不会直接到手,而是把奖励寄到「邮箱」,
  *   玩家在邮箱点「领取」才入袋;mail 字段可自定义这封信的发件人 / 标题 / 正文。
@@ -84,6 +87,19 @@ export const REDEEM_CODES = [
         '本信附上全部道具(各 99 件)与全部可切换职业。点「领取」一次性收入行囊。',
     },
     reward: { allItems: 99, allCareers: true },
+  },
+  {
+    // 持久全集码:可反复兑换,一次给齐全部资源。
+    //   gold        —— 100 亿金币
+    //   allTokens   —— 各类交易币各 100 万
+    //   allItems    —— 全部道具(不含交易币)每样 1000
+    //   allPets     —— 全部宠物各 1 只
+    // 说明:交易币从 allItems 中排除,统一由 allTokens 发放,避免叠加。
+    code: 'vcbkljhbaskuvbklvbsdkljvbdlkjvbjlhnskhsglvhdfldhslihet;glihsetbjkbg',
+    no: 'R006',
+    label: '龙脊全集礼包(持久)',
+    unlimited: true,
+    reward: { gold: 100000000000, allTokens: 1000000, allItems: 1000, allPets: true },
   },
   {
     // 速通码:兑换后立即把「第一大章」标记为通关(解锁第二大章),

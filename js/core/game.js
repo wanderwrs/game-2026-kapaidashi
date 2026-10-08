@@ -11,48 +11,48 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261007q';
-import { EventBus } from './eventbus.js?v=20261007q';
-import { AudioEngine } from './audio.js?v=20261007q';
-import { Player } from '../combat/entity.js?v=20261007q';
-import { Deck } from '../card/deck.js?v=20261007q';
-import { Battle } from '../combat/battle.js?v=20261007q';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007q';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf, resetPriceGrowth } from '../data/items.js?v=20261007q';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007q';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007q';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM, MYTH_GEM_IDS } from '../data/gems.js?v=20261007q';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007q';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007q';
-import { majorSetIds } from '../data/extras.js?v=20261007q';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007q';
-import { lookLabel } from '../data/looks.js?v=20261007q';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007q';
+import { RNG, seedFromString } from './rng.js?v=20261007r';
+import { EventBus } from './eventbus.js?v=20261007r';
+import { AudioEngine } from './audio.js?v=20261007r';
+import { Player } from '../combat/entity.js?v=20261007r';
+import { Deck } from '../card/deck.js?v=20261007r';
+import { Battle } from '../combat/battle.js?v=20261007r';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007r';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf, resetPriceGrowth } from '../data/items.js?v=20261007r';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007r';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007r';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM, MYTH_GEM_IDS } from '../data/gems.js?v=20261007r';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007r';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007r';
+import { majorSetIds } from '../data/extras.js?v=20261007r';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007r';
+import { lookLabel } from '../data/looks.js?v=20261007r';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007r';
 import {
   FACILITY_CN, FACILITY_ICON, BANK_TERMS, bankRate, exchangeTick, msToNextExchange,
   TOKEN_LIST, TOKEN_EX_FEE, tokenRate, INVEST_PROJECTS, investPrice, investPrevPrice,
   WAREHOUSE, warehouseFee, mysteryStock, mysteryPrice, rollMythGems, ARENA_TIERS,
   TAVERN_STOCK, TAVERN_FEE, TAVERN_MEAL_GOLD, TAVERN_MEAL_AP, BELLHOP, errandCatalog,
-} from '../data/facilities.js?v=20261007q';
-import { TradeEngine } from './trade.js?v=20261007q';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007q';
-import { REGIONS } from '../data/regions.js?v=20261007q';
-import { jobsFor } from '../data/jobs.js?v=20261007q';
+} from '../data/facilities.js?v=20261007r';
+import { TradeEngine } from './trade.js?v=20261007r';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007r';
+import { REGIONS } from '../data/regions.js?v=20261007r';
+import { jobsFor } from '../data/jobs.js?v=20261007r';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261007q';
-import { NPCS } from '../data/npcs.js?v=20261007q';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007q';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007q';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007q';
-import { Economy } from './economy.js?v=20261007q';
-import { Travel } from './travel.js?v=20261007q';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007q';
-import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007q';
-import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007q';
-import { CAREERS } from '../narrative/careers.js?v=20261007q';
-import { UI } from '../ui/ui.js?v=20261007q';
+} from '../data/world.js?v=20261007r';
+import { NPCS } from '../data/npcs.js?v=20261007r';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007r';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007r';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007r';
+import { Economy } from './economy.js?v=20261007r';
+import { Travel } from './travel.js?v=20261007r';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007r';
+import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007r';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007r';
+import { CAREERS } from '../narrative/careers.js?v=20261007r';
+import { UI } from '../ui/ui.js?v=20261007r';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -1946,10 +1946,12 @@ export class Game {
     if (!reward) return '';
     const parts = [];
     if (reward.gold) parts.push(`${reward.gold} 金币`);
-    if (reward.allItems) parts.push(`全部道具 ×${reward.allItems}(共 ${Object.keys(ITEMS).length} 种)`);
+    if (reward.allItems) parts.push(`全部道具 ×${reward.allItems}`);
+    if (reward.allTokens) parts.push(`各类交易币 ×${reward.allTokens}`);
     for (const [id, qty] of Object.entries(reward.items || {})) {
       parts.push(`${ITEMS[id]?.name || id}×${qty}`);
     }
+    if (reward.allPets) parts.push(`全部宠物(共 ${Object.keys(PETS).length} 只)`);
     if (reward.allCareers) parts.push(`全部职业(共 ${CAREERS.length} 个)`);
     return parts.join(' · ');
   }
@@ -1971,19 +1973,40 @@ export class Game {
     const got = [];
     if (reward.gold) { this.economy.gold += reward.gold; got.push(`${reward.gold} 金币`); }
     if (reward.allItems) {
+      // 「道具」不含交易币(交易币由 allTokens 单独发放,避免重复叠加)
       let n = 0;
-      for (const id of Object.keys(ITEMS)) {
+      for (const [id, it] of Object.entries(ITEMS)) {
+        if (it.category === 'token') continue;
         if (this.economy.addItem(id, reward.allItems)) n += 1;
       }
       got.push(`全部道具 ×${reward.allItems}(共 ${n} 种)`);
     }
+    if (reward.allTokens) {
+      let n = 0;
+      for (const [id, it] of Object.entries(ITEMS)) {
+        if (it.category !== 'token') continue;
+        if (this.economy.addItem(id, reward.allTokens)) n += 1;
+      }
+      got.push(`各类交易币 ×${reward.allTokens}(共 ${n} 种)`);
+    }
     for (const [id, qty] of Object.entries(reward.items || {})) {
       if (this.economy.addItem(id, qty)) got.push(`${ITEMS[id]?.name || id}×${qty}`);
+    }
+    if (reward.allPets) {
+      const petIds = Object.keys(PETS);
+      let n = 0;
+      for (const id of petIds) {
+        if (this.economy.addPet(id, 1)) n += 1;
+      }
+      if (!this.economy.petActive && petIds.length) this.economy.setActivePet(petIds[0]);
+      got.push(`全部宠物(共 ${n} 只)`);
     }
     if (reward.allCareers) {
       const n = this._unlockAllCareers();
       got.push(`全部职业(共 ${CAREERS.length} 个)${n ? '' : '(已全数解锁)'}`);
     }
+    // 整包发放后,确保背包容量至少容得下已持有的种类
+    this.economy.bagCap = Math.max(this.economy.bagCap, this.economy.bag.size);
     this._syncUi();
     return got;
   }

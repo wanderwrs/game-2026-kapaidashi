@@ -26,11 +26,11 @@
  * sell 未填时按 price 的 50% 计算。
  */
 
-import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261007q';
-import { GEM_ITEMS } from './gems.js?v=20261007q';
-import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261007q';
-import { isSellLockedLevel } from './grade.js?v=20261007q';
-import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261007q';
+import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261007r';
+import { GEM_ITEMS } from './gems.js?v=20261007r';
+import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261007r';
+import { isSellLockedLevel } from './grade.js?v=20261007r';
+import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261007r';
 
 /** 武器宝石槽数(与防具一致,均为 5) */
 export const WEAPON_MAX_GEMS = 5;
