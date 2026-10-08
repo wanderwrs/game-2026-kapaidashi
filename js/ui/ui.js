@@ -10,24 +10,24 @@
  *   · 章节进度条、职业解锁提示、结局面板
  */
 
-import { GameState } from '../core/game.js?v=20261007p';
-import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007p';
-import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007p';
-import { gradeOf } from '../data/grade.js?v=20261007p';
-import { careerTitleOf } from '../data/careers_rank.js?v=20261007p';
-import { GEM_EFFECT, GEM_STAT_CN } from '../data/gems.js?v=20261007p';
-import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007p';
-import { cardMpCost } from '../data/data.js?v=20261007p';
-import { ENDINGS } from '../narrative/engine.js?v=20261007p';
-import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007p';
-import { SceneView, paintCharacter } from './scene.js?v=20261007p';
-import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007p';
-import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007p';
-import { Minigame } from '../minigame/minigame.js?v=20261007p';
-import { MODE_LABELS } from '../data/jobs.js?v=20261007p';
-import { TERRAIN_CN } from '../data/world.js?v=20261007p';
-import { FACILITY_CN, FACILITY_ICON, FACILITY_KEYS } from '../data/facilities.js?v=20261007p';
-import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007p';
+import { GameState } from '../core/game.js?v=20261007q';
+import { CAREERS, CAREER_MAP } from '../narrative/careers.js?v=20261007q';
+import { ITEMS, ITEM_CATEGORY_CN, sellPrice, isTradeable, isSellLocked, socketsOf } from '../data/items.js?v=20261007q';
+import { gradeOf } from '../data/grade.js?v=20261007q';
+import { careerTitleOf } from '../data/careers_rank.js?v=20261007q';
+import { GEM_EFFECT, GEM_STAT_CN, GEM_SET_DESC } from '../data/gems.js?v=20261007q';
+import { ABOUT_DOCS, ABOUT_UPDATED } from '../data/about.js?v=20261007q';
+import { cardMpCost } from '../data/data.js?v=20261007q';
+import { ENDINGS } from '../narrative/engine.js?v=20261007q';
+import { CHAPTER_ORDER, chapterProgressIndex } from '../narrative/chapters/index.js?v=20261007q';
+import { SceneView, paintCharacter } from './scene.js?v=20261007q';
+import { ARMOR_SLOTS, ARMOR_SLOT_CN } from '../data/armor.js?v=20261007q';
+import { BODY_STYLES, SKIN_TONES, BODY_MAP, SKIN_MAP, lookLabel } from '../data/looks.js?v=20261007q';
+import { Minigame } from '../minigame/minigame.js?v=20261007q';
+import { MODE_LABELS } from '../data/jobs.js?v=20261007q';
+import { TERRAIN_CN } from '../data/world.js?v=20261007q';
+import { FACILITY_CN, FACILITY_ICON, FACILITY_KEYS } from '../data/facilities.js?v=20261007q';
+import { TRAVEL_TIPS, TIP_INTERVAL_SEC } from '../data/tips.js?v=20261007q';
 
 const STATUS_LABELS = {
   vulnerable: '易伤',
@@ -2855,11 +2855,14 @@ export class UI {
       box.appendChild(section('本 轮 珍 品'));
       const stock = data.stock || [];
       if (!stock.length) empty('本轮珍品已售罄。');
-      stock.forEach(({ id, price }) => {
+      stock.forEach(({ id, price, myth }) => {
         const it = ITEMS[id];
         if (!it) return;
+        const tag = myth
+          ? '<span class="item-rare">神话宝石 · 极稀有</span>'
+          : '<span class="item-rare">限定珍品</span>';
         box.appendChild(this._shopRow(it, eco.gold >= price, `🪙 ${price}`, '买入', 'data-buy',
-          () => this.bus.emit('ui:mystery-buy', id), 0, '<span class="item-rare">限定珍品</span>'));
+          () => this.bus.emit('ui:mystery-buy', id), 0, tag));
       });
       this.renderResources(eco);
       return;
@@ -3353,69 +3356,86 @@ export class UI {
   }
 
   // ===== 精益师:镶嵌 =====
-  renderJeweler({ weapons, gems, economy, cost, name }) {
+  renderJeweler({ weapons, armors = [], gems, economy, cost, name }) {
     if (this.el.jewelerTitle) this.el.jewelerTitle.textContent = `🔧 ${name || '精益师'}`;
-    if (this.el.jewelerNote) this.el.jewelerNote.textContent = `选择一件武器与一颗宝石,镶嵌提升能力(每次 ${cost} 金币)`;
+    if (this.el.jewelerNote) this.el.jewelerNote.textContent = `选择一件武器或防具与一颗宝石,镶嵌提升能力(每次 ${cost} 金币)`;
 
-    const wList = weapons || [];
-    if (!wList.some((w) => w.id === this._jewelerSel)) this._jewelerSel = null;
+    const wList = (weapons || []).map((w) => ({ ...w, kind: 'weapon' }));
+    const aList = (armors || []).map((a) => ({ ...a, kind: 'armor' }));
+    const equipList = [...wList, ...aList];
+    if (!equipList.some((e) => e.id === this._jewelerSel)) this._jewelerSel = null;
 
     const wBox = this.el.jewelerWeapons;
     if (wBox) {
       wBox.innerHTML = '';
-      if (!wList.length) wBox.innerHTML = '<p class="bag-empty">背包里没有可镶嵌的武器。</p>';
-      wList.forEach((w) => {
-        const free = w.free;
-        const gemTxt = (w.gems || []).map((gid) => ITEMS[gid]?.name || gid).join('、');
+      if (!equipList.length) wBox.innerHTML = '<p class="bag-empty">背包里没有可镶嵌的武器或防具。</p>';
+      const group = (label) => {
+        const d = document.createElement('div');
+        d.className = 'shop-section-title';
+        d.textContent = label;
+        return d;
+      };
+      const renderRow = (e) => {
+        const free = e.free;
+        const gemTxt = (e.gems || []).map((gid) => ITEMS[gid]?.name || gid).join('、');
         const row = document.createElement('div');
-        row.className = `item-row jeweler-weapon${w.id === this._jewelerSel ? ' is-selected' : ''}`;
+        row.className = `item-row jeweler-weapon${e.id === this._jewelerSel ? ' is-selected' : ''}`;
         row.innerHTML = `
-          <div class="item-icon">${w.def.icon || '🗡️'}</div>
+          <div class="item-icon">${e.def.icon || (e.kind === 'armor' ? '🛡️' : '🗡️')}</div>
           <div class="item-body">
-            <div class="item-name">${this._escapeHtml(w.def.name)}${w.qty > 1 ? ` <span class="item-qty">×${w.qty}</span>` : ''}<span class="item-cat">空槽 ${free}</span></div>
-            <div class="item-desc">${this._escapeHtml(w.def.desc || '')}</div>
+            <div class="item-name">${this._escapeHtml(e.def.name)}${e.qty > 1 ? ` <span class="item-qty">×${e.qty}</span>` : ''}<span class="item-cat">空槽 ${free}</span></div>
+            <div class="item-desc">${this._escapeHtml(e.def.desc || '')}</div>
             ${gemTxt ? `<div class="item-sub">已镶:${this._escapeHtml(gemTxt)}</div>` : ''}
           </div>
           <div class="item-actions">
-            <button class="btn ${w.id === this._jewelerSel ? 'btn-primary' : 'btn-ghost'} btn-sm" data-pick>${w.id === this._jewelerSel ? '已选择' : '选择'}</button>
-            ${(w.gems && w.gems.length) ? '<button class="btn btn-ghost btn-sm" data-unsocket>取下宝石</button>' : ''}
+            <button class="btn ${e.id === this._jewelerSel ? 'btn-primary' : 'btn-ghost'} btn-sm" data-pick>${e.id === this._jewelerSel ? '已选择' : '选择'}</button>
+            ${(e.gems && e.gems.length) ? '<button class="btn btn-ghost btn-sm" data-unsocket>取下宝石</button>' : ''}
           </div>`;
         row.querySelector('[data-pick]')?.addEventListener('click', () => {
-          this._jewelerSel = (this._jewelerSel === w.id) ? null : w.id;
-          this.renderJeweler({ weapons, gems, economy, cost, name });
+          this._jewelerSel = (this._jewelerSel === e.id) ? null : e.id;
+          this.renderJeweler({ weapons, armors, gems, economy, cost, name });
         });
-        row.querySelector('[data-unsocket]')?.addEventListener('click', () => this.bus.emit('ui:unsocket', w.id));
+        row.querySelector('[data-unsocket]')?.addEventListener('click', () =>
+          this.bus.emit(e.kind === 'armor' ? 'ui:unsocket-armor' : 'ui:unsocket', e.id));
         wBox.appendChild(row);
-      });
+      };
+      if (wList.length) { wBox.appendChild(group('武 器')); wList.forEach(renderRow); }
+      if (aList.length) { wBox.appendChild(group('防 具')); aList.forEach(renderRow); }
     }
 
     const gBox = this.el.jewelerGems;
     if (gBox) {
       gBox.innerHTML = '';
       if (!gems.length) gBox.innerHTML = '<p class="bag-empty">背包里没有宝石。</p>';
-      const sel = wList.find((w) => w.id === this._jewelerSel);
+      const sel = equipList.find((e) => e.id === this._jewelerSel);
       gems.forEach((g) => {
         const can = !!sel && sel.free > 0 && economy.gold >= cost;
         const eff = GEM_EFFECT[g.def.gem] || {};
-        const effTxt = Object.entries(eff).map(([k, v]) => `${GEM_STAT_CN[k] || k} +${v}`).join(' · ');
+        const effTxt = g.def.myth
+          ? '神话套装'
+          : Object.entries(eff).map(([k, v]) => `${GEM_STAT_CN[k] || k} +${v}`).join(' · ');
+        const desc = g.def.myth ? GEM_SET_DESC : (g.def.desc || '');
         const row = document.createElement('div');
         row.className = 'item-row';
         row.innerHTML = `
           <div class="item-icon">${g.def.icon || '💎'}</div>
           <div class="item-body">
             <div class="item-name">${this._escapeHtml(g.def.name)}${g.qty > 1 ? ` <span class="item-qty">×${g.qty}</span>` : ''}<span class="item-cat">${this._escapeHtml(effTxt)}</span></div>
-            <div class="item-desc">${this._escapeHtml(g.def.desc || '')}</div>
+            <div class="item-desc">${this._escapeHtml(desc)}</div>
           </div>
           <div class="item-actions">
             <button class="btn btn-primary btn-sm" data-socket ${can ? '' : 'disabled'}>镶 嵌</button>
           </div>`;
-        if (can) row.querySelector('[data-socket]')?.addEventListener('click', () => this.bus.emit('ui:socket', { weaponId: sel.id, gemId: g.id }));
+        if (can) row.querySelector('[data-socket]')?.addEventListener('click', () => this.bus.emit(
+          sel.kind === 'armor' ? 'ui:socket-armor' : 'ui:socket',
+          sel.kind === 'armor' ? { armorId: sel.id, gemId: g.id } : { weaponId: sel.id, gemId: g.id },
+        ));
         gBox.appendChild(row);
       });
       if (gems.length && !sel) {
         const hint = document.createElement('p');
         hint.className = 'bag-empty';
-        hint.textContent = '请先在上方选择一件武器。';
+        hint.textContent = '请先在上方选择一件武器或防具。';
         gBox.appendChild(hint);
       }
     }

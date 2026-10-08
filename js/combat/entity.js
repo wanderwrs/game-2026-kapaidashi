@@ -70,7 +70,8 @@ export class Player extends Entity {
     this.energyMax = opts.energyMax ?? 3;
     this.maxMp = opts.maxMp ?? 3;
     this.mp = this.maxMp;
-    this.power = 0;   // 战力(装备加成),开战时折算为力量
+    this.power = 0;      // 战力(装备加成),开战时折算为力量
+    this.mpPerTurn = 0;  // 每回合开始回复的魔力(装备加成,如神话套装)
   }
 
   resetEnergy() {

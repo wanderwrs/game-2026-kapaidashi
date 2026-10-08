@@ -20,6 +20,7 @@ export const GEM_STAT_CN = {
   maxMp:      '魔力',
   startBlock: '勇敢',
   maxHp:      '生命',
+  mpPerTurn:  '回魔',
 };
 
 /** 四种基础宝石 */
@@ -28,6 +29,11 @@ export const GEM_ITEMS = {
   gem_magic:    { id: 'gem_magic',    name: '魔力宝石', category: 'gem', gem: 'magic',    price: 240, icon: '🔵', tradeable: true, desc: '精琢的青色宝石。镶嵌后:魔力上限 +3。' },
   gem_brave:    { id: 'gem_brave',    name: '勇敢宝石', category: 'gem', gem: 'brave',    price: 240, icon: '🟡', tradeable: true, desc: '精琢的琥珀宝石。镶嵌后:每场战斗开始获得 6 点护甲。' },
   gem_life:     { id: 'gem_life',     name: '生命宝石', category: 'gem', gem: 'life',     price: 240, icon: '🟢', tradeable: true, desc: '精琢的碧色宝石。镶嵌后:生命上限 +12。' },
+
+  // ===== 神话宝石(极稀有套装):三颗各自独立 0.03% 概率现身神秘商店,仅此一处出售 =====
+  gem_myth_guard:  { id: 'gem_myth_guard',  name: '神话宝石·守御', category: 'gem', gem: 'myth', myth: true, noTrade: true, price: 10000000000, icon: '💠', desc: '龙脊深处的传说结晶。单颗毫无灵光,须与「破军」「灵犀」同镶一件武器,方能觉醒套装之力。' },
+  gem_myth_might:  { id: 'gem_myth_might',  name: '神话宝石·破军', category: 'gem', gem: 'myth', myth: true, noTrade: true, price: 10000000000, icon: '🔱', desc: '龙脊深处的传说结晶。单颗毫无灵光,须与「守御」「灵犀」同镶一件武器,方能觉醒套装之力。' },
+  gem_myth_spirit: { id: 'gem_myth_spirit', name: '神话宝石·灵犀', category: 'gem', gem: 'myth', myth: true, noTrade: true, price: 10000000000, icon: '✨', desc: '龙脊深处的传说结晶。单颗毫无灵光,须与「守御」「破军」同镶一件武器,方能觉醒套装之力。' },
 };
 
 /** 宝石类型 -> 镶嵌所提供的装备属性 */
@@ -37,6 +43,32 @@ export const GEM_EFFECT = {
   brave:    { startBlock: 6 },
   life:     { maxHp: 12 },
 };
+
+/** 神话宝石三颗(顺序即套装所需) */
+export const MYTH_GEM_IDS = ['gem_myth_guard', 'gem_myth_might', 'gem_myth_spirit'];
+
+/**
+ * 神话套装:三颗神话宝石同镶于「同一件武器」时生效。
+ * 缺任意一颗都无任何效果。
+ */
+export const GEM_SET = {
+  ids: MYTH_GEM_IDS,
+  bonus: { startBlock: 120, atkPower: 120, mpPerTurn: 30, maxHp: 300 },
+};
+
+/** 套装说明(UI) */
+export const GEM_SET_DESC = '集齐三颗同镶一件武器:护甲 +120 · 战力 +120 · 每回合回魔 +30 · 生命上限 +300';
+
+/**
+ * 若 gems 中集齐全部神话宝石,返回套装加成;否则返回空对象。
+ * 只要缺一颗(或缺两颗),即视为无任何效果。
+ */
+export function gemSetBonus(gems) {
+  if (!Array.isArray(gems) || !gems.length) return {};
+  const have = new Set(gems);
+  if (!GEM_SET.ids.every((id) => have.has(id))) return {};
+  return { ...GEM_SET.bonus };
+}
 
 /** 宝石按性能的中文标签(前缀,如「力量宝石」) */
 export function gemLabel(gemId) {

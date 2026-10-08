@@ -11,13 +11,13 @@
  * 服饰四件可自由混搭;其中「皇帝的新衣」系列 hide=true,穿上后对应部位在像素人物上不可见。
  */
 
-import { ITEMS, sellPrice, tokenPrice, socketsOf, syncPriceGrowth } from '../data/items.js?v=20261007p';
-import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261007p';
-import { GEM_EFFECT } from '../data/gems.js?v=20261007p';
-import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261007p';
-import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261007p';
-import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261007p';
-import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261007p';
+import { ITEMS, sellPrice, tokenPrice, socketsOf, syncPriceGrowth } from '../data/items.js?v=20261007q';
+import { TRAVEL_BASE_COST } from '../data/regions.js?v=20261007q';
+import { GEM_EFFECT, UNSOCKET_SHARD_CHANCE, gemSetBonus } from '../data/gems.js?v=20261007q';
+import { SHELF, shelfUpgradeCost } from '../data/trade.js?v=20261007q';
+import { ARMOR_SLOTS, ARMOR_GEM_STEP, ARMOR_MIN_LEVEL, ARMOR_MAX_LEVEL, armorBand, makeArmor } from '../data/armor.js?v=20261007q';
+import { CAREER_MAX_LEVEL, CAREER_FREE_MAX, rankIndexForLevel, expToNext, startsNewMajor, CAREER_RANKS } from '../data/careers_rank.js?v=20261007q';
+import { DEFAULT_BODY, DEFAULT_SKIN, BODY_MAP, SKIN_MAP } from '../data/looks.js?v=20261007q';
 
 /** 装备槽位:武器 + 7 个防具槽 + 服装 4 件 + 载具 */
 const SLOTS = ['weapon', ...ARMOR_SLOTS, 'hat', 'top', 'bottom', 'shoes', 'vehicle'];
@@ -584,7 +584,12 @@ export class Economy {
       const eff = GEM_EFFECT[ITEMS[gid]?.gem] || {};
       for (const [k, v] of Object.entries(eff)) stats[k] = (stats[k] || 0) + v;
     }
-    const shortMap = { gem_strength: '力', gem_magic: '魔', gem_brave: '勇', gem_life: '生' };
+    // 神话套装:三颗同镶一件武器时额外生效(缺任意一颗则无效果)
+    for (const [k, v] of Object.entries(gemSetBonus(gems))) stats[k] = (stats[k] || 0) + v;
+    const shortMap = {
+      gem_strength: '力', gem_magic: '魔', gem_brave: '勇', gem_life: '生',
+      gem_myth_guard: '守', gem_myth_might: '破', gem_myth_spirit: '灵',
+    };
     const tag = gems.map((g) => shortMap[g] || '石').join('');
     // 镶嵌后的武器可在市场流通:估价 = 基础武器价 + 已镶宝石价
     const gemsValue = gems.reduce((s, gid) => s + (ITEMS[gid]?.price || 0), 0);
@@ -659,10 +664,32 @@ export class Economy {
     const created = this.registerCustom(def);
     this.removeItem(weaponId, 1);
     this.addItem(created.id, 1);
-    const shattered = Math.random() < 0.6;
+    const shattered = Math.random() < UNSOCKET_SHARD_CHANCE;
     if (shattered) this.addItem('mat_shard', 1);
     else this.addItem(gemId, 1);
     return { weaponId: created.id, gemId, shattered };
+  }
+
+  /**
+   * 给防具取下最后一颗宝石(每颗 −10 级,下限 1)。有几率把宝石打碎成碎片。
+   * @returns {{ armorId:string, gemId:string, shattered:boolean }|null}
+   */
+  unsocketArmorGem(armorId) {
+    const a = ITEMS[armorId];
+    if (!a || !this.custom.has(armorId) || !this.has(armorId, 1)) return null;
+    const gems = [...(a.gems || [])];
+    if (!gems.length) return null;
+    const gemId = gems.pop();
+    const lv = Math.max(ARMOR_MIN_LEVEL, (a.level || ARMOR_MAX_LEVEL) - ARMOR_GEM_STEP);
+    const def = makeArmor(a.armorSlot || 'body', lv, null, gems);
+    if (!def) return null;
+    const created = this.registerCustom(def);
+    this.removeItem(armorId, 1);
+    this.addItem(created.id, 1);
+    const shattered = Math.random() < UNSOCKET_SHARD_CHANCE;
+    if (shattered) this.addItem('mat_shard', 1);
+    else this.addItem(gemId, 1);
+    return { armorId: created.id, gemId, shattered };
   }
 
   // ===== 玩家货架(市场挂售) =====
@@ -769,7 +796,7 @@ export class Economy {
 
   /** 汇总装备加成 */
   equipStats() {
-    const total = { atkPower: 0, maxHp: 0, maxMp: 0, apMax: 0, travelDiscount: 0, shopDiscount: 0, goldBonus: 0, restBonus: 0, startBlock: 0 };
+    const total = { atkPower: 0, maxHp: 0, maxMp: 0, mpPerTurn: 0, apMax: 0, travelDiscount: 0, shopDiscount: 0, goldBonus: 0, restBonus: 0, startBlock: 0 };
     for (const slot of SLOTS) {
       const id = this.equipped[slot];
       const st = id && ITEMS[id]?.equipment?.stats;

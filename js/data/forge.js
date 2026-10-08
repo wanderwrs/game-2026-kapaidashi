@@ -40,32 +40,32 @@ export const BLUEPRINT_ITEMS = {
  */
 export const FORGED_ITEMS = {
   forged_frost: {
-    id: 'forged_frost', name: '霜锋剑', category: 'weapon', career: 'swordsman', forged: true, noTrade: true, sockets: 2, price: 0, icon: '❄️',
+    id: 'forged_frost', name: '霜锋剑', category: 'weapon', career: 'swordsman', forged: true, noTrade: true, sockets: 5, price: 0, icon: '❄️',
     desc: '【锻造·特殊】寒霜凝于剑脊,挥动时带起白雾。战力 +9,生命 +6;镶嵌后更强。',
     equipment: { slot: 'weapon', stats: { atkPower: 9, maxHp: 6 } },
   },
   forged_star: {
-    id: 'forged_star', name: '星辉法杖', category: 'weapon', career: 'mage', forged: true, noTrade: true, sockets: 2, price: 0, icon: '🌟',
+    id: 'forged_star', name: '星辉法杖', category: 'weapon', career: 'mage', forged: true, noTrade: true, sockets: 5, price: 0, icon: '🌟',
     desc: '【锻造·特殊】杖顶嵌着一粒星砂,夜里有微光。战力 +6,魔力 +6。',
     equipment: { slot: 'weapon', stats: { atkPower: 6, maxMp: 6 } },
   },
   forged_lance: {
-    id: 'forged_lance', name: '破军长枪', category: 'weapon', career: 'cavalier', forged: true, noTrade: true, sockets: 2, price: 0, icon: '🔱',
+    id: 'forged_lance', name: '破军长枪', category: 'weapon', career: 'cavalier', forged: true, noTrade: true, sockets: 5, price: 0, icon: '🔱',
     desc: '【锻造·特殊】枪尖淬过陨铁,冲阵时势不可挡。战力 +8,生命 +12。',
     equipment: { slot: 'weapon', stats: { atkPower: 8, maxHp: 12 } },
   },
   forged_gale: {
-    id: 'forged_gale', name: '追风双刃', category: 'weapon', career: 'aviator', forged: true, noTrade: true, sockets: 2, price: 0, icon: '🌪️',
+    id: 'forged_gale', name: '追风双刃', category: 'weapon', career: 'aviator', forged: true, noTrade: true, sockets: 5, price: 0, icon: '🌪️',
     desc: '【锻造·特殊】刃轻如羽,出鞘带风。战力 +7,行动力上限 +2。',
     equipment: { slot: 'weapon', stats: { atkPower: 7, apMax: 2 } },
   },
   forged_tide: {
-    id: 'forged_tide', name: '潮汐三叉', category: 'weapon', career: 'mariner', forged: true, noTrade: true, sockets: 2, price: 0, icon: '🌊',
+    id: 'forged_tide', name: '潮汐三叉', category: 'weapon', career: 'mariner', forged: true, noTrade: true, sockets: 5, price: 0, icon: '🌊',
     desc: '【锻造·特殊】叉身凝着不散的潮气。战力 +8,生命 +8,魔力 +2。',
     equipment: { slot: 'weapon', stats: { atkPower: 8, maxHp: 8, maxMp: 2 } },
   },
   forged_halo: {
-    id: 'forged_halo', name: '圣辉权杖', category: 'weapon', career: 'theologian', forged: true, noTrade: true, sockets: 2, price: 0, icon: '✨',
+    id: 'forged_halo', name: '圣辉权杖', category: 'weapon', career: 'theologian', forged: true, noTrade: true, sockets: 5, price: 0, icon: '✨',
     desc: '【锻造·特殊】杖身刻满古老经文,握之安心。战力 +6,魔力 +7,生命 +6。',
     equipment: { slot: 'weapon', stats: { atkPower: 6, maxMp: 7, maxHp: 6 } },
   },

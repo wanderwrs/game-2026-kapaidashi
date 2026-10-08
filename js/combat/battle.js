@@ -11,8 +11,8 @@
  *   · 敌人会随机攻击玩家或队友
  */
 
-import { Enemy } from './entity.js?v=20261007p';
-import { cardMpCost } from '../data/data.js?v=20261007p';
+import { Enemy } from './entity.js?v=20261007q';
+import { cardMpCost } from '../data/data.js?v=20261007q';
 
 const STATUS_CN = {
   vulnerable: '易伤',
@@ -122,6 +122,7 @@ export class Battle {
     this.player.resetEnergy();
     this.player.resetMp();
     this.player.statuses = {};
+    this._playerMpRegen();
     if (this.bonusStrength > 0) this.player.applyStatus('strength', this.bonusStrength);
     for (const e of this.enemies) {
       e.clearBlock();
@@ -145,6 +146,15 @@ export class Battle {
     if (this.groupMode) this._allyTurn();
     this._refresh();
     this._flushFx();
+  }
+
+  /** 玩家每回合开始:装备提供的回魔(如神话套装 +30) */
+  _playerMpRegen() {
+    const regen = this.player?.mpPerTurn || 0;
+    if (regen <= 0) return;
+    const before = this.player.mp;
+    this.player.mp = Math.min(this.player.maxMp, this.player.mp + regen);
+    if (this.player.mp > before) this.bus.emit('battle:log', `装备回魔 +${this.player.mp - before}`);
   }
 
   /** 宠物每回合开始的效果 */
@@ -268,6 +278,7 @@ export class Battle {
       this.player.resetEnergy();
       this.player.clearBlock();
       this.deck.draw(5);
+      this._playerMpRegen();
       this._petTurnStart();
       if (this.groupMode) this._allyTurn();
       this._checkEnd();

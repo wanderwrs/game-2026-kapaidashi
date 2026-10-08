@@ -26,11 +26,14 @@
  * sell 未填时按 price 的 50% 计算。
  */
 
-import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261007p';
-import { GEM_ITEMS } from './gems.js?v=20261007p';
-import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261007p';
-import { isSellLockedLevel } from './grade.js?v=20261007p';
-import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261007p';
+import { MATERIAL_ITEMS, BLUEPRINT_ITEMS, FORGED_ITEMS } from './forge.js?v=20261007q';
+import { GEM_ITEMS } from './gems.js?v=20261007q';
+import { buildArmorCatalog, ARMOR_MAX_GEMS } from './armor.js?v=20261007q';
+import { isSellLockedLevel } from './grade.js?v=20261007q';
+import { EXTRA_ITEMS, EXTRA_GEAR, buildMajorSets } from './extras.js?v=20261007q';
+
+/** 武器宝石槽数(与防具一致,均为 5) */
+export const WEAPON_MAX_GEMS = 5;
 
 export const ITEM_CATEGORY_CN = {
   potion: '药品',
@@ -281,11 +284,11 @@ export function isSellLocked(id) {
   return isSellLockedLevel(it.level);
 }
 
-/** 某武器的宝石槽数(普通武器默认 1,需显式 sockets 覆盖) */
+/** 某武器 / 防具的宝石槽数(武器与防具均为 5,需显式 sockets 覆盖) */
 export function socketsOf(id) {
   const it = ITEMS[id];
   if (!it) return 0;
-  if (it.category === 'weapon') return Number.isFinite(it.sockets) ? it.sockets : 1;
+  if (it.category === 'weapon') return Number.isFinite(it.sockets) ? it.sockets : WEAPON_MAX_GEMS;
   if (it.category === 'armor') return Number.isFinite(it.sockets) ? it.sockets : ARMOR_MAX_GEMS;
   return 0;
 }

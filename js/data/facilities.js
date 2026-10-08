@@ -10,8 +10,9 @@
  * 存款利息在「到期时刻」结算(真实时间),未到期取回只退本金。
  */
 
-import { ITEMS, SHOP_STOCK } from './items.js?v=20261007p';
-import { hash01 } from './trade.js?v=20261007p';
+import { ITEMS, SHOP_STOCK } from './items.js?v=20261007q';
+import { MYTH_GEM_IDS } from './gems.js?v=20261007q';
+import { hash01 } from './trade.js?v=20261007q';
 
 /** 金融轮次(汇率 / 利率 / 行情):每 1 小时一轮 */
 export const EXCHANGE_TICK_MS = 60 * 60 * 1000;
@@ -134,6 +135,18 @@ export function mysteryPrice(itemId, seed, tick) {
   const base = ITEMS[itemId]?.price || 100;
   const m = hash01(`${seed}:mysteryprice:${itemId}:${tick}`);
   return Math.round(base * (1.35 + m * 0.5));
+}
+
+// ===== 神话宝石:极稀有,仅神秘商店有货 =====
+/** 单颗神话宝石在每轮货架中独立出现的概率(0.03%) */
+export const MYTH_GEM_CHANCE = 0.0003;
+
+/**
+ * 本轮「额外现身」的神话宝石:三颗各自独立按 0.03% 判定。
+ * 与常规珍品同处一轮货架,过时即下架。
+ */
+export function rollMythGems(seed, tick) {
+  return MYTH_GEM_IDS.filter((id) => hash01(`${seed}:mythgem:${tick}:${id}`) < MYTH_GEM_CHANCE);
 }
 
 // ===== 酒馆 =====

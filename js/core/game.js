@@ -11,48 +11,48 @@
  *   · 战斗失败:退回地区起点,损失部分金币,并须重新抵达该地点再战。
  */
 
-import { RNG, seedFromString } from './rng.js?v=20261007p';
-import { EventBus } from './eventbus.js?v=20261007p';
-import { AudioEngine } from './audio.js?v=20261007p';
-import { Player } from '../combat/entity.js?v=20261007p';
-import { Deck } from '../card/deck.js?v=20261007p';
-import { Battle } from '../combat/battle.js?v=20261007p';
-import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007p';
-import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf, resetPriceGrowth } from '../data/items.js?v=20261007p';
-import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007p';
-import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007p';
-import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM } from '../data/gems.js?v=20261007p';
-import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007p';
-import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007p';
-import { majorSetIds } from '../data/extras.js?v=20261007p';
-import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007p';
-import { lookLabel } from '../data/looks.js?v=20261007p';
-import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007p';
+import { RNG, seedFromString } from './rng.js?v=20261007q';
+import { EventBus } from './eventbus.js?v=20261007q';
+import { AudioEngine } from './audio.js?v=20261007q';
+import { Player } from '../combat/entity.js?v=20261007q';
+import { Deck } from '../card/deck.js?v=20261007q';
+import { Battle } from '../combat/battle.js?v=20261007q';
+import { CARDS, ENEMIES, scaleEnemy } from '../data/data.js?v=20261007q';
+import { ITEMS, SHOP_STOCK, LOOT_MISC, tokenForTheme, isTradeable, socketsOf, sellPrice, armorSlotOf, resetPriceGrowth } from '../data/items.js?v=20261007q';
+import { marketStalls, MARKET_FEE, VENUE_CHANCE, venueFee, venueStock, tokenDrop } from '../data/market.js?v=20261007q';
+import { BLUEPRINT_ITEMS, FORGE_RECIPES, rollMaterial } from '../data/forge.js?v=20261007q';
+import { GEM_ITEMS, rollGem, SOCKET_GOLD_PER_GEM, MYTH_GEM_IDS } from '../data/gems.js?v=20261007q';
+import { PETS, petSkills, petSkillText, rollPetStock, rollShopPetStock, petSellPrice, canSellPet, PET_RARITY } from '../data/pets.js?v=20261007q';
+import { rankExpBonus, rankReward, careerTitleOf, CAREER_MAX_LEVEL, CAREER_FREE_MAX } from '../data/careers_rank.js?v=20261007q';
+import { majorSetIds } from '../data/extras.js?v=20261007q';
+import { ARMOR_SLOTS, ARMOR_SHOP_LEVELS, ARMOR_MARKET_MAX, ARMOR_GEM_STEP, armorId, makeArmor } from '../data/armor.js?v=20261007q';
+import { lookLabel } from '../data/looks.js?v=20261007q';
+import { SELL_FLOOR, SHELF, FEES, priceMul, hash01, msToNextTick, pct } from '../data/trade.js?v=20261007q';
 import {
   FACILITY_CN, FACILITY_ICON, BANK_TERMS, bankRate, exchangeTick, msToNextExchange,
   TOKEN_LIST, TOKEN_EX_FEE, tokenRate, INVEST_PROJECTS, investPrice, investPrevPrice,
-  WAREHOUSE, warehouseFee, mysteryStock, mysteryPrice, ARENA_TIERS,
+  WAREHOUSE, warehouseFee, mysteryStock, mysteryPrice, rollMythGems, ARENA_TIERS,
   TAVERN_STOCK, TAVERN_FEE, TAVERN_MEAL_GOLD, TAVERN_MEAL_AP, BELLHOP, errandCatalog,
-} from '../data/facilities.js?v=20261007p';
-import { TradeEngine } from './trade.js?v=20261007p';
-import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007p';
-import { REGIONS } from '../data/regions.js?v=20261007p';
-import { jobsFor } from '../data/jobs.js?v=20261007p';
+} from '../data/facilities.js?v=20261007q';
+import { TradeEngine } from './trade.js?v=20261007q';
+import { MAILS, REDEEM_CODES } from '../data/mail.js?v=20261007q';
+import { REGIONS } from '../data/regions.js?v=20261007q';
+import { jobsFor } from '../data/jobs.js?v=20261007q';
 import {
   WORLD, regionDistance, stopDistance, tripSeconds, stopTripSeconds, travelApCost, shuttleGold, levelLabel,
   regionTerrain, TERRAIN_CN, BASE_DISTANCE, DISTANCE_SCALE,
-} from '../data/world.js?v=20261007p';
-import { NPCS } from '../data/npcs.js?v=20261007p';
-import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007p';
-import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007p';
-import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007p';
-import { Economy } from './economy.js?v=20261007p';
-import { Travel } from './travel.js?v=20261007p';
-import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007p';
-import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007p';
-import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007p';
-import { CAREERS } from '../narrative/careers.js?v=20261007p';
-import { UI } from '../ui/ui.js?v=20261007p';
+} from '../data/world.js?v=20261007q';
+import { NPCS } from '../data/npcs.js?v=20261007q';
+import { CHESTS, CHEST_MAP, chestAt } from '../data/chests.js?v=20261007q';
+import { TALK_TOPICS, TALK_MAX_LINES } from '../data/talk.js?v=20261007q';
+import { generatePois, POI_COUNT, POI_TYPE_CN, RESTAURANT_FOOD, HOTEL_ROOMS, MARKET_MERCHANTS, STALL_CN, rollRoamingStalls, stallsAtRegion } from '../data/pois.js?v=20261007q';
+import { Economy } from './economy.js?v=20261007q';
+import { Travel } from './travel.js?v=20261007q';
+import { NarrativeEngine, ENDINGS } from '../narrative/engine.js?v=20261007q';
+import { CHAPTERS, CHAPTER_ORDER, MAJOR_CHAPTERS, SIDE_QUEST_CHAPTERS, majorChapterOf, majorChapterNumber, chapterNumber } from '../narrative/chapters/index.js?v=20261007q';
+import { CHAPTER_RECAPS, CHAPTER_CLEAR_REWARDS } from '../data/story.js?v=20261007q';
+import { CAREERS } from '../narrative/careers.js?v=20261007q';
+import { UI } from '../ui/ui.js?v=20261007q';
 
 const PROGRESS_KEY = 'longji.progress.v1';
 const TUTORIAL_KEY = 'longji.tutorial.v1';
@@ -561,6 +561,7 @@ export class Game {
     this.player.maxMp = (c?.mpMax ?? 3) + st.maxMp;
     this.player.energyMax = c?.energyMax ?? 3;
     this.player.power = st.atkPower;
+    this.player.mpPerTurn = st.mpPerTurn || 0;
     if (this.player.hp > this.player.maxHp) this.player.hp = this.player.maxHp;
     if (this.player.mp > this.player.maxMp) this.player.mp = this.player.maxMp;
   }
@@ -1630,7 +1631,7 @@ export class Game {
     return {
       stalls: marketStalls(),
       wares: this._marketWares(),
-      gems: Object.values(GEM_ITEMS).map((g) => ({
+      gems: Object.values(GEM_ITEMS).filter((g) => !g.myth).map((g) => ({
         ...g,
         price: this.trade ? this.trade.marketAvg(g.id) : g.price,
         trend: this.trade ? this.trade.priceTrend(g.id) : 1,
@@ -1657,7 +1658,7 @@ export class Game {
     const tick = this.trade.tick;
     const seed = this.rng.seed;
     const weaponPool = Object.values(ITEMS).filter((it) => it.category === 'weapon' && !it.forged && !(it.gems && it.gems.length));
-    const gemPool = Object.values(GEM_ITEMS);
+    const gemPool = Object.values(GEM_ITEMS).filter((g) => !g.myth);
     if (!weaponPool.length || !gemPool.length) return [];
     const wares = [];
     const N = 3;
@@ -3192,7 +3193,11 @@ export class Game {
       };
     }
     if (kind === 'mystery') {
-      const stock = mysteryStock(seed, tick).map((id) => ({ id, price: mysteryPrice(id, seed, tick) }));
+      // 常规珍品 + 本轮极小概率现身的神话宝石(每颗独立 0.03%)
+      const ids = [...mysteryStock(seed, tick), ...rollMythGems(seed, tick)];
+      const stock = ids.map((id) => ({
+        id, price: mysteryPrice(id, seed, tick), myth: MYTH_GEM_IDS.includes(id),
+      }));
       return { economy: eco, stock, nextMs: msToNextExchange(now) };
     }
     if (kind === 'bank') {
@@ -3592,7 +3597,7 @@ export class Game {
   // ===== 宝石商:售卖宝石(随市场浮动定价) =====
   _openGemshop() {
     this.trade?.refresh();
-    const gems = Object.values(GEM_ITEMS).map((g) => {
+    const gems = Object.values(GEM_ITEMS).filter((g) => !g.myth).map((g) => {
       const price = this.trade ? this.trade.marketAvg(g.id) : g.price;
       return { ...g, price, trend: this.trade ? this.trade.priceTrend(g.id) : 1 };
     });
@@ -3614,22 +3619,20 @@ export class Game {
     this._autosave();
   }
 
-  // ===== 精益师:把宝石镶嵌进武器 =====
+  // ===== 精益师:把宝石镶嵌进武器 / 防具 =====
   _openJeweler() {
     const weapons = [];
-    for (const [id, qty] of this.economy.bag.entries()) {
-      const def = ITEMS[id];
-      if (!def || def.category !== 'weapon') continue;
-      weapons.push({ id, qty, def, free: socketsOf(id), gems: def.gems || [] });
-    }
+    const armors = [];
     const gems = [];
     for (const [id, qty] of this.economy.bag.entries()) {
       const def = ITEMS[id];
-      if (!def || def.category !== 'gem') continue;
-      gems.push({ id, qty, def });
+      if (!def) continue;
+      if (def.category === 'weapon') weapons.push({ id, qty, def, free: socketsOf(id), gems: def.gems || [] });
+      else if (def.category === 'armor') armors.push({ id, qty, def, free: socketsOf(id), gems: def.gems || [] });
+      else if (def.category === 'gem') gems.push({ id, qty, def });
     }
     this.ui.renderJeweler({
-      weapons, gems, economy: this.economy, cost: SOCKET_GOLD_PER_GEM, name: STALL_CN.jeweler,
+      weapons, armors, gems, economy: this.economy, cost: SOCKET_GOLD_PER_GEM, name: STALL_CN.jeweler,
     });
     this.transition(GameState.JEWELER);
   }
@@ -3652,10 +3655,39 @@ export class Game {
     this._autosave();
   }
 
+  /** 镶嵌:把宝石镶进防具(每颗 +10 级,上限 150) */
+  _socketArmor(armorId, gemId) {
+    const a = ITEMS[armorId];
+    const g = ITEMS[gemId];
+    if (!a || !g) return;
+    if (socketsOf(armorId) <= 0) { this.ui.showToast('该防具已无空余宝石槽'); return; }
+    if (!this.economy.has(armorId) || !this.economy.has(gemId)) { this.ui.showToast('物品不在背包中'); return; }
+    if (this.economy.gold < SOCKET_GOLD_PER_GEM) { this.ui.showToast(`金币不足(镶嵌需 ${SOCKET_GOLD_PER_GEM})`); return; }
+    this.economy.gold -= SOCKET_GOLD_PER_GEM;
+    const created = this.economy.socketArmorGem(armorId, gemId);
+    if (!created) { this.economy.gold += SOCKET_GOLD_PER_GEM; this.ui.showToast('镶嵌失败'); return; }
+    this.ui.showToast(`🔧 镶嵌成功:${ITEMS[created].name}`);
+    this._openJeweler();
+    this._syncPlayerStats();
+    this._syncUi();
+    this._autosave();
+  }
+
   /** 取下武器最后一颗宝石(可能碎成碎片) */
   _unsocket(weaponId) {
     const r = this.economy.unsocketGem(weaponId);
     if (!r) { this.ui.showToast('该武器没有可取下的宝石'); return; }
+    this.ui.showToast(r.shattered ? '宝石取下时碎裂了,只余下一点碎片' : '宝石完好取下,已放回背包');
+    this._openJeweler();
+    this._syncPlayerStats();
+    this._syncUi();
+    this._autosave();
+  }
+
+  /** 取下防具最后一颗宝石(可能碎成碎片) */
+  _unsocketArmor(armorId) {
+    const r = this.economy.unsocketArmorGem(armorId);
+    if (!r) { this.ui.showToast('该防具没有可取下的宝石'); return; }
     this.ui.showToast(r.shattered ? '宝石取下时碎裂了,只余下一点碎片' : '宝石完好取下,已放回背包');
     this._openJeweler();
     this._syncPlayerStats();
@@ -3897,6 +3929,8 @@ export class Game {
     this.bus.on('ui:gemshop-buy', (id) => this._gemshopBuy(id));
     this.bus.on('ui:socket', (p) => this._socket(p.weaponId, p.gemId));
     this.bus.on('ui:unsocket', (id) => this._unsocket(id));
+    this.bus.on('ui:socket-armor', (p) => this._socketArmor(p.armorId, p.gemId));
+    this.bus.on('ui:unsocket-armor', (id) => this._unsocketArmor(id));
     this.bus.on('ui:market-buy-gem', (id) => this._marketBuyGem(id));
     this.bus.on('ui:market-buy-ware', (k) => this._marketBuyWare(k));
     this.bus.on('ui:market-list', (p) => this._listItem(p.itemId, p.price));
