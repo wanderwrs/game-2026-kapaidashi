@@ -95,7 +95,7 @@ export const REDEEM_CODES = [
     //   allItems    —— 全部道具(不含交易币)每样 1000
     //   allPets     —— 全部宠物各 1 只
     // 说明:交易币从 allItems 中排除,统一由 allTokens 发放,避免叠加。
-    code: 'vcbkljhbaskuvbklvbsdkljvbdlkjvbjlhnskhsglvhdfldhslihet;glihsetbjkbg',
+    code: 'TRAE1024',
     no: 'R006',
     label: '龙脊全集礼包(持久)',
     unlimited: true,
