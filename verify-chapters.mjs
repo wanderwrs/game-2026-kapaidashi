@@ -1,16 +1,19 @@
 /**
- * verify-chapters.mjs — 验证全部主线大章剧情能否正常通过。
+ * verify-chapters.mjs — 验证全部剧情章节能否正常通过。
+ *
+ * 覆盖范围:主线 ch01~ch47,以及支线 / 职业线 fs*、sq*、jd*。
  *
  * 检查项:
  *   1. 每个章节 start 节点存在
  *   2. 每个节点的 next / choice.next / battle.victory_next / battle.defeat_next 引用存在
  *   3. 跨章节引用(形如 "ch02:n12")目标节点存在
- *   4. 从 ch01.start 出发,通过 BFS 可达 ch15 的 ending 节点
- *   5. 每个大章都至少有一个节点连接到下一大章(或 ch15 有 ending)
+ *   4. 从 ch01.start 出发,通过 BFS 抵达全部主线与结局
+ *   5. 每个大章都至少有一个节点连接到下一大章,或含结局节点
  *   6. career_branch 分支目标存在
+ *   7. 各章从 start 出发的死节点检测与关键结局 flag 覆盖
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,25 +22,20 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const chaptersDir = join(__dirname, 'js/narrative/chapters');
 
 /**
- * 动态导入章节模块,并把节点 Map 展开为普通对象。
- * 由于 import URL 带 ?v=... 后缀,Node 的 import() 无法直接解析,
- * 这里改用读取源码 → 去掉 ?v= 后缀 → 通过 data URL 执行。
+ * 动态导入章节模块,并取其中的 CHAPTER_* 导出。
+ * Node 解析 file: URL 时会忽略 ?v= 查询串,因此可直接 import 源码文件。
  */
 async function loadChapter(file) {
-  let src = readFileSync(file, 'utf-8');
-  // 把所有 import 的 ?v=... 后缀去掉,使其指向真实文件
-  src = src.replace(/from\s+'([^']+)\?v=[^']*'/g, "from '$1'");
-  src = src.replace(/from\s+"([^"]+)\?v=[^"]*"/g, 'from "$1"');
-  const modUrl = pathToFileURL(file).href;
-  // 用 import 直接加载(已清理 query,Node 可解析)
-  const mod = await import(modUrl);
+  const mod = await import(pathToFileURL(file).href);
   const key = Object.keys(mod).find((k) => k.startsWith('CHAPTER_'));
   return mod[key];
 }
 
 async function main() {
-  const mainOrder = ['ch01','ch02','ch03','ch04','ch05','ch06','ch07','ch08','ch09','ch10','ch11','ch12','ch13','ch14','ch15','ch16','ch17','ch18','ch19','ch20','ch21','ch22','ch23','ch24','ch25','ch26','ch27'];
-  const allFiles = ['ch01.js','ch02.js','ch02b.js','ch03.js','ch04.js','ch04b.js','ch05.js','ch05b.js','ch06.js','ch07.js','ch08.js','ch09.js','ch10.js','ch11.js','ch12.js','ch13.js','ch14.js','ch15.js','ch16.js','ch17.js','ch18.js','ch19.js','ch20.js','ch21.js','ch22.js','ch23.js','ch24.js','ch25.js','ch26.js','ch27.js','fs1.js','fs2.js','fs3.js','fs4.js','fsa5.js','fsa6.js','fsa7.js','fsa8.js','fsb5.js','fsb6.js','fsb7.js','fsb8.js'];
+  // 主线:ch01 ~ ch47;支线/职业线:fs*、sq*、jd* 一并载入,便于跨章引用校验
+  const mainOrder = Array.from({ length: 47 }, (_, i) => `ch${String(i + 1).padStart(2, '0')}`);
+  const CHAPTER_FILE_RE = /^(ch\d+[a-z]?|fs[a-z]?\d+|sq\d+|jd\d+)\.js$/;
+  const allFiles = readdirSync(chaptersDir).filter((f) => CHAPTER_FILE_RE.test(f)).sort();
 
   const chapters = {};
   for (const f of allFiles) {
@@ -118,6 +116,13 @@ async function main() {
     if (node.defeat_next) refs.push(node.defeat_next);
     if (node.choices) refs.push(...node.choices.map((c) => c.next));
     if (node.career_branch) refs.push(...Object.values(node.career_branch));
+    // 大章之间的推进由 game.js 的片尾字幕回调完成(CHAPTER_ORDER 顺序),
+    // 而非剧情节点里的跨章引用,所以这里把「结局节点 → 下一章 start」视为一条边。
+    if (node.kind === 'ending') {
+      const idx = mainOrder.indexOf(cid);
+      const nextCid = idx >= 0 && idx < mainOrder.length - 1 ? mainOrder[idx + 1] : null;
+      if (nextCid && chapters[nextCid]) refs.push(`${nextCid}:${chapters[nextCid].start}`);
+    }
 
     for (const ref of refs) {
       const target = ref.includes(':') ? ref : `${cid}:${ref}`;
@@ -177,10 +182,26 @@ async function main() {
 
   // ---- 5. 死节点检测(从 start 不可达) ----
   console.log('\n=== 4. 各章死节点(从 start 不可达) ===');
+  // 被其他章节跨章引用的节点(如 sq2_exit → ch02:n08)应由外部进入,不算死节点
+  const crossInbound = new Set();
+  for (const ch of Object.values(chapters)) {
+    for (const node of ch.nodes.values()) {
+      const refs = [];
+      if (node.next) refs.push(node.next);
+      if (node.victory_next) refs.push(node.victory_next);
+      if (node.defeat_next) refs.push(node.defeat_next);
+      if (node.choices) refs.push(...node.choices.map((c) => c.next));
+      if (node.career_branch) refs.push(...Object.values(node.career_branch));
+      refs.filter((r) => r && r.includes(':')).forEach((r) => crossInbound.add(r));
+    }
+  }
   for (const cid of mainOrder) {
     const ch = chapters[cid];
     const reachable = new Set([ch.start]);
     const q = [ch.start];
+    for (const nid of ch.nodes.keys()) {
+      if (crossInbound.has(`${cid}:${nid}`)) { reachable.add(nid); q.push(nid); }
+    }
     while (q.length) {
       const nid = q.shift();
       const node = ch.nodes.get(nid);

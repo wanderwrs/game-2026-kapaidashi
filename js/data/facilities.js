@@ -10,9 +10,9 @@
  * 存款利息在「到期时刻」结算(真实时间),未到期取回只退本金。
  */
 
-import { ITEMS, SHOP_STOCK } from './items.js?v=20261007s';
-import { MYTH_GEM_IDS } from './gems.js?v=20261007s';
-import { hash01 } from './trade.js?v=20261007s';
+import { ITEMS, SHOP_STOCK } from './items.js?v=20261007t';
+import { MYTH_GEM_IDS } from './gems.js?v=20261007t';
+import { hash01 } from './trade.js?v=20261007t';
 
 /** 金融轮次(汇率 / 利率 / 行情):每 1 小时一轮 */
 export const EXCHANGE_TICK_MS = 60 * 60 * 1000;

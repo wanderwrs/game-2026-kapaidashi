@@ -52,6 +52,9 @@
 │   ├── main.js                # 入口:挂年龄门 → new Game(#app) → window.__game
 │   ├── core/                  # 核心系统(无 DOM 依赖,可在 Node 里单测)
 │   │   ├── game.js            # 主状态机:视图切换、事件绑定、各玩法业务逻辑
+│   │   ├── facility-actions.js # 设施 / 商业 / 目的地服务(餐厅、酒店、银行、铁匠铺…)
+│   │   ├── states.js          # 界面状态常量(GameState)
+│   │   ├── save.js            # 本机存档 / 进度 / 邮箱读写与迁移
 │   │   ├── economy.js         # 经济:金币/背包/装备/宝石/行动力/存档序列化
 │   │   ├── travel.js          # 旅途与计时(真实时间秒)
 │   │   ├── trade.js           # 交易引擎:费率、行情、节日、挂售
